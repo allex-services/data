@@ -68,11 +68,12 @@ function createRecordUtils(execlib){
     };
   }
 
+  var sp = execlib.execSuite.registry.get('.');
   return {
     duplicateFieldValueInArrayOfHashes: duplicateFieldValueInArrayOfHashes,
     inherit: inherit,
-    userInheritProc: userOrSinkInheritProc('DataUser',execlib.execSuite.ServicePack.Service.prototype.userFactory.get('user').inherit),
-    sinkInheritProc: userOrSinkInheritProc('DataSink',execlib.execSuite.ServicePack.SinkMap.get('user').inherit)
+    userInheritProc: userOrSinkInheritProc('DataUser',sp.Service.prototype.userFactory.get('user').inherit),
+    sinkInheritProc: userOrSinkInheritProc('DataSink',sp.SinkMap.get('user').inherit)
   };
 }
 

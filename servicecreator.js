@@ -2,7 +2,7 @@ function createDataService(execlib){
   var lib = execlib.lib,
     q = lib.q,
     execSuite = execlib.execSuite,
-    Service = execSuite.ServicePack.Service,
+    Service = execSuite.registry.get('.').Service,
     User = execSuite.User,
     ParentService = Service,
     dataSuite = execlib.dataSuite,

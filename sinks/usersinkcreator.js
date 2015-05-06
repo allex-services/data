@@ -1,7 +1,7 @@
 function createUserSink(execlib){
   var lib = execlib.lib,
       execSuite = execlib.execSuite,
-      ServiceSink = execSuite.ServiceSink,
+      ServiceSink = execSuite.registry.get('.').SinkMap.get('user'),
       recordSuite = execlib.dataSuite.recordSuite;
 
   function UserSink(prophash,client){
