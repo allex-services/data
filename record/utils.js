@@ -64,7 +64,7 @@ function createRecordUtils(execlib){
       originalUIP.call(this,childCtor,methodDescriptors);
       childCtor.prototype.visibleFields = copyAndAppendNewElements(this.prototype.visibleFields,visiblefieldsarray);
       childCtor.inherit = this.inherit;
-      console.log('after inherit',childCtor.prototype.visibleFields,'out of parent',this.prototype.visibleFields,'and',visiblefieldsarray);
+      //console.log('after inherit',childCtor.prototype.visibleFields,'out of parent',this.prototype.visibleFields,'and',visiblefieldsarray);
     };
   }
 
