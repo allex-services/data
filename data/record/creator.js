@@ -5,8 +5,6 @@ function createRecord(execlib){
     this.name = prophash.name;
     if(!this.name){
       throw "Field needs a name";
-    }else{
-      console.log('Field name',this.name);
     }
     this.value = prophash.value;
     this.default = prophash.default || null;
@@ -52,7 +50,6 @@ function createRecord(execlib){
     return ret;
   };
   Record.prototype.filterStateStream = function(item){
-    console.log('Record should filter',item);
     if(item.o==='u' && item.p && item.p.length===1){
       var f = this.fieldsByName.get(item.p[0]);
       if(f){
@@ -68,18 +65,18 @@ function createRecord(execlib){
 
   function StateStreamFilter(manager,datahash,record){
     this.manager = manager;
-    this.datahash = datahash;
+    this.hashfilterdescriptor = {op:'hash',d:datahash};
     this.record = record;
   }
   StateStreamFilter.prototype.destroy = function(){
     this.manager = null;
-    this.datahash = null;
+    this.hashfilterdescriptor = null;
     this.record = null;
   };
   StateStreamFilter.prototype.onStream = function(item){
     var val = this.record.filterStateStream(item);
     if(val){
-      this.manager.updateByHashDescriptor(this.datahash,val);
+      this.manager.updateByDescriptor(this.hashfilterdescriptor,val);
     }
   };
 

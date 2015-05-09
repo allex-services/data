@@ -34,7 +34,6 @@ function createDataService(execlib){
     return new NullStorage(recorddescriptor);
   };
   DataService.prototype.introduceUser = function(userhash){
-    console.log('should introduceUser',userhash);
     userhash.name = JSON.stringify(userhash.filter || '*'); //Crucial!
     return ParentService.prototype.introduceUser.call(this,userhash);
   };

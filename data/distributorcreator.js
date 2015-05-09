@@ -5,16 +5,16 @@ function createDataDistributor(execlib){
 
   var dsdid = 0;
   function DataStreamDistributor(){
-    this.id = ++dsdid;
+    //this.id = ++dsdid;
     StreamDistributor.call(this);
   }
   lib.inherit(DataStreamDistributor,StreamDistributor);
   DataStreamDistributor.prototype.attach = function(sink){
-    console.log(this.id,'attaching');
+    //console.log(this.id,'attaching');
     StreamDistributor.prototype.attach.call(this,sink);
   };
   DataStreamDistributor.prototype.onStream = function(item){
-    console.log(this.id,'distributing',item,'to',this.sinks.length);
+    //console.log(this.id,'distributing',item,'to',this.sinks.length);
     StreamDistributor.prototype.onStream.call(this,item);
   };
   DataStreamDistributor.prototype.doTrigger = function(item,sink){

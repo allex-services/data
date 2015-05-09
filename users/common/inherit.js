@@ -87,12 +87,22 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
     this.__service.data.read(this,d);
   };
   ChildClass.prototype.onStream = function(item){
-    console.log('Some User distributing further',item,'to',this.distributor.sinks.length);
+    //console.log('Some User distributing further',item,'to',this.distributor.sinks.length);
     this.distributor.onStream(item);
   };
   ChildClass.prototype.create = function(datahash,defer){
-    this.__service.data.create(datahash);
-    defer.resolve('ok');
+    this.__service.data.create(datahash).done(
+      defer.resolve.bind(defer),
+      defer.reject.bind(defer),
+      defer.notify.bind(defer)
+    );
+  };
+  ChildClass.prototype.updateByDescriptor = function(filterdescriptor,datahash,defer){
+    this.__service.data.updateByDescriptor(filterdescriptor,datahash).done(
+      defer.resolve.bind(defer),
+      defer.reject.bind(defer),
+      defer.notify.bind(defer)
+    );
   };
   ChildClass.prototype.getSessionCtor = userSessionFactory;
 

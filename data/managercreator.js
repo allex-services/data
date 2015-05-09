@@ -17,20 +17,19 @@ function createDataManager(execlib){
     this.storage.destroy();
     this.storage = null;
   };
-  DataManager.prototype.onStorageError = function(reason){
-    console.log('DataManager has no idea about what to do with',reason);
+  DataManager.prototype.onStorageError = function(defer,reason){
+    console.log('DataManager has no idea about what to do with',reason,'(onStorageError)');
+    defer.reject(reason);
   };
   DataManager.prototype.doNativeCreate = function(defer,datahash){
-    console.log('doNativeCreate',datahash,'on',DataSource.prototype.create.toString());
     DataSource.prototype.create.call(this,datahash);
     defer.resolve(datahash);
   };
   DataManager.prototype.create = function(datahash){
-    console.log('DataManager create',datahash);
     var d = lib.q.defer();
     this.storage.create(datahash).done(
       this.doNativeCreate.bind(this,d),
-      this.onStorageError.bind(this)
+      this.onStorageError.bind(this,d)
     );
     return d.promise;
   };
@@ -87,8 +86,8 @@ function createDataManager(execlib){
       this.onStorageError.bind(this)
     );
   };
-  DataManager.prototype.updateByHashDescriptor = function(hashdescriptor,datahash){
-    var f = filterFactory.createFromDescriptor({op:'hash',d:hashdescriptor}),
+  DataManager.prototype.updateByDescriptor = function(filterdescriptor,datahash){
+    var f = filterFactory.createFromDescriptor(filterdescriptor);
         d = lib.q.defer();
     this.update(f,datahash).done(function(res){
       d.resolve(res);

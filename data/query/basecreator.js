@@ -18,7 +18,6 @@ function createQueryBase(execlib){
   };
   QueryBase.prototype.isEmpty = function(){
     var flds = this.fields();
-    console.log('isEmpty?, limit',this.limit,'flds',flds);
     return this.limit===0||(!(flds&&flds.length));
   };
   QueryBase.prototype.isLimited = function(){

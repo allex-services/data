@@ -25,7 +25,6 @@ function createMemoryStorage(execlib){
     }
   }
   MemoryStorage.prototype.doRead = function(query,defer){
-    console.log('should read thru query',query.fields());
     if(!(query.isLimited()||query.isOffset())){
       this.data.forEach(processRead.bind(null,query,defer));
     }else{
@@ -52,7 +51,6 @@ function createMemoryStorage(execlib){
     }
   }
   MemoryStorage.prototype.doUpdate = function(filter,datahash,defer){
-    console.log('MemoryStorage doUpdate',filter,datahash);
     var countobj = {count:0};
     this.data.forEach(processUpdate.bind(null,countobj,filter,datahash));
     defer.resolve(countobj.count);

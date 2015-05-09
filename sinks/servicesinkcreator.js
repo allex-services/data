@@ -6,18 +6,10 @@ function createServiceSink(execlib){
 
   function ServiceSink(prophash,client){
     _ServiceSink.call(this,prophash,client);
-    this.consumeChannel('d',this.onData.bind(this));
   }
   _ServiceSink.inherit(ServiceSink,require('../methoddescriptors/serviceuser'));
   ServiceSink.inherit = recordSuite.sinkInheritProc;
   ServiceSink.prototype.visibleFields = [];
-  ServiceSink.prototype.createStateFilter = function(){
-    //TODO: create your filter here
-    return null;
-  };
-  ServiceSink.prototype.onData = function(){
-    console.log('onData',arguments);
-  };
   return ServiceSink;
 }
 
