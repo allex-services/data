@@ -1,13 +1,13 @@
 function createSuite(execlib){
-  var utils = require('./utils')(execlib),
+  var suite = {},
+    utils = require('./utils')(execlib,suite),
     Record = require('./creator')(execlib),
     Storage = require('./storagecreator')(execlib,Record);
 
-  return {
-    utils: utils,
-    Record: Record,
-    Storage: Storage
-  }
+  suite.Record = Record;
+  suite.Storage = Storage;
+  
+  return suite;
 };
 
 module.exports = createSuite;

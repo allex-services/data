@@ -9,7 +9,6 @@ function createDataService(execlib){
     recordSuite = dataSuite.recordSuite,
     NullStorage = dataSuite.NullStorage,
     DistributedDataManager = dataSuite.DistributedDataManager,
-    RecordStorage = recordSuite.Storage,
     DataChannel = require('./users/common/datasessioncreator')(execlib),
     userSessionFactory = execSuite.userSessionFactoryCreator(DataChannel);
 
@@ -22,18 +21,17 @@ function createDataService(execlib){
 
   function DataService(prophash){
     ParentService.call(this,prophash);
-    this.data = new DistributedDataManager(this.createStorage(),{});
+    this.data = new DistributedDataManager(this.createStorage(this.storageDescriptor),{});
   }
   ParentService.inherit(DataService,factoryCreator);
-  DataService.prototype.recordDescriptor = {fields:[]};
+  DataService.prototype.storageDescriptor = {record:{fields:[]}};
   var dsio = DataService.inherit;
-  DataService.inherit = function(childCtor,factoryProducer,childRecordDescriptor){
+  DataService.inherit = function(childCtor,factoryProducer,childStorageDescriptor){
     dsio.call(this,childCtor,factoryProducer);
-    var rd = recordSuite.utils.inherit(this.prototype.recordDescriptor,childRecordDescriptor);
-    childCtor.prototype.recordDescriptor = recordSuite.utils.inherit(this.prototype.recordDescriptor,childRecordDescriptor);
+    childCtor.prototype.storageDescriptor = dataSuite.inherit(this.prototype.storageDescriptor,childStorageDescriptor);
   };
-  DataService.prototype.createStorage = function(){
-    return new NullStorage();
+  DataService.prototype.createStorage = function(recorddescriptor){
+    return new NullStorage(recorddescriptor);
   };
   DataService.prototype.introduceUser = function(userhash){
     console.log('should introduceUser',userhash);

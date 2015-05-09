@@ -1,6 +1,8 @@
-function createNullStorage(execlib,StorageBase){
-  function NullStorage(options){
-    StorageBase.call(this);
+function createNullStorage(execlib){
+  var dataSuite = execlib.dataSuite,
+      StorageBase = dataSuite.StorageBase;
+  function NullStorage(recorddescriptor){
+    StorageBase.call(this,recorddescriptor);
   }
   execlib.lib.inherit(NullStorage,StorageBase);
   NullStorage.prototype.doCreate = function(datahash,defer){

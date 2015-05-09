@@ -1,9 +1,12 @@
-function createDistributedDataManager(execlib,DataStreamDistributor,DataManager){
-  var lib = execlib.lib;
+function createDistributedDataManager(execlib){
+  var lib = execlib.lib,
+      dataSuite = execlib.dataSuite,
+      StreamDistributor = dataSuite.StreamDistributor,
+      DataManager = dataSuite.DataManager;
 
   function DistributedDataManager(storageinstance,filterdescriptor){
     DataManager.call(this,storageinstance,filterdescriptor);
-    this.distributor = new DataStreamDistributor();
+    this.distributor = new StreamDistributor();
     this.setSink(this.distributor);
   }
   lib.inherit(DistributedDataManager,DataManager);

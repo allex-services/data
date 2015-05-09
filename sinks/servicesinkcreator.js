@@ -9,7 +9,7 @@ function createServiceSink(execlib){
     this.consumeChannel('d',this.onData.bind(this));
   }
   _ServiceSink.inherit(ServiceSink,require('../methoddescriptors/serviceuser'));
-  ServiceSink.inherit = recordSuite.utils.sinkInheritProc;
+  ServiceSink.inherit = recordSuite.sinkInheritProc;
   ServiceSink.prototype.visibleFields = [];
   ServiceSink.prototype.createStateFilter = function(){
     //TODO: create your filter here

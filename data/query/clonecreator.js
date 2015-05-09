@@ -1,4 +1,6 @@
 function createQueryClone(execlib,QueryBase){
+  var QueryBase = execlib.dataSuite.QueryBase;
+
   function QueryClone(prophash){
     QueryBase.call(this,prophash);
     this.original = prophash.original;

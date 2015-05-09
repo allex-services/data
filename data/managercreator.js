@@ -1,5 +1,8 @@
-function createDataManager(execlib,DataSource,filterFactory){
-  var lib = execlib.lib;
+function createDataManager(execlib){
+  var lib = execlib.lib,
+    dataSuite = execlib.dataSuite,
+    DataSource = dataSuite.DataSource,
+    filterFactory = dataSuite.filterFactory;
   function DataManager(storageinstance,filterdescriptor){
     DataSource.call(this);
     this.storage = storageinstance;
@@ -17,15 +20,19 @@ function createDataManager(execlib,DataSource,filterFactory){
   DataManager.prototype.onStorageError = function(reason){
     console.log('DataManager has no idea about what to do with',reason);
   };
-  DataManager.prototype.doNativeCreate = function(datahash){
+  DataManager.prototype.doNativeCreate = function(defer,datahash){
     console.log('doNativeCreate',datahash,'on',DataSource.prototype.create.toString());
     DataSource.prototype.create.call(this,datahash);
+    defer.resolve(datahash);
   };
   DataManager.prototype.create = function(datahash){
+    console.log('DataManager create',datahash);
+    var d = lib.q.defer();
     this.storage.create(datahash).done(
-      this.doNativeCreate.bind(this,datahash),
+      this.doNativeCreate.bind(this,d),
       this.onStorageError.bind(this)
     );
+    return d.promise;
   };
   DataManager.prototype.onReadOne = function(defer,startreadrecord,datahash){
     var item = this.Coder.prototype.readOne(startreadrecord,datahash);
@@ -57,14 +64,19 @@ function createDataManager(execlib,DataSource,filterFactory){
       this.onReadOne.bind(this,defer,startreadrecord)
     );
   };
-  DataManager.prototype.doNativeUpdate = function(filter,datahash){
-    DataSource.prototype.update.call(this,filter,datahash);
+  DataManager.prototype.doNativeUpdate = function(defer,filter,datahash,res){
+    if(res){
+      DataSource.prototype.update.call(this,filter,datahash);
+      defer.resolve(res);
+    }
   };
   DataManager.prototype.update = function(filter,datahash){
+    var d = lib.q.defer();
     this.storage.update(filter,datahash).done(
-      this.doNativeUpdate.bind(this,filter,datahash),
+      this.doNativeUpdate.bind(this,d,filter,datahash),
       this.onStorageError.bind(this)
     );
+    return d.promise;
   };
   DataManager.prototype.doNativeDelete = function(filter){
     DataSource.prototype.delete.call(this,filter);
@@ -74,6 +86,18 @@ function createDataManager(execlib,DataSource,filterFactory){
       this.doNativeDelete.bind(this,filter),
       this.onStorageError.bind(this)
     );
+  };
+  DataManager.prototype.updateByHashDescriptor = function(hashdescriptor,datahash){
+    var f = filterFactory.createFromDescriptor({op:'hash',d:hashdescriptor}),
+        d = lib.q.defer();
+    this.update(f,datahash).done(function(res){
+      d.resolve(res);
+      f.destroy();
+    },d.reject.bind(d));
+    return d.promise;
+  };
+  DataManager.prototype.stateStreamFilterForRecord = function(datahash){
+    return this.storage.__record.stateStreamFilterForRecord(this,datahash);
   };
   return DataManager;
 }

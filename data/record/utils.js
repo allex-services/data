@@ -1,4 +1,4 @@
-function createRecordUtils(execlib){
+function createRecordUtils(execlib,suite){
   var lib = execlib.lib;
   function selectFieldIfDuplicate(targetfieldname,foundobj,fieldnames,hash){
     var targetfieldvalue = hash[targetfieldname];
@@ -69,12 +69,10 @@ function createRecordUtils(execlib){
   }
 
   var sp = execlib.execSuite.registry.get('.');
-  return {
-    duplicateFieldValueInArrayOfHashes: duplicateFieldValueInArrayOfHashes,
-    inherit: inherit,
-    userInheritProc: userOrSinkInheritProc('DataUser',sp.Service.prototype.userFactory.get('user').inherit),
-    sinkInheritProc: userOrSinkInheritProc('DataSink',sp.SinkMap.get('user').inherit)
-  };
+  suite.duplicateFieldValueInArrayOfHashes = duplicateFieldValueInArrayOfHashes;
+  suite.inherit = inherit;
+  suite.userInheritProc = userOrSinkInheritProc('DataUser',sp.Service.prototype.userFactory.get('user').inherit);
+  suite.sinkInheritProc = userOrSinkInheritProc('DataSink',sp.SinkMap.get('user').inherit)
 }
 
 module.exports = createRecordUtils;

@@ -1,6 +1,6 @@
 function createFilterFactory(execlib){
   var lib = execlib.lib,
-    Filter = require('./filtercreator')(execlib),
+    Filter = require('./creator')(execlib),
     AllPass = require('./allpasscreator')(execlib,Filter);
 
   function Factory(){
@@ -24,17 +24,21 @@ function createFilterFactory(execlib){
   };
 
   var factory = new Factory,
+    HashFilter = require('./hashfiltercreator')(execlib,Filter),
     BooleanFilters = require('./booleanfilterscreator')(execlib,Filter,factory),
     AndFilters = require('./andfilterscreator')(execlib,BooleanFilters),
     OrFilters = require('./orfilterscreator')(execlib,BooleanFilters),
     FieldFilter = require('./fieldfiltercreator')(execlib,Filter),
+    EQFilter = require('./eqfiltercreator')(execlib,FieldFilter),
     GTFilter = require('./gtfiltercreator')(execlib,FieldFilter),
     GTEFilter = require('./gtfiltercreator')(execlib,FieldFilter),
     LTFilter = require('./gtfiltercreator')(execlib,FieldFilter),
     LTEFilter = require('./gtfiltercreator')(execlib,FieldFilter);
 
+  factory.add('hash',HashFilter);
   factory.add('and',AndFilters);
   factory.add('or',OrFilters);
+  factory.add('eq',GTFilter);
   factory.add('gt',GTFilter);
   factory.add('gte',GTEFilter);
   factory.add('lt',LTFilter);

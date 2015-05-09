@@ -40,7 +40,7 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
 
   ParentClass.inherit(ChildClass,methoddescriptors);
   lib.inheritMethods(ChildClass,QueryBase,/*'fields','filter','limit','offset',*/'isEmpty','isLimited','isOffset','isOK');
-  ChildClass.inherit = recordSuite.utils.userInheritProc;
+  ChildClass.inherit = recordSuite.userInheritProc;
   ChildClass.prototype.visibleFields = [];
   ChildClass.prototype.__cleanUp = function(){
     if(this._filter){

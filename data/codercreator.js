@@ -42,7 +42,7 @@ function createDataCoder(execlib){
     return {
       o: 'u',
       d: {
-        filter:filter,
+        filter:filter.descriptor(),
         datahash:datahash
       }
     };

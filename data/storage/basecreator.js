@@ -1,12 +1,24 @@
 function createStorageBase(execlib){
   var lib = execlib.lib,
-    q = lib.q;
-  function StorageBase(){
+    q = lib.q,
+    Record = execlib.dataSuite.recordSuite.Record;
+
+  function StorageBase(storagedescriptor){
+    if(!(storagedescriptor && storagedescriptor.record)){
+      console.trace();
+      console.log("No storagedescriptor.record!");
+      process.exit(0);
+    }
+    this.__record = new Record(storagedescriptor.record);
   };
-  StorageBase.prototype.destroy = execlib.lib.dummyFunc;
+  StorageBase.prototype.destroy = function(){
+    this.__record.destroy();
+    this.__record = null;
+  };
   StorageBase.prototype.create = function(datahash){
     var d = q.defer();
-    lib.runNext(this.doCreate.bind(this,datahash,d));
+    var record = this.__record.filterObject(datahash);
+    lib.runNext(this.doCreate.bind(this,record,d));
     return d.promise;
   };
   StorageBase.prototype.read = function(query){
@@ -16,6 +28,12 @@ function createStorageBase(execlib){
     }else{
       lib.runNext(this.doRead.bind(this,query,d));
     }
+    return d.promise;
+  };
+  StorageBase.prototype.update = function(filter,datahash){
+    console.log('StorageBase update',filter,datahash);
+    var d = q.defer();
+    this.doUpdate(filter,datahash,d); //there should be no notifies on d
     return d.promise;
   };
   return StorageBase;

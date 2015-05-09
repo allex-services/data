@@ -9,10 +9,19 @@ function createRecord(execlib){
       console.log('Field name',this.name);
     }
     this.value = prophash.value;
+    this.default = prophash.default || null;
   }
   Field.prototype.destroy = function(){
     this.name = null;
     this.value = null;
+  };
+  Field.prototype.valueFor = function(val){
+    var und;
+    if(val===und){
+      return this.default;
+    }
+    //TODO: validate
+    return val;
   };
 
   function Record(prophash){
@@ -21,11 +30,57 @@ function createRecord(execlib){
       throw "Record needs the fields array in its property hash";
     }
     this.fields = [];
+    this.fieldsByName = new lib.Map();
     prophash.fields.forEach(this.addField.bind(this));
   }
-  Record.prototype.destroy = lib.dummyFunc;
+  Record.prototype.destroy = function(){
+    this.fieldsByName.destroy();
+    this.fieldsByName = null;
+    lib.arryDestroyAll(this.fields);
+    this.fields = null;
+  };
   Record.prototype.addField = function(fielddesc){
-    this.fields.push(new Field(fielddesc));
+    var field = new Field(fielddesc);
+    this.fields.push(field);
+    this.fieldsByName.add(field.name,field);
+  };
+  Record.prototype.filterObject = function(obj){
+    var ret = {};
+    this.fields.forEach(function(field){
+      ret[field.name] = field.valueFor(obj[field.name]);
+    });
+    return ret;
+  };
+  Record.prototype.filterStateStream = function(item){
+    console.log('Record should filter',item);
+    if(item.o==='u' && item.p && item.p.length===1){
+      var f = this.fieldsByName.get(item.p[0]);
+      if(f){
+        var ret = {};
+        ret[f.name] = f.valueFor(item.d[0]);
+        return ret;
+      }
+    }
+  };
+  Record.prototype.stateStreamFilterForRecord = function(storage,datahash){
+    return new StateStreamFilter(storage,datahash,this);
+  };
+
+  function StateStreamFilter(manager,datahash,record){
+    this.manager = manager;
+    this.datahash = datahash;
+    this.record = record;
+  }
+  StateStreamFilter.prototype.destroy = function(){
+    this.manager = null;
+    this.datahash = null;
+    this.record = null;
+  };
+  StateStreamFilter.prototype.onStream = function(item){
+    var val = this.record.filterStateStream(item);
+    if(val){
+      this.manager.updateByHashDescriptor(this.datahash,val);
+    }
   };
 
   /*

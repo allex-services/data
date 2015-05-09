@@ -1,7 +1,10 @@
-function createCloneStorage(execlib,StorageBase){
-  function CloneStorage(options){
-    StorageBase.call(this);
+function createCloneStorage(execlib){
+  var dataSuite = execlib.dataSuite,
+      StorageBase = dataSuite.StorageBase;
+  function CloneStorage(storagedescriptor){
+    StorageBase.call(this,storagedescriptor);
     this.original = options.original;
+    this.record = this.original.record;
     if(!(this.original instanceof StorageBase)){
       throw "CloneStorage cannot clone a non-StorageBase instance";
     }

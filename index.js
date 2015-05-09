@@ -1,7 +1,5 @@
 function createServicePack(execlib){
-  var dataSuite = require('./data')(execlib);
-  dataSuite.recordSuite = require('./record/suitecreator')(execlib);
-  execlib.dataSuite = dataSuite;
+  require('./data')(execlib); //extend execlib with dataSuite;
 
   return {
     Service: require('./servicecreator')(execlib),
