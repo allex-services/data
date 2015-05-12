@@ -34,7 +34,14 @@ function createDataService(execlib){
     return new NullStorage(recorddescriptor);
   };
   DataService.prototype.introduceUser = function(userhash){
-    userhash.name = JSON.stringify(userhash.filter || '*'); //Crucial!
+    var filterstring;
+    try{
+      filterstring = JSON.stringify(userhash.filter) || '*';
+    }
+    catch(e){
+      filterstring =  '*';
+    }
+    userhash.name = userhash.role+':'+filterstring; //Crucial!
     return ParentService.prototype.introduceUser.call(this,userhash);
   };
   return DataService;
