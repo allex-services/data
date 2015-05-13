@@ -10,9 +10,7 @@ function createStorageBase(execlib){
       process.exit(0);
     }
     this.__record = new Record(storagedescriptor.record);
-    console.log('StorageBase record descriptor',storagedescriptor.record);
     if(storagedescriptor.events){
-      console.log('creating events');
       this.newRecord = new lib.HookCollection();
       this.updated = new lib.HookCollection();
       this.deleted = new lib.HookCollection();

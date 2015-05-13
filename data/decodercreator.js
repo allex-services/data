@@ -15,7 +15,6 @@ function createDataDecoder(execlib){
     this.storable.create(record);
   };
   Decoder.prototype.onStream = function(item){
-    console.log(item);
     switch(item.o){
       case 'rb':
         this.beginRead(item.d);
@@ -37,7 +36,6 @@ function createDataDecoder(execlib){
   Decoder.prototype.endRead = function(txnid){
     var txn = this.initbundles.remove(txnid);
     txn.forEach(this._sendToCreation.bind(this));
-    console.log(txn); //where do I put this?
   };
   Decoder.prototype.readOne = function(data){
     var txnid = data.id,
