@@ -4,46 +4,53 @@ function createDataDecoder(execlib){
 
   function Decoder(storable){
     this.storable = storable;
-    this.initbundles = new lib.Map;
+    this.working = false;
+    this.q = new lib.Fifo();
   }
   Decoder.prototype.destroy = function(){
-    this.recordctor = null;
-    this.initbundles.destroy();
-    this.initbundles = null;
+    this.q.destroy();
+    this.q = null;
+    this.working = null;
+    this.storable = null;
   };
-  Decoder.prototype._sendToCreation = function(record){
-    this.storable.create(record);
+  Decoder.prototype.enq = function(command,item){
+    if(this.working){
+      this.q.push({command:command,item:item});
+    }else{
+      this.working = true;
+      this[command](item);
+    }
+  };
+  Decoder.prototype.deq = function(){
+    this.working = false;
+    if(this.q.length){
+      var p = this.q.pop();
+      this.enq(p.command,p.item);
+    }
   };
   Decoder.prototype.onStream = function(item){
     switch(item.o){
       case 'rb':
-        this.beginRead(item.d);
+        this.enq('beginRead',item);
         break;
       case 're':
-        this.endRead(item.d);
+        this.enq('endRead',item);
         break;
       case 'r1':
-        this.readOne(item.d);
+        this.enq('readOne',item);
         break;
     }
   };
-  Decoder.prototype.beginRead = function(txnid){
-    if(this.initbundles.get(txnid)){
-      throw "Transaction "+txnid+" already started";
-    }
-    this.initbundles.add(txnid,[]);
+  Decoder.prototype.beginRead = function(item){
+    this.storable.beginInit(item.d);
+    this.deq();
   };
-  Decoder.prototype.endRead = function(txnid){
-    var txn = this.initbundles.remove(txnid);
-    txn.forEach(this._sendToCreation.bind(this));
+  Decoder.prototype.endRead = function(item){
+    this.storable.endInit(item.d);
+    this.deq();
   };
-  Decoder.prototype.readOne = function(data){
-    var txnid = data.id,
-        txn = this.initbundles.get(txnid);
-    if(!txn){
-      throw "Transaction "+txnid+" did not start";
-    }
-    txn.push(data.d);
+  Decoder.prototype.readOne = function(item){
+    this.storable.create(item.d.d).then(this.deq.bind(this));
   };
   return Decoder;
 }

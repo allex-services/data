@@ -11,9 +11,9 @@ function createMemoryStorage(execlib){
     this.data = null;
     StorageBase.prototype.destroy.call(this);
   };
-  MemoryStorage.prototype.doCreate = function(datahash,defer){
-    this.data.push(datahash);
-    defer.resolve(datahash);
+  MemoryStorage.prototype.doCreate = function(record,defer){
+    this.data.push(record);
+    defer.resolve(record);
   };
   function processRead(query,defer,item){
     if(query.isOK(item)){
