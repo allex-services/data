@@ -12,8 +12,6 @@ function createDataManager(execlib){
   DataManager.prototype.destroy = function(){
     this.filter.destroy();
     this.filter = null;
-    this.source.destroy();
-    this.source = null;
     this.storage.destroy();
     this.storage = null;
   };
