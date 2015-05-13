@@ -2,14 +2,17 @@ function createDataDecoder(execlib){
   var lib = execlib.lib,
       dataClientSuite = execlib.dataClientSuite;
 
-  function Decoder(recordctor){
-    this.recordctor = recordctor || dataClientSuite.ObjectRecord;
+  function Decoder(storable){
+    this.storable = storable;
     this.initbundles = new lib.Map;
   }
   Decoder.prototype.destroy = function(){
     this.recordctor = null;
     this.initbundles.destroy();
     this.initbundles = null;
+  };
+  Decoder.prototype._sendToCreation = function(record){
+    this.storable.create(record);
   };
   Decoder.prototype.onStream = function(item){
     console.log(item);
@@ -33,6 +36,7 @@ function createDataDecoder(execlib){
   };
   Decoder.prototype.endRead = function(txnid){
     var txn = this.initbundles.remove(txnid);
+    txn.forEach(this._sendToCreation.bind(this));
     console.log(txn); //where do I put this?
   };
   Decoder.prototype.readOne = function(data){
@@ -41,7 +45,7 @@ function createDataDecoder(execlib){
     if(!txn){
       throw "Transaction "+txnid+" did not start";
     }
-    txn.push(new (this.recordctor)(data.d));
+    txn.push(data.d);
   };
   return Decoder;
 }

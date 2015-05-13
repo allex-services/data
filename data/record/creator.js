@@ -46,8 +46,10 @@ function createRecord(execlib){
   Record.prototype.filterObject = function(obj){
     var prophash = {};
     this.fields.forEach(function(field){
+      console.log(prophash[field.name],obj,obj[field.name]);
       prophash[field.name] = field.valueFor(obj[field.name]);
     });
+    console.log('filterObject',obj,'=>',prophash,'with fields',this.fields.length);
     return new this.objCtor(prophash);
   };
   Record.prototype.filterStateStream = function(item){

@@ -120,6 +120,9 @@ function createRecordUtils(execlib,suite){
     var recordDescriptor = {};
     lib.traverse(this.recordDescriptor,copierWOFields.bind(null,recordDescriptor));
     var fields = [];
+    if(this.prototype.recordDescriptor){
+      copyNamedItems(this.prototype.recordDescriptor.fields,fields,childCtor.prototype.visibleFields);
+    }
     copyNamedItems(classStorageDescriptor.record.fields,fields,childCtor.prototype.visibleFields);
     recordDescriptor.fields = fields;
     childCtor.prototype.recordDescriptor = recordDescriptor;
