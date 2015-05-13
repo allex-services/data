@@ -68,11 +68,63 @@ function createRecordUtils(execlib,suite){
     };
   }
 
+  function copierWOFields(dest,item,itemname){
+    if(itemname==='fields'){
+      return;
+    }
+    dest[itemname] = item;
+  }
+  function nameFinder(findobj,name,item){
+    if(item && item.name===name){
+      findobj.result = item;
+      return true;
+    }
+  }
+  function getNamedItem(arry,name){
+    var findobj={result:null};
+    arry.some(nameFinder.bind(null,findobj,name));
+    return findobj.result;
+  };
+  function namedSetter(setitem,item,itemindex,arry){
+    if(item && item.name===setitem.name){
+      arry[itemindex] = setitem;
+      return true;
+    }
+  }
+  function setNamedItem(arry,item){
+    if(!item){
+      return;
+    }
+    if(!arry.some(namedSetter.bind(null,item))){
+      arry.push(item);
+    };
+  };
+  function copyNamedItems(src,dest,fieldnamesarry){
+    if(!(lib.isArray(src) && lib.isArray(dest))){
+      return;
+    }
+    fieldnamesarry.forEach(function(fn){
+      var item = getNamedItem(src,fn);
+      if(item){
+        setNamedItem(dest,item);
+      }
+    });
+  }
   var sp = execlib.execSuite.registry.get('.');
   suite.duplicateFieldValueInArrayOfHashes = duplicateFieldValueInArrayOfHashes;
   suite.inherit = inherit;
   suite.userInheritProc = userOrSinkInheritProc('DataUser',sp.Service.prototype.userFactory.get('user').inherit);
-  suite.sinkInheritProc = userOrSinkInheritProc('DataSink',sp.SinkMap.get('user').inherit)
+  var sinkPreInheritProc = userOrSinkInheritProc('DataSink',sp.SinkMap.get('user').inherit); 
+  function sinkInheritProc(childCtor,methodDescriptors,visiblefieldsarray,classStorageDescriptor){
+    sinkPreInheritProc.call(this,childCtor,methodDescriptors,visiblefieldsarray);
+    var recordDescriptor = {};
+    lib.traverse(this.recordDescriptor,copierWOFields.bind(null,recordDescriptor));
+    var fields = [];
+    copyNamedItems(classStorageDescriptor.record.fields,fields,childCtor.prototype.visibleFields);
+    recordDescriptor.fields = fields;
+    childCtor.prototype.recordDescriptor = recordDescriptor;
+  }
+  suite.sinkInheritProc = sinkInheritProc;
 }
 
 module.exports = createRecordUtils;

@@ -27,6 +27,7 @@ function createRecord(execlib){
       console.trace();
       throw "Record needs the fields array in its property hash";
     }
+    this.objCtor = prophash.objCtor || execlib.dataSuite.DataObject;
     this.fields = [];
     this.fieldsByName = new lib.Map();
     prophash.fields.forEach(this.addField.bind(this));
@@ -43,11 +44,11 @@ function createRecord(execlib){
     this.fieldsByName.add(field.name,field);
   };
   Record.prototype.filterObject = function(obj){
-    var ret = {};
+    var prophash = {};
     this.fields.forEach(function(field){
-      ret[field.name] = field.valueFor(obj[field.name]);
+      prophash[field.name] = field.valueFor(obj[field.name]);
     });
-    return ret;
+    return new this.objCtor(prophash);
   };
   Record.prototype.filterStateStream = function(item){
     if(item.o==='u' && item.p && item.p.length===1){

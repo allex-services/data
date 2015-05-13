@@ -4,13 +4,16 @@ function createDataSuite(execlib){
       recordSuite: require('./record')(execlib)
     };
     execlib.dataSuite = dataSuite;
+    dataSuite.DataObject = require('./objectcreator')(execlib);
     require('./utils')(execlib);
     dataSuite.filterFactory = require('./filters/factorycreator')(execlib);
     dataSuite.QueryBase = require('./query/basecreator')(execlib);
     dataSuite.QueryClone = require('./query/clonecreator')(execlib);
     var DataCoder = require('./codercreator')(execlib),
+        DataDecoder = require('./decodercreator')(execlib),
         streamSourceCreator = execSuite.streamSourceCreator;
     dataSuite.DataSource = streamSourceCreator(DataCoder);
+    dataSuite.DataDecoder = DataDecoder;
     dataSuite.StreamDistributor = require('./distributorcreator')(execlib);
     dataSuite.DataManager = require('./managercreator')(execlib);
     dataSuite.DistributedDataManager = require('./distributedmanagercreator')(execlib);
