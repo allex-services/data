@@ -22,7 +22,7 @@ function createDataObject(execlib){
   };
   DataObject.prototype.matches = function(datahash){
     var fns = this.fieldNames(); //overridable!
-    return fns.all(this.matchesField.bind(this,datahash));
+    return fns.every(this.matchesField.bind(this,datahash));
   };
   //the following methods are for override
   DataObject.prototype.fieldNames = function(){
