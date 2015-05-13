@@ -35,13 +35,11 @@ function createStorageBase(execlib){
     this.__record = null;
   };
   StorageBase.prototype.fireNewRecord = function(record){
-    console.log('firing newRecord',record);
     this.newRecord.fire(record);
   };
   StorageBase.prototype.create = function(datahash){
     var d = q.defer();
     var record = this.__record.filterObject(datahash);
-    console.log('creating',datahash,'=>',record);
     lib.runNext(this.doCreate.bind(this,record,d));
     if(this.newRecord){
       d.promise.then(this.fireNewRecord.bind(this));
