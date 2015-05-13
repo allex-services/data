@@ -12,10 +12,16 @@ function createFieldFilter(execlib,Filter){
     Filter.prototype.destroy.call(this);
   };
   FieldFilter.prototype.isOK = function(datahash){
+    /* problematic
     if(!(this.fieldname in datahash)){
       return true;
     }
     return this.isFieldOK(datahash[this.fieldname]);
+    */
+    if(!datahash.hasFieldNamed(this.fieldname)){
+      return false;
+    }
+    return this.isFieldOK(datahash.get(this.fieldname));
   };
   FieldFilter.prototype.isFieldOK = function(fieldvalue){
     throw "Generic FieldFilter does not implement isFieldOK";

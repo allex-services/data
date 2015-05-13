@@ -17,11 +17,7 @@ function createMemoryStorage(execlib){
   };
   function processRead(query,defer,item){
     if(query.isOK(item)){
-      var result = {};
-      query.fields().forEach(function(name){
-        result[name] = item[name];
-      });
-      defer.notify(result);
+      defer.notify(item.toHash(query.fields()));
     }
   }
   MemoryStorage.prototype.doRead = function(query,defer){
@@ -38,7 +34,7 @@ function createMemoryStorage(execlib){
   function updateFrom(countobj,record,updateitem,updateitemname){
     if(updateitemname in record){
       countobj.count++;
-      record[updateitemname] = updateitem;
+      record.set(updateitemname,updateitem);
     }
   }
   function processUpdate(countobj,filter,datahash,record){
