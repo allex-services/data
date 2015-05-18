@@ -3,7 +3,11 @@ function createServicePack(execlib){
 
   return {
     Service: require('./servicecreator')(execlib),
-    SinkMap: require('./sinkmapcreator')(execlib)
+    SinkMap: require('./sinkmapcreator')(execlib),
+    Tasks: [{
+      name: 'materializeData',
+      constructor: require('./tasks/materializeData')(execlib)
+    }]
   };
 }
 

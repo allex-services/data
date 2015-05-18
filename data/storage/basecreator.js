@@ -8,16 +8,22 @@ function createStorageBase(execlib){
     this.initiated = new lib.HookCollection();
     this.newRecord = new lib.HookCollection();
     this.updated = new lib.HookCollection();
+    this.recordUpdated = new lib.HookCollection();
     this.deleted = new lib.HookCollection();
+    this.recordDeleted = new lib.HookCollection();
   }
   StorageBaseEventing.prototype.destroy = function(){
-    this.deleted.destroy();
+    this.recordDeleted.destruct();
+    this.recordDeleted = null;
+    this.deleted.destruct();
     this.deleted = null;
-    this.updated.destroy();
+    this.recordUpdated.destruct();
+    this.recordUpdated = null;
+    this.updated.destruct();
     this.updated = null;
-    this.newRecord.destroy();
+    this.newRecord.destruct();
     this.newRecord = null;
-    this.initiated.destroy();
+    this.initiated.destruct();
     this.initiated = null;
     this.initTxnId = null;
   };

@@ -2,9 +2,9 @@ function createMemoryStorage(execlib){
   var lib = execlib.lib,
       dataSuite = execlib.dataSuite,
       StorageBase = dataSuite.StorageBase;
-  function MemoryStorage(storagedescriptor){
+  function MemoryStorage(storagedescriptor,data){
     StorageBase.call(this,storagedescriptor);
-    this.data = [];
+    this.data = data || [];
   }
   execlib.lib.inherit(MemoryStorage,StorageBase);
   MemoryStorage.prototype.destroy = function(){
@@ -32,23 +32,26 @@ function createMemoryStorage(execlib){
     defer.resolve(null);
   };
   function updateFrom(countobj,record,updateitem,updateitemname){
-    if(updateitemname in record){
+    if(record.hasFieldNamed(updateitemname)){
       countobj.count++;
       record.set(updateitemname,updateitem);
     }
   }
-  function processUpdate(countobj,filter,datahash,record){
+  MemoryStorage.prototype.processUpdate = function(countobj,filter,datahash,record){
     if(filter.isOK(record)){
       var updatecountobj = {count:0};
       lib.traverse(datahash,updateFrom.bind(null,updatecountobj,record));
       if(updatecountobj.count){
+        if(this.events){
+          this.events.recordUpdated.fire(record);
+        }
         countobj.count++;
       }
     }
   }
   MemoryStorage.prototype.doUpdate = function(filter,datahash,defer){
     var countobj = {count:0};
-    this.data.forEach(processUpdate.bind(null,countobj,filter,datahash));
+    this.data.forEach(this.processUpdate.bind(this,countobj,filter,datahash));
     defer.resolve(countobj.count);
   };
   return MemoryStorage;
