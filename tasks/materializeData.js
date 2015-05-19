@@ -9,9 +9,7 @@ function createMaterializeDataTask(execlib){
 
   function MaterializeDataTask(prophash){
     Task.call(this,prophash);
-    this.storage = null;
-    this.decoder = null;
-    this.datasink = prophash.datasink;
+    this.sink = prophash.sink;
     this.data = prophash.data;
     this.onInitiated = prophash.onInitiated;
     this.onNewRecord = prophash.onNewRecord;
@@ -25,7 +23,7 @@ function createMaterializeDataTask(execlib){
     this.recordUpdatedListener = null;
     this.deletedListener = null;
     this.recordDeletedListener = null;
-    this.datasink.extendTo(this);
+    this.sink.destroyed.attachForSingleShot(this.destroy.bind(this));
   }
   MaterializeDataTask.prototype.destroy = function(){
     if(this.recordDeletedListener){
@@ -56,11 +54,7 @@ function createMaterializeDataTask(execlib){
     this.onUpdate = null;
     this.onNewRecord = null;
     this.data = null;
-    this.datasink = null;
-    if(this.decoder){
-      this.decoder.destroy();
-    }
-    this.decoder = null;
+    this.sink = null;
     if(this.storage){
       this.storage.destroy();
     }
@@ -69,7 +63,7 @@ function createMaterializeDataTask(execlib){
   MaterializeDataTask.prototype.go = function(){
     this.storage = new MemoryStorage({
       events: this.onInitiated || this.onNewRecord || this.onUpdate || this.onRecordUpdate || this.onDelete || this.onRecordDeletion,
-      record: this.datasink.recordDescriptor
+      record: this.sink.recordDescriptor
     },this.data);
     if(this.onInitiated){
       this.initiatedListener = this.storage.events.initiated.attach(this.onInitiated);
@@ -89,11 +83,10 @@ function createMaterializeDataTask(execlib){
     if(this.onRecordDeletion){
       this.recordDeletedListener = this.storage.events.recordDeleted.attach(this.onRecordDeletion);
     }
-    this.decoder = new DataDecoder(this.storage);
-    this.datasink.consumeChannel('s',lib.dummyFunc);
-    this.datasink.consumeChannel('d',this.decoder);
+    this.sink.consumeChannel('s',lib.dummyFunc);
+    this.sink.consumeChannel('d',new DataDecoder(this.storage));
   };
-  MaterializeDataTask.prototype.compulsoryConstructionProperties = ['data','datasink'];
+  MaterializeDataTask.prototype.compulsoryConstructionProperties = ['data','sink'];
   return MaterializeDataTask;
 }
 

@@ -54,6 +54,21 @@ function createMemoryStorage(execlib){
     this.data.forEach(this.processUpdate.bind(this,countobj,filter,datahash));
     defer.resolve(countobj.count);
   };
+  MemoryStorage.prototype.processDelete = function(countobj,filter,record,recordindex,records){
+    if(filter.isOK(record)){
+      records.splice(recordindex,1);
+      if(this.events){
+        this.events.recordDeleted.fire(record);
+      }
+      record.destroy();
+      countobj.count++;
+    }
+  }
+  MemoryStorage.prototype.doDelete = function(filter,defer){
+    var countobj = {count:0};
+    this.data.forEach(this.processDelete.bind(this,countobj,filter));
+    defer.resolve(countobj.count);
+  };
   return MemoryStorage;
 }
 

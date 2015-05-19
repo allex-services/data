@@ -29,6 +29,7 @@ function createDataDecoder(execlib){
     }
   };
   Decoder.prototype.onStream = function(item){
+    console.log('Decoder got',item);
     switch(item.o){
       case 'rb':
         this.enq('beginRead',item);
@@ -38,6 +39,9 @@ function createDataDecoder(execlib){
         break;
       case 'r1':
         this.enq('readOne',item);
+        break;
+      case 'c':
+        this.enq('create',item);
         break;
     }
   };
@@ -51,6 +55,9 @@ function createDataDecoder(execlib){
   };
   Decoder.prototype.readOne = function(item){
     this.storable.create(item.d.d).then(this.deq.bind(this));
+  };
+  Decoder.prototype.create = function(item){
+    this.storable.create(item.d).then(this.deq.bind(this));
   };
   return Decoder;
 }

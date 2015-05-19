@@ -61,6 +61,11 @@ function createStorageBase(execlib){
       this.updated.fire(filter,datahash,updatecount);
     }
   };
+  StorageBaseEventing.prototype.fireDeleted = function(filter,deletecount){
+    if(deletecount){
+      this.deleted.fire(filter,deletecount);
+    }
+  };
 
   function StorageBase(storagedescriptor){
     if(!(storagedescriptor && storagedescriptor.record)){
@@ -111,11 +116,22 @@ function createStorageBase(execlib){
     if(this.events){
       this.events.beginInit(txnid);
     }
+    this.delete(dataSuite.filterFactory.createFromDescriptor()); //delete all
   };
   StorageBase.prototype.endInit = function(txnid){
     if(this.events){
       this.events.endInit(txnid,this);
     }
+  };
+  StorageBase.prototype.delete = function(filter){
+    //console.log('StorageBase update',filter,datahash);
+    var d = q.defer();
+    //there should be no notifies on d, hence no lib.runNext
+    this.doDelete(filter,d);
+    if(this.events){
+      d.promise.then(this.events.fireDeleted.bind(this.events,filter));
+    }
+    return d.promise;
   };
   return StorageBase;
 }

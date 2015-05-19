@@ -12,6 +12,11 @@ function createDataObject(execlib){
       hash[fieldname] = val;
     }
   };
+  DataObject.prototype.destroy = function(){
+    var opns = Object.getOwnPropertyNames(this);
+    opns.forEach(this.set.bind(this)); //will set all props to undefined, which is ugly
+    console.log(this,'destroyed');
+  };
   DataObject.prototype.toHash = function(fields){
     var result = {};
     fields.forEach(this._fieldToHash.bind(this,result));
