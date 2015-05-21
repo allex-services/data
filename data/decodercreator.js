@@ -29,7 +29,8 @@ function createDataDecoder(execlib){
     }
   };
   Decoder.prototype.onStream = function(item){
-    console.log('Decoder got',item);
+    //console.log('Decoder got',item);
+    //console.log('Decoder got',require('util').inspect(item,{depth:null}));
     switch(item.o){
       case 'rb':
         this.enq('beginRead',item);
