@@ -83,7 +83,6 @@ function createMaterializeDataTask(execlib){
     if(this.onRecordDeletion){
       this.recordDeletedListener = this.storage.events.recordDeleted.attach(this.onRecordDeletion);
     }
-    this.sink.consumeChannel('s',lib.dummyFunc);
     this.sink.consumeChannel('d',new DataDecoder(this.storage));
   };
   MaterializeDataTask.prototype.compulsoryConstructionProperties = ['data','sink'];
