@@ -76,6 +76,7 @@ function createRecord(execlib){
   };
   StateStreamFilter.prototype.onStream = function(item){
     var val = this.record.filterStateStream(item);
+    //console.log('State=>Data',item,'=>',val,'on',this.record);
     if(val){
       this.manager.updateByDescriptor(this.hashfilterdescriptor,val);
     }

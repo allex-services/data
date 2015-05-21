@@ -42,15 +42,15 @@ function createDataCoder(execlib){
     return {
       o: 'u',
       d: {
-        filter:filter.descriptor(),
-        datahash:datahash
+        f:filter.descriptor(),
+        d:datahash
       }
     };
   };
   DataCoder.prototype.delete = function(filter){
     return {
       o: 'd',
-      d: filter
+      d: filter.descriptor()
     };
   };
   return DataCoder;

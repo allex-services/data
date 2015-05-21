@@ -124,7 +124,7 @@ function createStorageBase(execlib){
     }
   };
   StorageBase.prototype.delete = function(filter){
-    //console.log('StorageBase update',filter,datahash);
+    //console.log('StorageBase delete',filter);
     var d = q.defer();
     //there should be no notifies on d, hence no lib.runNext
     this.doDelete(filter,d);

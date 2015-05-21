@@ -22,9 +22,7 @@ function createDataDistributor(execlib){
       console.trace();
       process.exit(0);
     }
-    if(sink.isOK(item)){
-      StreamDistributor.prototype.doTrigger.call(this,item,sink);
-    }
+    StreamDistributor.prototype.doTrigger.call(this,item,sink);
   };
   return DataStreamDistributor;
 }

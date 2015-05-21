@@ -17,7 +17,7 @@ function createFilterFactory(execlib){
     }
     var ctor = this.get(op);
     if(!ctor){
-      console.log('No Filter factory for operator',op);
+      console.log('No Filter factory for operator "'+op+'"');
       return null;
     }
     return new ctor(filterdescriptor);
@@ -29,6 +29,8 @@ function createFilterFactory(execlib){
     AndFilters = require('./andfilterscreator')(execlib,BooleanFilters),
     OrFilters = require('./orfilterscreator')(execlib,BooleanFilters),
     FieldFilter = require('./fieldfiltercreator')(execlib,Filter),
+    ExistsFilter = require('./existsfiltercreator')(execlib,FieldFilter),
+    NotExistsFilter = require('./notexistsfiltercreator')(execlib,FieldFilter),
     EQFilter = require('./eqfiltercreator')(execlib,FieldFilter),
     GTFilter = require('./gtfiltercreator')(execlib,FieldFilter),
     GTEFilter = require('./gtfiltercreator')(execlib,FieldFilter),
@@ -38,6 +40,8 @@ function createFilterFactory(execlib){
   factory.add('hash',HashFilter);
   factory.add('and',AndFilters);
   factory.add('or',OrFilters);
+  factory.add('exists',ExistsFilter);
+  factory.add('notexists',NotExistsFilter);
   factory.add('eq',GTFilter);
   factory.add('gt',GTFilter);
   factory.add('gte',GTEFilter);
