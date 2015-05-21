@@ -42,8 +42,8 @@ function createDataCoder(execlib){
     return {
       o: 'u',
       d: {
-        filter:filter.descriptor(),
-        datahash:datahash
+        f:filter.descriptor(),
+        d:datahash
       }
     };
   };
