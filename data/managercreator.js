@@ -93,8 +93,8 @@ function createDataManager(execlib){
     },d.reject.bind(d));
     return d.promise;
   };
-  DataManager.prototype.stateStreamFilterForRecord = function(datahash){
-    return this.storage.__record.stateStreamFilterForRecord(this,datahash);
+  DataManager.prototype.stateStreamFilterForRecord = function(record){
+    return this.storage.__record.stateStreamFilterForRecord(this,record);
   };
   return DataManager;
 }
