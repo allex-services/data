@@ -58,7 +58,21 @@ function createRecordUtils(execlib,suite){
     return ret;
   }
 
-  function userOrSinkInheritProc(classname,originalUIP){//originalUIP <=> original User inheritance proc
+  function userInheritProcCreator(classname,originalUIP){//originalUIP <=> original User inheritance proc
+    //classname not used, but may be useful for error reporting...
+    return function(childCtor,methodDescriptors,stateFilterCtor,visiblefieldsarray){
+      if(arguments.length===3){
+        console.trace();
+        console.log(arguments);
+        throw "Recheck your inherit call";
+      }
+      originalUIP.call(this,childCtor,methodDescriptors,stateFilterCtor);
+      childCtor.prototype.visibleFields = copyAndAppendNewElements(this.prototype.visibleFields,visiblefieldsarray);
+      childCtor.inherit = this.inherit;
+      //console.log('after inherit',childCtor.prototype.visibleFields,'out of parent',this.prototype.visibleFields,'and',visiblefieldsarray);
+    };
+  }
+  function sinkInheritProcCreator(classname,originalUIP){//originalUIP <=> original User inheritance proc
     //classname not used, but may be useful for error reporting...
     return function(childCtor,methodDescriptors,visiblefieldsarray){
       originalUIP.call(this,childCtor,methodDescriptors);
@@ -113,8 +127,8 @@ function createRecordUtils(execlib,suite){
   var sp = execlib.execSuite.registry.get('.');
   suite.duplicateFieldValueInArrayOfHashes = duplicateFieldValueInArrayOfHashes;
   suite.inherit = inherit;
-  suite.userInheritProc = userOrSinkInheritProc('DataUser',sp.Service.prototype.userFactory.get('user').inherit);
-  var sinkPreInheritProc = userOrSinkInheritProc('DataSink',sp.SinkMap.get('user').inherit); 
+  suite.userInheritProc = userInheritProcCreator('DataUser',sp.Service.prototype.userFactory.get('user').inherit);
+  var sinkPreInheritProc = sinkInheritProcCreator('DataSink',sp.SinkMap.get('user').inherit); 
   function sinkInheritProc(childCtor,methodDescriptors,visiblefieldsarray,classStorageDescriptor){
     sinkPreInheritProc.call(this,childCtor,methodDescriptors,visiblefieldsarray);
     var recordDescriptor = {};

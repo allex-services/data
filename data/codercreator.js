@@ -50,7 +50,7 @@ function createDataCoder(execlib){
   DataCoder.prototype.delete = function(filter){
     return {
       o: 'd',
-      d: filter
+      d: filter.descriptor()
     };
   };
   return DataCoder;
