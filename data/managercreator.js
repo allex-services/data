@@ -61,17 +61,32 @@ function createDataManager(execlib){
       this.onReadOne.bind(this,defer,startreadrecord)
     );
   };
+  DataManager.prototype.doNativeUpdateExact = function(defer,ueobj){
+    var item = this.Coder.prototype.updateExact(ueobj);
+    if(defer){
+      defer.notify(item);
+    }else{
+      this.handleStreamItem(item);
+    }
+  };
   DataManager.prototype.doNativeUpdate = function(defer,filter,datahash,res){
-    if(res){
-      DataSource.prototype.update.call(this,filter,datahash);
+    if(defer){
       defer.resolve(res);
+    }else{
+      if(res){
+        var item = this.Coder.prototype.update(filter,datahash);
+        if(item){
+          this.handleStreamItem(item);
+        }
+      }
     }
   };
   DataManager.prototype.update = function(filter,datahash){
     var d = lib.q.defer();
     this.storage.update(filter,datahash).done(
       this.doNativeUpdate.bind(this,d,filter,datahash),
-      this.onStorageError.bind(this)
+      this.onStorageError.bind(this),
+      this.doNativeUpdateExact.bind(this,d)
     );
     return d.promise;
   };

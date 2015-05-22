@@ -1,9 +1,11 @@
 function createQueryClone(execlib,QueryBase){
   var QueryBase = execlib.dataSuite.QueryBase;
 
-  function QueryClone(prophash){
-    QueryBase.call(this,prophash);
-    this.original = prophash.original;
+  function QueryClone(original){
+    QueryBase.call(this,{fields:[]},[]);
+    this.record.destroy();
+    this.record = original.record;
+    this.original = original;
     if(!this.original){
       throw "QueryBase can clone only an instance of QueryBase";
     }
@@ -11,10 +13,8 @@ function createQueryClone(execlib,QueryBase){
   execlib.lib.inherit(QueryClone,QueryBase);
   QueryClone.prototype.destroy = function(){
     this.original = null;
-    QueryBase.prototype.destroy.call(this);
-  };
-  QueryClone.prototype.fields = function(){
-    return this.original.fields();
+    this.record = null;
+    //QueryBase.prototype.destroy.call(this); //not this, it would destroy the original record
   };
   QueryClone.prototype.filter = function(){
     return this.original.filter();

@@ -46,7 +46,7 @@ function createRecord(execlib){
     return val;
   };
 
-  function Record(prophash){
+  function Record(prophash,visiblefields){
     if(!(prophash && prophash.fields)){
       console.trace();
       throw "Record needs the fields array in its property hash";
@@ -54,7 +54,7 @@ function createRecord(execlib){
     this.objCtor = prophash.objCtor || execlib.dataSuite.DataObject;
     this.fields = [];
     this.fieldsByName = new lib.Map();
-    prophash.fields.forEach(this.addField.bind(this));
+    prophash.fields.forEach(this.addField.bind(this,visiblefields));
   }
   Record.prototype.destroy = function(){
     this.fieldsByName.destroy();
@@ -62,7 +62,13 @@ function createRecord(execlib){
     lib.arryDestroyAll(this.fields);
     this.fields = null;
   };
-  Record.prototype.addField = function(fielddesc){
+  Record.prototype.isEmpty = function(){
+    return this.fields.length<1;
+  };
+  Record.prototype.addField = function(visiblefields,fielddesc){
+    if(visiblefields && visiblefields.indexOf(fielddesc.name)<0){
+      return;
+    }
     var field = new Field(fielddesc);
     this.fields.push(field);
     this.fieldsByName.add(field.name,field);

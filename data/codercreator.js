@@ -47,6 +47,15 @@ function createDataCoder(execlib){
       }
     };
   };
+  DataCoder.prototype.updateExact = function(updateexactobject){
+    if(!('o' in updateexactobject && 'n' in updateexactobject)){
+      throw "Bad updateExact";
+    }
+    return {
+      o: 'ue',
+      d: updateexactobject
+    };
+  };
   DataCoder.prototype.delete = function(filter){
     return {
       o: 'd',

@@ -105,8 +105,7 @@ function createStorageBase(execlib){
   StorageBase.prototype.update = function(filter,datahash){
     //console.log('StorageBase update',filter,datahash);
     var d = q.defer();
-    //there should be no notifies on d, hence no lib.runNext
-    this.doUpdate(filter,datahash,d);
+    lib.runNext(this.doUpdate.bind(this,filter,datahash,d));
     if(this.events){
       d.promise.then(this.events.fireUpdated.bind(this.events,filter,datahash));
     }

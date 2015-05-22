@@ -17,7 +17,8 @@ function createMemoryStorage(execlib){
   };
   function processRead(query,defer,item){
     if(query.isOK(item)){
-      defer.notify(item.toHash(query.fields()));
+      //defer.notify(item.toHash(query.fields()));
+      defer.notify(item);
     }
   }
   MemoryStorage.prototype.doRead = function(query,defer){

@@ -39,7 +39,7 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
 
 
   ParentClass.inherit(ChildClass,methoddescriptors);
-  lib.inheritMethods(ChildClass,QueryBase,/*'fields','filter','limit','offset',*/'isEmpty','isLimited','isOffset','isOK');
+  lib.inheritMethods(ChildClass,QueryBase,/*'fields','limit','offset',*/'isEmpty','isLimited','isOffset','isOK');
   ChildClass.inherit = recordSuite.userInheritProc;
   ChildClass.prototype.visibleFields = [];
   ChildClass.prototype.__cleanUp = function(){
@@ -54,13 +54,10 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
   };
   ChildClass.prototype.constructSelf = function(prophash){
     ParentClass.call(this,prophash);
-    QueryBase.call(this,prophash);
+    QueryBase.call(this,this.__service.storageDescriptor.record,this.visibleFields);
     this.distributor = new DataStreamDistributor;
     this._filter = filterFactory.createFromDescriptor(prophash.filter);
     this.__service.data.distributor.attach(this);
-  };
-  ChildClass.prototype.fields = function(){
-    return this.visibleFields;
   };
   ChildClass.prototype.filter = function(){
     return this._filter;
@@ -88,7 +85,10 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
   };
   ChildClass.prototype.onStream = function(item){
     //console.log('Some User distributing further',item,'to',this.distributor.sinks.length);
-    this.distributor.onStream(item);
+    var myitem = QueryBase.prototype.onStream.call(this,item);
+    if(myitem){
+      this.distributor.onStream(item);
+    }
   };
   ChildClass.prototype.create = function(datahash,defer){
     this.__service.data.create(datahash).done(
