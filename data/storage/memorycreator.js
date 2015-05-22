@@ -34,25 +34,33 @@ function createMemoryStorage(execlib){
   };
   function updateFrom(countobj,record,updateitem,updateitemname){
     if(record.hasFieldNamed(updateitemname)){
+      if(countobj.count<1){
+        countobj.original = record.clone();
+        console.log('Original set',countobj.original);
+      }
       countobj.count++;
       record.set(updateitemname,updateitem);
     }
   }
-  MemoryStorage.prototype.processUpdate = function(countobj,filter,datahash,record){
+  MemoryStorage.prototype.processUpdate = function(defer,countobj,filter,datahash,record){
     if(filter.isOK(record)){
-      var updatecountobj = {count:0};
+      var updatecountobj = {count:0,original:null};
       lib.traverse(datahash,updateFrom.bind(null,updatecountobj,record));
       if(updatecountobj.count){
+        if(!updatecountobj.original){
+          throw "No original";
+        }
         if(this.events){
           this.events.recordUpdated.fire(record);
         }
+        defer.notify({o:updatecountobj.original,n:record});
         countobj.count++;
       }
     }
   }
   MemoryStorage.prototype.doUpdate = function(filter,datahash,defer){
     var countobj = {count:0};
-    this.data.forEach(this.processUpdate.bind(this,countobj,filter,datahash));
+    this.data.forEach(this.processUpdate.bind(this,defer,countobj,filter,datahash));
     defer.resolve(countobj.count);
   };
   MemoryStorage.prototype.processDelete = function(countobj,filter,record,recordindex,records){

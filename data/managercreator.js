@@ -63,23 +63,19 @@ function createDataManager(execlib){
   };
   DataManager.prototype.doNativeUpdateExact = function(defer,ueobj){
     var item = this.Coder.prototype.updateExact(ueobj);
-    if(defer){
-      defer.notify(item);
-    }else{
+    if(item){
       this.handleStreamItem(item);
+      defer.notify(item);
     }
   };
   DataManager.prototype.doNativeUpdate = function(defer,filter,datahash,res){
-    if(defer){
-      defer.resolve(res);
-    }else{
-      if(res){
-        var item = this.Coder.prototype.update(filter,datahash);
-        if(item){
-          this.handleStreamItem(item);
-        }
+    if(res){
+      var item = this.Coder.prototype.update(filter,datahash);
+      if(item){
+        this.handleStreamItem(item);
       }
     }
+    defer.resolve(res);
   };
   DataManager.prototype.update = function(filter,datahash){
     var d = lib.q.defer();

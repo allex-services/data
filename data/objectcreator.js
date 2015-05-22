@@ -25,6 +25,9 @@ function createDataObject(execlib){
     fields.forEach(this._fieldToHash.bind(this,result));
     return result;
   };
+  DataObject.prototype.clone = function(){
+    return this.toHash(Object.getOwnPropertyNames(this));
+  };
   function equalator(o1,o2,propname){
     return o1[propname] === o2[propname];
   }
