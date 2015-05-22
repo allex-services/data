@@ -63,6 +63,8 @@ function createMemoryStorage(execlib){
       }
       record.destroy();
       countobj.count++;
+    }else{
+      console.log('not deleting',record,'due to mismatch in',require('util').inspect(filter,{depth:null}));
     }
   }
   MemoryStorage.prototype.doDelete = function(filter,defer){
