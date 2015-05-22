@@ -1,6 +1,7 @@
 function createDataDecoder(execlib){
   var lib = execlib.lib,
-      dataClientSuite = execlib.dataClientSuite;
+      dataSuite = execlib.dataSuite,
+      filterFactory = dataSuite.filterFactory;
 
   function Decoder(storable){
     this.storable = storable;
@@ -44,6 +45,12 @@ function createDataDecoder(execlib){
       case 'c':
         this.enq('create',item);
         break;
+      case 'ue':
+        this.enq('updateExact',item);
+        break;
+      case 'd':
+        this.enq('delete',item);
+        break;
     }
   };
   Decoder.prototype.beginRead = function(item){
@@ -59,6 +66,19 @@ function createDataDecoder(execlib){
   };
   Decoder.prototype.create = function(item){
     this.storable.create(item.d).then(this.deq.bind(this));
+  };
+  Decoder.prototype.delete = function(item){
+    var f = filterFactory.createFromDescriptor(item.d);
+    if(!f){
+      console.log('NO FILTER FOR',item.d);
+      this.deq();
+    }else{
+      this.storable.delete(f).then(this.deq.bind(this));
+    }
+  };
+  Decoder.prototype.updateExact = function(item){
+    var f = filterFactory.createFromDescriptor({op:'hash',d:item.d.o});
+    this.storable.update(f,item.d.n);
   };
   return Decoder;
 }
