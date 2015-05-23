@@ -14,7 +14,7 @@ function createMemoryStorage(execlib){
   };
   MemoryStorage.prototype.doCreate = function(record,defer){
     this.data.push(record);
-    defer.resolve(record);
+    defer.resolve(record.clone());
   };
   function processRead(query,defer,item){
     if(query.isOK(item)){
@@ -54,7 +54,7 @@ function createMemoryStorage(execlib){
         if(this.events){
           this.events.recordUpdated.fire(record);
         }
-        defer.notify({o:updatecountobj.original,n:record});
+        defer.notify({o:updatecountobj.original,n:record.clone()});
         countobj.count++;
       }
     }

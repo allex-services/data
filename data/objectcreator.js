@@ -1,10 +1,10 @@
 function createDataObject(execlib){
   var lib = execlib.lib;
   function DataObject(prophash){
-    lib.traverse(prophash,this._inverseSet.bind(this));
+    Object.getOwnPropertyNames(prophash).forEach(this._hashToField.bind(this,prophash));
   }
-  DataObject.prototype._inverseSet = function(val,name){
-    this.set(name,val);
+  DataObject.prototype._hashToField = function(hash,fieldname){
+    this.set(fieldname,hash[fieldname]);
   };
   DataObject.prototype._fieldToHash = function(hash,fieldname){
     var val = this.get(fieldname), und;

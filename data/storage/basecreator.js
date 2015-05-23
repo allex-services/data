@@ -86,8 +86,7 @@ function createStorageBase(execlib){
   };
   StorageBase.prototype.create = function(datahash){
     var d = q.defer();
-    var record = this.__record.filterObject(datahash);
-    lib.runNext(this.doCreate.bind(this,record,d));
+    lib.runNext(this.doCreate.bind(this,this.__record.filterObject(datahash),d));
     if(this.events){
       d.promise.then(this.events.fireNewRecord.bind(this.events));
     }
