@@ -1,7 +1,9 @@
 function createQueryBase(execlib){
   function QueryBase(recorddescriptor,visiblefields){
+    /*
     console.trace();
     console.log('new QueryBase');
+    */
     this.record = new (execlib.dataSuite.recordSuite.Record)(recorddescriptor,visiblefields);
   };
   QueryBase.prototype.destroy = function(){
@@ -76,7 +78,7 @@ function createQueryBase(execlib){
         if(this.isOK(item.d)){
           return {
             o: 'c',
-            d: this.record.filterObject(item.d)
+            d: this.record.filterHash(item.d)
           }
         }
       case 'ue':

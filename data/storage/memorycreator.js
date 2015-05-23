@@ -2,6 +2,7 @@ function createMemoryStorage(execlib){
   var lib = execlib.lib,
       dataSuite = execlib.dataSuite,
       StorageBase = dataSuite.StorageBase;
+
   function MemoryStorage(storagedescriptor,data){
     StorageBase.call(this,storagedescriptor);
     this.data = data || [];
@@ -27,7 +28,7 @@ function createMemoryStorage(execlib){
     }else{
       var start = query.offset, end=Math.min(start+query.limit,this.data.length);
       for(var i=start; i<end; i++){
-        processRead(query,defer,this.data[i]);
+        processRead(query,defer,this.__record.filterHash(this.data[i]));
       }
     }
     defer.resolve(null);
@@ -78,6 +79,10 @@ function createMemoryStorage(execlib){
   MemoryStorage.prototype.doDelete = function(filter,defer){
     var countobj = {count:0};
     this.data.forEach(this.processDelete.bind(this,countobj,filter));
+    if(countobj.count){
+      console.log(countobj.count,'records deleted');
+      console.log(this.data);
+    }
     defer.resolve(countobj.count);
   };
   return MemoryStorage;

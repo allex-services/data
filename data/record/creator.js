@@ -76,12 +76,15 @@ function createRecord(execlib){
     this.fields.push(field);
     this.fieldsByName.add(field.name,field);
   };
-  Record.prototype.filterObject = function(obj){
+  Record.prototype.filterHash = function(obj){
     var prophash = {};
     this.fields.forEach(function(field){
       prophash[field.name] = field.valueFor(obj[field.name]);
     });
-    return new this.objCtor(prophash);
+    return prophash;
+  };
+  Record.prototype.filterObject = function(obj){
+    return new(this.objCtor)(this.filterHash(obj));
   };
   Record.prototype.filterStateStream = function(item){
     if(item.o==='u' && item.p && item.p.length===1){
@@ -101,6 +104,14 @@ function createRecord(execlib){
       return {op:'eq',field:this.primaryKey,value:datahash[this.primaryKey]};
     }else{
       return {op:'hash',d:this.filterObject(record)};
+    }
+  };
+  Record.prototype.defaultFor = function(fieldname){
+    var f = this.fieldsByName.get(fieldname);
+    if(f){
+      return f.valueFor();
+    }else{
+      return null;
     }
   };
 

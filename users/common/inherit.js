@@ -91,6 +91,7 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
     }
   };
   ChildClass.prototype.create = function(datahash,defer){
+    console.log('DataUser should create',datahash);
     this.__service.data.create(datahash).done(
       defer.resolve.bind(defer),
       defer.reject.bind(defer),

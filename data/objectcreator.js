@@ -18,7 +18,10 @@ function createDataObject(execlib){
   DataObject.prototype.destroy = function(){
     var opns = Object.getOwnPropertyNames(this);
     opns.forEach(undefize.bind(null,this));
-    //console.log(this,'destroyed');
+    /*
+    console.trace();
+    console.log(this,'destroyed');
+    */
   };
   DataObject.prototype.toHash = function(fields){
     var result = {};

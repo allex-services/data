@@ -19,6 +19,7 @@ function createDataDecoder(execlib){
       this.q.push({command:command,item:item});
     }else{
       this.working = true;
+      //console.log('Decoder doing',command,'on',this.storable.__id,this.storable.data);
       this[command](item);
     }
   };
@@ -76,16 +77,17 @@ function createDataDecoder(execlib){
       console.log('NO FILTER FOR',item.d);
       this.deq();
     }else{
+      //console.log(this.storable.__id,this.storable.data,'will delete');
       this.storable.delete(f).then(this.deq.bind(this));
     }
   };
   Decoder.prototype.updateExact = function(item){
     var f = filterFactory.createFromDescriptor({op:'hash',d:item.d.o});
-    this.storable.update(f,item.d.n);
+    this.storable.update(f,item.d.n).then(this.deq.bind(this));
   };
   Decoder.prototype.update = function(item){
     var f = filterFactory.createFromDescriptor(item.d.f);
-    this.storable.update(f,item.d.d);
+    this.storable.update(f,item.d.d).then(this.deq.bind(this));
   };
   return Decoder;
 }
