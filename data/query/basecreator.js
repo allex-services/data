@@ -37,7 +37,7 @@ function createQueryBase(execlib){
         _nok = this.isOK(_new),
         uf;
     if(ook){
-      uf = this.__record.updatingFilterDescriptorFor(original);
+      uf = this.record.updatingFilterDescriptorFor(original);
       if(_nok){
         //update
         return {
@@ -67,8 +67,10 @@ function createQueryBase(execlib){
     }
   };
   QueryBase.prototype.onStream = function(item){
+    /*
     console.trace();
     console.log('Query onStream',item);
+    */
     switch(item.o){
       case 'c':
         if(this.isOK(item.d)){

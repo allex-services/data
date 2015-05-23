@@ -51,6 +51,7 @@ function createRecord(execlib){
       console.trace();
       throw "Record needs the fields array in its property hash";
     }
+    this.primaryKey = prophash.primaryKey;
     this.objCtor = prophash.objCtor || execlib.dataSuite.DataObject;
     this.fields = [];
     this.fieldsByName = new lib.Map();
@@ -61,6 +62,8 @@ function createRecord(execlib){
     this.fieldsByName = null;
     lib.arryDestroyAll(this.fields);
     this.fields = null;
+    this.objCtor = null;
+    this.primaryKey = null;
   };
   Record.prototype.isEmpty = function(){
     return this.fields.length<1;
@@ -93,9 +96,9 @@ function createRecord(execlib){
   Record.prototype.stateStreamFilterForRecord = function(storage,record){
     return new StateStreamFilter(storage,record,this);
   };
-  Record.prototype.updatingFilterDescriptorFor = function(record){
+  Record.prototype.updatingFilterDescriptorFor = function(datahash){
     if(this.primaryKey){
-      return {op:'eq',field:this.primaryKey,d:record.get(this.primaryKey)};
+      return {op:'eq',field:this.primaryKey,value:datahash[this.primaryKey]};
     }else{
       return {op:'hash',d:this.filterObject(record)};
     }

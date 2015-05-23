@@ -42,7 +42,7 @@ function createFilterFactory(execlib){
   factory.add('or',OrFilters);
   factory.add('exists',ExistsFilter);
   factory.add('notexists',NotExistsFilter);
-  factory.add('eq',GTFilter);
+  factory.add('eq',EQFilter);
   factory.add('gt',GTFilter);
   factory.add('gte',GTEFilter);
   factory.add('lt',LTFilter);

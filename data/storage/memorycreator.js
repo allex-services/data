@@ -36,7 +36,7 @@ function createMemoryStorage(execlib){
     if(record.hasFieldNamed(updateitemname)){
       if(countobj.count<1){
         countobj.original = record.clone();
-        console.log('Original set',countobj.original);
+        //console.log('Original set',countobj.original);
       }
       countobj.count++;
       record.set(updateitemname,updateitem);

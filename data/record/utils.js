@@ -31,6 +31,11 @@ function createRecordUtils(execlib,suite){
 
   }
 
+  function copyExceptFields(obj,item,itemname){
+    if(itemname!=='fields'){
+      obj[itemname] = item;
+    }
+  }
   function inherit(rd1,rd2){//rd <=> recorddescriptor
     var result = {fields:[]}, fn={};
     for(var i=0; i<arguments.length; i++){
@@ -40,6 +45,7 @@ function createRecordUtils(execlib,suite){
         continue;
         //throw Error((rd ? JSON.stringify(rd) : rd) + " is not a valid record descriptor: "+invalid);
       }
+      lib.traverse(rd,copyExceptFields.bind(null,result));
       result.fields.push.apply(result.fields,rd.fields);
     }
     return result;

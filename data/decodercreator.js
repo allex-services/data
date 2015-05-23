@@ -30,7 +30,7 @@ function createDataDecoder(execlib){
     }
   };
   Decoder.prototype.onStream = function(item){
-    console.log('Decoder got',item);
+    //console.log('Decoder got',item);
     //console.log('Decoder got',require('util').inspect(item,{depth:null}));
     switch(item.o){
       case 'rb':
@@ -47,6 +47,9 @@ function createDataDecoder(execlib){
         break;
       case 'ue':
         this.enq('updateExact',item);
+        break;
+      case 'u':
+        this.enq('update',item);
         break;
       case 'd':
         this.enq('delete',item);
@@ -79,6 +82,10 @@ function createDataDecoder(execlib){
   Decoder.prototype.updateExact = function(item){
     var f = filterFactory.createFromDescriptor({op:'hash',d:item.d.o});
     this.storable.update(f,item.d.n);
+  };
+  Decoder.prototype.update = function(item){
+    var f = filterFactory.createFromDescriptor(item.d.f);
+    this.storable.update(f,item.d.d);
   };
   return Decoder;
 }
