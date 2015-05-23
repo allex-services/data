@@ -52,7 +52,7 @@ function createMemoryStorage(execlib){
           throw "No original";
         }
         if(this.events){
-          this.events.recordUpdated.fire(record);
+          this.events.recordUpdated.fire(record.clone());
         }
         defer.notify({o:updatecountobj.original,n:record.clone()});
         countobj.count++;
@@ -68,7 +68,7 @@ function createMemoryStorage(execlib){
     if(filter.isOK(record)){
       records.splice(recordindex,1);
       if(this.events){
-        this.events.recordDeleted.fire(record);
+        this.events.recordDeleted.fire(record.clone());
       }
       record.destroy();
       countobj.count++;
