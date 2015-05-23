@@ -32,6 +32,40 @@ function createQueryBase(execlib){
     var flt = this.filter();
     return flt ? flt.isOK(datahash) : true;
   };
+  QueryBase.prototype.processUpdateExact = function(original,_new){
+    var ook = this.isOK(original),
+        _nok = this.isOK(_new),
+        uf;
+    if(ook){
+      uf = this.__record.updatingFilterDescriptorFor(original);
+      if(_nok){
+        //update
+        return {
+          o: 'u',
+          d: {
+            f: uf,
+            d: _new
+          }
+        };
+      }else{
+        //deletion
+        return {
+          o: 'd',
+          d: uf
+        };
+      }
+    }else{
+      if(_nok){
+        //create
+        return {
+          o: 'c',
+          d: _new
+        };
+      }else{
+        //nothing
+      }
+    }
+  };
   QueryBase.prototype.onStream = function(item){
     console.trace();
     console.log('Query onStream',item);
@@ -43,6 +77,8 @@ function createQueryBase(execlib){
             d: this.record.filterObject(item.d)
           }
         }
+      case 'ue':
+        return this.processUpdateExact(item.d.o,item.d.n);
       default:
         return item;
     }

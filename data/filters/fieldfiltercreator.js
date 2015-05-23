@@ -1,4 +1,5 @@
 function createFieldFilter(execlib,Filter){
+  var lib = execlib.lib;
   function FieldFilter(filterdescriptor){
     Filter.call(this,filterdescriptor);
     this.fieldname = filterdescriptor.field;
@@ -7,6 +8,7 @@ function createFieldFilter(execlib,Filter){
     }
     this.fieldvalue = filterdescriptor.value;
   }
+  lib.inherit(FieldFilter,Filter);
   FieldFilter.prototype.destroy = function(){
     this.fieldname = null;
     Filter.prototype.destroy.call(this);

@@ -32,7 +32,7 @@ function createMemoryStorage(execlib){
     }
     defer.resolve(null);
   };
-  function updateFrom(countobj,record,updateitem,updateitemname){
+  MemoryStorage.prototype.updateFrom = function(countobj,record,updateitem,updateitemname){
     if(record.hasFieldNamed(updateitemname)){
       if(countobj.count<1){
         countobj.original = record.clone();
@@ -45,7 +45,7 @@ function createMemoryStorage(execlib){
   MemoryStorage.prototype.processUpdate = function(defer,countobj,filter,datahash,record){
     if(filter.isOK(record)){
       var updatecountobj = {count:0,original:null};
-      lib.traverse(datahash,updateFrom.bind(null,updatecountobj,record));
+      lib.traverse(datahash,this.updateFrom.bind(this,updatecountobj,record));
       if(updatecountobj.count){
         if(!updatecountobj.original){
           throw "No original";

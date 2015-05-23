@@ -93,6 +93,13 @@ function createRecord(execlib){
   Record.prototype.stateStreamFilterForRecord = function(storage,record){
     return new StateStreamFilter(storage,record,this);
   };
+  Record.prototype.updatingFilterDescriptorFor = function(record){
+    if(this.primaryKey){
+      return {op:'eq',field:this.primaryKey,d:record.get(this.primaryKey)};
+    }else{
+      return {op:'hash',d:this.filterObject(record)};
+    }
+  };
 
   function StateStreamFilter(manager,recordinstance,record){
     this.manager = manager;
@@ -107,7 +114,7 @@ function createRecord(execlib){
   StateStreamFilter.prototype.onStream = function(item){
     var val = this.record.filterStateStream(item);
     if(val){
-      this.manager.updateByDescriptor({op:'hash',d:this.record.filterObject(this.recordinstance)},val);
+      this.manager.updateByDescriptor(this.record.updatingFilterDescriptorFor(this.recordinstance),val);
     }
   };
   return Record;
