@@ -64,12 +64,14 @@ function createMemoryStorage(execlib){
     this.data.forEach(this.processUpdate.bind(this,defer,countobj,filter,datahash));
     defer.resolve(countobj.count);
   };
-  MemoryStorage.prototype.processDelete = function(countobj,filter,record,recordindex,records){
+  MemoryStorage.prototype.processDelete = function(defer,countobj,filter,record,recordindex,records){
     if(filter.isOK(record)){
       records.splice(recordindex,1);
+      var rc = record.clone();
       if(this.events){
-        this.events.recordDeleted.fire(record.clone());
+        this.events.recordDeleted.fire(rc);
       }
+      defer.notify(rc);
       record.destroy();
       countobj.count++;
     }else{
@@ -78,7 +80,7 @@ function createMemoryStorage(execlib){
   }
   MemoryStorage.prototype.doDelete = function(filter,defer){
     var countobj = {count:0};
-    this.data.forEach(this.processDelete.bind(this,countobj,filter));
+    this.data.forEach(this.processDelete.bind(this,defer,countobj,filter));
     if(countobj.count){
       console.log(countobj.count,'records deleted');
       console.log(this.data);

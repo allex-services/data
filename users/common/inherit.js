@@ -98,6 +98,36 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
       defer.notify.bind(defer)
     );
   };
+  ChildClass.prototype.update = function(filterdescriptor,datahash,defer){
+    console.log('DataUser should update',filterdescriptor,datahash);
+    var f = filterFactory.createFromDescriptor(filterdescriptor);
+    if(!f){
+      var e = new lib.Error('INVALID_FILTER_DESCRIPTOR');
+      e.filterdescriptor = filterdescriptor;
+      defer.reject(e);
+      return;
+    }
+    this.__service.data.update(f,datahash).done(
+      defer.resolve.bind(defer),
+      defer.reject.bind(defer),
+      defer.notify.bind(defer)
+    );
+  };
+  ChildClass.prototype.delete = function(filterdescriptor,defer){
+    console.log('DataUser should update',filterdescriptor);
+    var f = filterFactory.createFromDescriptor(filterdescriptor);
+    if(!f){
+      var e = new lib.Error('INVALID_FILTER_DESCRIPTOR');
+      e.filterdescriptor = filterdescriptor;
+      defer.reject(e);
+      return;
+    }
+    this.__service.data.delete(f).done(
+      defer.resolve.bind(defer),
+      defer.reject.bind(defer),
+      defer.notify.bind(defer)
+    );
+  };
   ChildClass.prototype.updateByDescriptor = function(filterdescriptor,datahash,defer){
     this.__service.data.updateByDescriptor(filterdescriptor,datahash).done(
       defer.resolve.bind(defer),

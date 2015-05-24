@@ -86,14 +86,22 @@ function createDataManager(execlib){
     );
     return d.promise;
   };
-  DataManager.prototype.doNativeDelete = function(filter){
-    DataSource.prototype.delete.call(this,filter);
+  DataManager.prototype.doNativeDelete = function(defer,filter,res){
+    if(res){
+      var item = this.Coder.prototype.delete(filter);
+      if(item){
+        this.handleStreamItem(item);
+      }
+    }
+    defer.resolve(res);
   };
   DataManager.prototype.delete = function(filter){
+    var d = lib.q.defer();
     this.storage.delete(filter).done(
-      this.doNativeDelete.bind(this,filter),
+      this.doNativeDelete.bind(this,d,filter),
       this.onStorageError.bind(this)
     );
+    return d.promise;
   };
   DataManager.prototype.updateByDescriptor = function(filterdescriptor,datahash){
     var f = filterFactory.createFromDescriptor(filterdescriptor);
