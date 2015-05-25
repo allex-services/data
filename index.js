@@ -6,7 +6,7 @@ function createServicePack(execlib){
     SinkMap: require('./sinkmapcreator')(execlib),
     Tasks: [{
       name: 'materializeData',
-      constructor: require('./tasks/materializeData')(execlib)
+      klass: require('./tasks/materializeData')(execlib)
     }]
   };
 }
