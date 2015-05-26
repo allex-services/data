@@ -60,6 +60,9 @@ function createMemoryStorage(execlib){
     }
   }
   MemoryStorage.prototype.doUpdate = function(filter,datahash,defer){
+    if(!this.data){
+      return;
+    }
     var countobj = {count:0};
     this.data.forEach(this.processUpdate.bind(this,defer,countobj,filter,datahash));
     defer.resolve(countobj.count);
@@ -81,10 +84,12 @@ function createMemoryStorage(execlib){
   MemoryStorage.prototype.doDelete = function(filter,defer){
     var countobj = {count:0};
     this.data.forEach(this.processDelete.bind(this,defer,countobj,filter));
+    /*
     if(countobj.count){
       console.log(countobj.count,'records deleted');
       console.log(this.data);
     }
+    */
     defer.resolve(countobj.count);
   };
   return MemoryStorage;

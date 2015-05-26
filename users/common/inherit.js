@@ -91,7 +91,6 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
     }
   };
   ChildClass.prototype.create = function(datahash,defer){
-    console.log('DataUser should create',datahash);
     this.__service.data.create(datahash).done(
       defer.resolve.bind(defer),
       defer.reject.bind(defer),
@@ -99,7 +98,6 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
     );
   };
   ChildClass.prototype.update = function(filterdescriptor,datahash,defer){
-    console.log('DataUser should update',filterdescriptor,datahash);
     var f = filterFactory.createFromDescriptor(filterdescriptor);
     if(!f){
       var e = new lib.Error('INVALID_FILTER_DESCRIPTOR');
@@ -114,7 +112,6 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
     );
   };
   ChildClass.prototype.delete = function(filterdescriptor,defer){
-    console.log('DataUser should update',filterdescriptor);
     var f = filterFactory.createFromDescriptor(filterdescriptor);
     if(!f){
       var e = new lib.Error('INVALID_FILTER_DESCRIPTOR');
