@@ -1,7 +1,7 @@
 function createNotFilter(execlib,Filter,factory){
   var lib = execlib.lib;
-  function NotFilter(prophash){
-    Filter.call(this,prophash);
+  function NotFilter(filterdescriptor ){
+    Filter.call(this,filterdescriptor );
     if(!(filterdescriptor && 'filter' in filterdescriptor)){
       throw "No filter field in filterdescriptor";
     }
