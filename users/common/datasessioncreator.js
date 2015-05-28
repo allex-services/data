@@ -8,7 +8,8 @@ function createDataSession(execlib){
 
   function DataChannel(usersession,name){
     Channel.call(this,usersession,name);
-    QueryClone.call(this,{original:usersession.user});
+    QueryClone.call(this,usersession.user);
+    //QueryClone.call(this,{original:usersession.user});
   }
   lib.inherit(DataChannel,Channel);
   lib.inheritMethods(DataChannel,QueryClone,'fields','filter',/*'limit','offset',*/'isEmpty','isLimited','isOffset','isOK');

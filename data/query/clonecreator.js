@@ -1,4 +1,5 @@
 function createQueryClone(execlib,QueryBase){
+  var lib = execlib.lib;
   var QueryBase = execlib.dataSuite.QueryBase;
 
   function QueryClone(original){
@@ -7,7 +8,12 @@ function createQueryClone(execlib,QueryBase){
     this.record = original.record;
     this.original = original;
     if(!this.original){
-      throw "QueryBase can clone only an instance of QueryBase";
+      throw new lib.Error('NO_ORIGINAL_PROVIDED_TO_QUERY_CLONE');
+    }
+    if('function' !== typeof this.original.filter){
+      var e = new lib.Error('ORIGINAL_FOR_QUERY_CLONE_IS_NOT_A_QUERY');
+      e.original = original;
+      throw e;
     }
   };
   execlib.lib.inherit(QueryClone,QueryBase);
