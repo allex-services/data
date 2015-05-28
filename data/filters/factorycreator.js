@@ -25,6 +25,7 @@ function createFilterFactory(execlib){
 
   var factory = new Factory,
     HashFilter = require('./hashfiltercreator')(execlib,Filter),
+    NotFilter = require('./notfiltercreator')(execlib,Filter,factory),
     BooleanFilters = require('./booleanfilterscreator')(execlib,Filter,factory),
     AndFilters = require('./andfilterscreator')(execlib,BooleanFilters),
     OrFilters = require('./orfilterscreator')(execlib,BooleanFilters),
@@ -38,6 +39,7 @@ function createFilterFactory(execlib){
     LTEFilter = require('./gtfiltercreator')(execlib,FieldFilter);
 
   factory.add('hash',HashFilter);
+  factory.add('not',NotFilter);
   factory.add('and',AndFilters);
   factory.add('or',OrFilters);
   factory.add('exists',ExistsFilter);

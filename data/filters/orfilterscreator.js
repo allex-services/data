@@ -4,7 +4,7 @@ function createOrFilters(execlib,BooleanFilters){
   function OrFilters(filterdescriptor){
     BooleanFilters.call(this,filterdescriptor);
   }
-  execlib.lib.inherit(OrFilters,BooleanFilters);
+  lib.inherit(OrFilters,BooleanFilters);
   OrFilters.prototype.arrayOperation = 'some';
   return OrFilters;
 }

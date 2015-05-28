@@ -9,15 +9,18 @@ function createBooleanFilters(execlib,Filter,filterFactory){
     }
     filterdescriptor.filters.forEach(this.addFilter.bind(this));
   }
+  lib.inherit(BooleanFilters,Filter);
   BooleanFilters.prototype.destroy = function(){
     lib.arryDestroyAll(this.filters);
     this.filters = null;
+    Filter.prototype.destroy.call(this);
   };
   BooleanFilters.prototype.addFilter = function(filterdescriptor){
     this.filters.push(filterFactory.createFromDescriptor(filterdescriptor));
   };
   function isFilterOk(datahash,filter){
-    return filter.isOK(datahash);
+    var ret = filter.isOK(datahash);
+    return ret;
   }
   BooleanFilters.prototype.isOK = function(datahash){
     var ifok = isFilterOk.bind(null,datahash);

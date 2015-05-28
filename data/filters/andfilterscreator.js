@@ -4,7 +4,7 @@ function createAndFilters(execlib,BooleanFilters){
   function AndFilters(filterdescriptor){
     BooleanFilters.call(this,filterdescriptor);
   }
-  execlib.lib.inherit(AndFilters,BooleanFilters);
+  lib.inherit(AndFilters,BooleanFilters);
   AndFilters.prototype.arrayOperation = 'every';
   return AndFilters;
 }
