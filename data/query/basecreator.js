@@ -81,6 +81,7 @@ function createQueryBase(execlib){
             d: this.record.filterHash(item.d)
           }
         }
+        break;
       case 'ue':
         return this.processUpdateExact(item.d.o,item.d.n);
       default:
