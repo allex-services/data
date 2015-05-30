@@ -67,34 +67,27 @@ function createMemoryStorage(execlib){
     this.data.forEach(this.processUpdate.bind(this,defer,countobj,filter,datahash));
     defer.resolve(countobj.count);
   };
-  MemoryStorage.prototype.processDelete = function(defer,filter,record,recordindex,records){
+  MemoryStorage.prototype.processDelete = function(todelete,defer,filter,record,recordindex,records){
     if(filter.isOK(record)){
-      //console.log('really deleting',record);
-      records.splice(recordindex,1);
       var rc = record.clone();
       if(this.events){
         this.events.recordDeleted.fire(rc);
       }
       defer.notify(rc);
       record.destroy();
-      return true;
+      todelete.unshift(recordindex);
     }/*else{
       console.log('not deleting',record,'due to mismatch in',require('util').inspect(filter,{depth:null}));
     }*/
-    return false;
   }
-  MemoryStorage.prototype.performDeletePass = function(filter,defer){
-    return this.data.some(this.processDelete.bind(this,defer,filter));
-  };
   MemoryStorage.prototype.doDelete = function(filter,defer){
-    var deletecount = 0;
-    while(this.performDeletePass(filter,defer)){
-      deletecount++;
-    }
+    var todelete = [], data = this.data;
+    this.data.forEach(this.processDelete.bind(this,todelete,defer,filter));
     /*
     console.log('deleted',deletecount,'records');
     */
-    defer.resolve(deletecount);
+    todelete.forEach(function(di){data.splice(di,1);});
+    defer.resolve(todelete.length);
   };
   return MemoryStorage;
 }
