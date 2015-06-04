@@ -19,8 +19,11 @@ function createDataDistributor(execlib){
   };
   DataStreamDistributor.prototype.doTrigger = function(item,sink){
     if(!item){
-      console.trace();
-      process.exit(0);
+      return;
+    }
+    if(!sink.destroyed){
+      console.log('skipping an already destroyed sink',sink.__id);
+      return;
     }
     StreamDistributor.prototype.doTrigger.call(this,item,sink);
   };

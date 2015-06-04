@@ -40,6 +40,7 @@ function createDataSession(execlib){
     if('page' in this){
       this.page = null;
     }
+    UserSession.prototype.__cleanUp.call(this);
   };
   DataSession.prototype.setPaging = function(pagesize,defer){
     this.pagesize = pagesize;

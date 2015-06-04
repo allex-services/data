@@ -84,6 +84,9 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
     this.__service.data.read(this,d);
   };
   ChildClass.prototype.onStream = function(item){
+    if(!this.destroyed){
+      return;
+    }
     //console.log('Some User distributing further',item,'to',this.distributor.sinks.length);
     var myitem = QueryBase.prototype.onStream.call(this,item);
     if(myitem){
