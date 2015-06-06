@@ -6,6 +6,7 @@ function createStorageBase(execlib){
   function StorageBaseEventing(){
     this.initTxnId = null;
     this.initiated = new lib.HookCollection();
+    this.created = new lib.HookCollection();
     this.newRecord = new lib.HookCollection();
     this.updated = new lib.HookCollection();
     this.recordUpdated = new lib.HookCollection();
@@ -23,6 +24,8 @@ function createStorageBase(execlib){
     this.updated = null;
     this.newRecord.destruct();
     this.newRecord = null;
+    this.created.destruct();
+    this.created = null;
     this.initiated.destruct();
     this.initiated = null;
     this.initTxnId = null;
@@ -52,6 +55,7 @@ function createStorageBase(execlib){
     this.initiated.fire(storage);
   };
   StorageBaseEventing.prototype.fireNewRecord = function(datahash){
+    this.created.fire(datahash);
     if(!this.initTxnId){
       this.newRecord.fire(datahash);
     }

@@ -2,30 +2,32 @@ function createMaterializeDataTask(execlib){
   var lib = execlib.lib,
       q = lib.q,
       execSuite = execlib.execSuite,
-      Task = execSuite.Task,
+      SinkTask = execSuite.SinkTask,
       dataSuite = execlib.dataSuite,
       DataDecoder = dataSuite.DataDecoder,
       MemoryStorage = dataSuite.MemoryStorage;
 
   function MaterializeDataTask(prophash){
-    Task.call(this,prophash);
+    SinkTask.call(this,prophash);
     this.sink = prophash.sink;
     this.data = prophash.data;
     this.onInitiated = prophash.onInitiated;
+    this.onRecordCreation = prophash.onRecordCreation;
     this.onNewRecord = prophash.onNewRecord;
     this.onUpdate = prophash.onUpdate;
     this.onRecordUpdate = prophash.onRecordUpdate;
     this.onDelete = prophash.onDelete;
     this.onRecordDeletion = prophash.onRecordDeletion;
     this.initiatedListener = null;
+    this.createdListener = null;
     this.newRecordListener = null;
     this.updatedListener = null;
     this.recordUpdatedListener = null;
     this.deletedListener = null;
     this.recordDeletedListener = null;
-    this.sink.destroyed.attachForSingleShot(this.destroy.bind(this));
   }
-  MaterializeDataTask.prototype.destroy = function(){
+  lib.inherit(MaterializeDataTask,SinkTask);
+  MaterializeDataTask.prototype.__cleanUp = function(){
     if(this.recordDeletedListener){
       this.recordDeletedListener.destroy();
     }
@@ -46,6 +48,10 @@ function createMaterializeDataTask(execlib){
       this.newRecordListener.destroy();
     }
     this.newRecordListener = null;
+    if(this.createdListener){
+      this.createdListener.destroy();
+    }
+    this.createdListener = null;
     if(this.initiatedListener){
       this.initiatedListener.destroy();
     }
@@ -62,12 +68,15 @@ function createMaterializeDataTask(execlib){
   };
   MaterializeDataTask.prototype.go = function(){
     this.storage = new MemoryStorage({
-      events: this.onInitiated || this.onNewRecord || this.onUpdate || this.onRecordUpdate || this.onDelete || this.onRecordDeletion,
+      events: this.onInitiated || this.onRecordCreation || this.onNewRecord || this.onUpdate || this.onRecordUpdate || this.onDelete || this.onRecordDeletion,
       record: this.sink.recordDescriptor
     },this.data);
     if(this.onInitiated){
       this.initiatedListener = this.storage.events.initiated.attach(this.onInitiated);
     }
+    if(this.onRecordCreation){
+      this.createdListener = this.storage.events.created.attach(this.onRecordCreation);
+    };
     if(this.onNewRecord){
       this.newRecordListener = this.storage.events.newRecord.attach(this.onNewRecord);
     }
