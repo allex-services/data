@@ -7,6 +7,9 @@ function createServicePack(execlib){
     Tasks: [{
       name: 'materializeData',
       klass: require('./tasks/materializeData')(execlib)
+    },{
+      name: 'forwardData',
+      klass: require('./tasks/forwardData')(execlib)
     }]
   };
 }

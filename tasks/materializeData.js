@@ -9,6 +9,7 @@ function createMaterializeDataTask(execlib){
 
   function MaterializeDataTask(prophash){
     SinkTask.call(this,prophash);
+    this.storage = null;
     this.sink = prophash.sink;
     this.data = prophash.data;
     this.onInitiated = prophash.onInitiated;
