@@ -52,7 +52,7 @@ function createMemoryStorage(execlib){
           throw "No original";
         }
         if(this.events){
-          this.events.recordUpdated.fire(record.clone());
+          this.events.recordUpdated.fire(record.clone(),updatecountobj.original);
         }
         defer.notify({o:updatecountobj.original,n:record.clone()});
         countobj.count++;
