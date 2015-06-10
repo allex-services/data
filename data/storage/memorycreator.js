@@ -13,6 +13,15 @@ function createMemoryStorage(execlib){
     StorageBase.prototype.destroy.call(this);
   };
   MemoryStorage.prototype.doCreate = function(record,defer){
+    if(this.__record.primaryKey){
+      var pkval = record.get(record.primaryKey);
+      if(pkval!==null){
+        if(this.checkForExistenceOnPrimaryKey(pkval)){
+          defer.reject(new lib.Error('PRIMARY_KEY_VIOLATION'));
+          return;
+        }
+      }
+    }
     this.data.push(record);
     defer.resolve(record.clone());
   };
@@ -88,6 +97,17 @@ function createMemoryStorage(execlib){
     */
     todelete.forEach(function(di){data.splice(di,1);});
     defer.resolve(todelete.length);
+  };
+  MemoryStorage.prototype.checkForExistenceOnPrimaryKey = function(pkval){
+    var pkname = this.__record.primaryKey;
+    if(!pkname){
+      return false;
+    }
+    return this.data.some(function(record){
+      if(record.get(pkname)===pkval){
+        return true;
+      }
+    });
   };
   return MemoryStorage;
 }
