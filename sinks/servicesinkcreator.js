@@ -1,4 +1,5 @@
 function createServiceSink(execlib){
+  'use strict';
   var lib = execlib.lib,
       execSuite = execlib.execSuite,
       _ServiceSink = execSuite.registry.get('.').SinkMap.get('service'),

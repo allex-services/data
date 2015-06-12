@@ -1,4 +1,5 @@
 function createRecord(execlib){
+  'use strict';
   var lib = execlib.lib;
 
   function DefaultHandler(desc){

@@ -1,4 +1,5 @@
 function createCloneStorage(execlib){
+  'use strict';
   var dataSuite = execlib.dataSuite,
       StorageBase = dataSuite.StorageBase;
   function CloneStorage(storagedescriptor){

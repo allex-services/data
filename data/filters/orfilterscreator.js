@@ -1,4 +1,5 @@
 function createOrFilters(execlib,BooleanFilters){
+  'use strict';
   var lib = execlib.lib;
 
   function OrFilters(filterdescriptor){

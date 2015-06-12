@@ -1,4 +1,5 @@
 function createRecordUtils(execlib,suite){
+  'use strict';
   var lib = execlib.lib;
   function selectFieldIfDuplicate(targetfieldname,foundobj,fieldnames,hash){
     var targetfieldvalue = hash[targetfieldname];

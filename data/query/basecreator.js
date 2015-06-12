@@ -1,4 +1,5 @@
 function createQueryBase(execlib){
+  'use strict';
   function QueryBase(recorddescriptor,visiblefields){
     /*
     console.trace();

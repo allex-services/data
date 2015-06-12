@@ -1,4 +1,5 @@
 function getData(defer){
+  'use strict';
   if(this.dataDefer){
     defer.resolve([]);
     return;

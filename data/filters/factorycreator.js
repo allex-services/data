@@ -1,4 +1,5 @@
 function createFilterFactory(execlib){
+  'use strict';
   var lib = execlib.lib,
     Filter = require('./creator')(execlib),
     AllPass = require('./allpasscreator')(execlib,Filter);

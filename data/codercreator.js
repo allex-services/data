@@ -1,4 +1,5 @@
 function createDataCoder(execlib){
+  'use strict';
   var lib = execlib.lib,
       uid = lib.uid;
 

@@ -1,4 +1,5 @@
 function createDataObject(execlib){
+  'use strict';
   var lib = execlib.lib;
   function DataObject(prophash){
     Object.getOwnPropertyNames(prophash).forEach(this._hashToField.bind(this,prophash));

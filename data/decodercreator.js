@@ -1,4 +1,5 @@
 function createDataDecoder(execlib){
+  'use strict';
   var lib = execlib.lib,
       dataSuite = execlib.dataSuite,
       filterFactory = dataSuite.filterFactory;

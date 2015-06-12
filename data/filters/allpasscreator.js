@@ -1,4 +1,5 @@
 function createAllPassFilter(execlib,Filter){
+  'use strict';
   var lib = execlib.lib;
   function AllPass(filterdescriptor){
     Filter.call(this,filterdescriptor);

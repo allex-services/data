@@ -1,4 +1,5 @@
 function createStorageBase(execlib){
+  'use strict';
   var lib = execlib.lib,
     q = lib.q,
     Record = execlib.dataSuite.recordSuite.Record;

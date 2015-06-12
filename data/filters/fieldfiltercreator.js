@@ -1,4 +1,5 @@
 function createFieldFilter(execlib,Filter){
+  'use strict';
   var lib = execlib.lib;
   function FieldFilter(filterdescriptor){
     Filter.call(this,filterdescriptor);

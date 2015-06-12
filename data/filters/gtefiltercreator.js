@@ -1,4 +1,5 @@
 function createGTEFilter(execlib,FieldFilter){
+  'use strict';
   var lib = execlib.lib;
 
   function GTEFilter(filterdescriptor){

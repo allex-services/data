@@ -1,4 +1,5 @@
 function createServicePack(execlib){
+  'use strict';
   require('./data')(execlib); //extend execlib with dataSuite;
 
   return {

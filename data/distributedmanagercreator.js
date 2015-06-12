@@ -1,4 +1,5 @@
 function createDistributedDataManager(execlib){
+  'use strict';
   var lib = execlib.lib,
       dataSuite = execlib.dataSuite,
       StreamDistributor = dataSuite.StreamDistributor,

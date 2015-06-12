@@ -1,4 +1,5 @@
 function createExistsFilter(execlib,FieldFilter){
+  'use strict';
   var lib = execlib.lib;
 
   function ExistsFilter(filterdescriptor){

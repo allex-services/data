@@ -1,4 +1,5 @@
 function createFilter(execlib){
+  'use strict';
   function Filter(filterdescriptor){
     this.__descriptor = filterdescriptor;
   }

@@ -1,4 +1,5 @@
 function createNullStorage(execlib){
+  'use strict';
   var dataSuite = execlib.dataSuite,
       StorageBase = dataSuite.StorageBase;
   function NullStorage(recorddescriptor){

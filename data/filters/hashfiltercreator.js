@@ -1,4 +1,5 @@
 function createHashFilter(execlib,Filter){
+  'use strict';
   var lib = execlib.lib;
 
   function HashFilter(filterdescriptor){

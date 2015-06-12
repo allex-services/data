@@ -1,4 +1,5 @@
 function createEQFilter(execlib,FieldFilter){
+  'use strict';
   var lib = execlib.lib;
 
   function EQFilter(filterdescriptor){

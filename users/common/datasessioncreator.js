@@ -1,4 +1,5 @@
 function createDataSession(execlib){
+  'use strict';
   var lib = execlib.lib,
     execSuite = execlib.execSuite,
     UserSession = execSuite.UserSession,

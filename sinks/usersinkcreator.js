@@ -1,4 +1,5 @@
 function createUserSink(execlib){
+  'use strict';
   var lib = execlib.lib,
       execSuite = execlib.execSuite,
       ServiceSink = execSuite.registry.get('.').SinkMap.get('user'),

@@ -1,4 +1,5 @@
 function createRecordStorage(execlib,Record){
+  'use strict';
   var lib = execlib.lib;
   function RecordStorage(recorddescriptor){
     this.record = new Record(recorddescriptor);

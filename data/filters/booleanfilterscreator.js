@@ -1,4 +1,5 @@
 function createBooleanFilters(execlib,Filter,filterFactory){
+  'use strict';
   var lib = execlib.lib;
 
   function BooleanFilters(filterdescriptor){

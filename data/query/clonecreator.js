@@ -1,4 +1,5 @@
 function createQueryClone(execlib,QueryBase){
+  'use strict';
   var lib = execlib.lib;
   var QueryBase = execlib.dataSuite.QueryBase;
 

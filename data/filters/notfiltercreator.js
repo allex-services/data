@@ -1,4 +1,5 @@
 function createNotFilter(execlib,Filter,factory){
+  'use strict';
   var lib = execlib.lib;
   function NotFilter(filterdescriptor ){
     Filter.call(this,filterdescriptor );

@@ -1,4 +1,5 @@
 function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSessionFactory){
+  'use strict';
   var lib = execlib.lib,
       q = lib.q,
       dataSuite = execlib.dataSuite,

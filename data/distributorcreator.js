@@ -1,4 +1,5 @@
 function createDataDistributor(execlib){
+  'use strict';
   var lib = execlib.lib,
     execSuite = execlib.execSuite,
     StreamDistributor = execSuite.StreamDistributor;

@@ -1,4 +1,5 @@
 function createLTEFilter(execlib,FieldFilter){
+  'use strict';
   var lib = execlib.lib;
 
   function LTEFilter(filterdescriptor){

@@ -1,4 +1,5 @@
 function createUser(execlib,ParentUser,userSessionFactory){
+  'use strict';
   var lib = execlib.lib,
       q = lib.q,
       dataSuite = execlib.dataSuite,

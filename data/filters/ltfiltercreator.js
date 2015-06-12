@@ -1,4 +1,5 @@
 function createLTFilter(execlib,FieldFilter){
+  'use strict';
   var lib = execlib.lib;
 
   function LTFilter(filterdescriptor){

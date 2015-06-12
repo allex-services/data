@@ -1,4 +1,5 @@
 function createDataSuite(execlib){
+  'use strict';
   var execSuite = execlib.execSuite,
     dataSuite = {
       recordSuite: require('./record')(execlib)
