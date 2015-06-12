@@ -3,7 +3,7 @@ function createDataSession(execlib){
   var lib = execlib.lib,
     execSuite = execlib.execSuite,
     UserSession = execSuite.UserSession,
-    Channel = UserSession.Channel
+    Channel = UserSession.Channel,
     dataSuite = execlib.dataSuite,
     QueryClone = dataSuite.QueryClone;
 

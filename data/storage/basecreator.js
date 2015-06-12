@@ -2,7 +2,8 @@ function createStorageBase(execlib){
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
-    Record = execlib.dataSuite.recordSuite.Record;
+    dataSuite = execlib.dataSuite,
+    Record = dataSuite.recordSuite.Record;
 
   function StorageBaseEventing(){
     this.initTxnId = null;

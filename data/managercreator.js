@@ -105,7 +105,7 @@ function createDataManager(execlib){
     return d.promise;
   };
   DataManager.prototype.updateByDescriptor = function(filterdescriptor,datahash){
-    var f = filterFactory.createFromDescriptor(filterdescriptor);
+    var f = filterFactory.createFromDescriptor(filterdescriptor),
         d = lib.q.defer();
     this.update(f,datahash).done(function(res){
       d.resolve(res);
