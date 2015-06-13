@@ -53,7 +53,18 @@ function createMemoryStorage(execlib){
       record.set(updateitemname,updateitem);
     }
   }
-  MemoryStorage.prototype.processUpdate = function(defer,countobj,filter,datahash,record){
+  MemoryStorage.prototype.onUpsertSucceeded = function(defer,createdrecord){
+    defer.resolve({upserted:1});
+  };
+  MemoryStorage.prototype.processUpsert = function(defer,countobj,filter,datahash,options,record){
+    var d = q.defer();
+    this.doCreate(record,d);
+    d.done(
+      this.onUpsertSucceeded.bind(this,defer),
+      defer.reject.bind(defer)
+    );
+  };
+  MemoryStorage.prototype.processUpdate = function(defer,countobj,filter,datahash,options,record){
     if(filter.isOK(record)){
       var updatecountobj = {count:0,original:null};
       lib.traverse(datahash,this.updateFrom.bind(this,updatecountobj,record));
@@ -69,13 +80,17 @@ function createMemoryStorage(execlib){
       }
     }
   }
-  MemoryStorage.prototype.doUpdate = function(filter,datahash,defer){
+  MemoryStorage.prototype.doUpdate = function(filter,datahash,options,defer){
     if(!this.data){
       return;
     }
     var countobj = {count:0};
-    this.data.forEach(this.processUpdate.bind(this,defer,countobj,filter,datahash));
-    defer.resolve(countobj.count);
+    this.data.forEach(this.processUpdate.bind(this,defer,countobj,filter,datahash,options));
+    if(countobj.count<1 && options && options.upsert){
+      this.processUpsert(filter,datahash,options,defer);
+    }else{
+      defer.resolve({updated:countobj.count});
+    }
   };
   MemoryStorage.prototype.processDelete = function(todelete,defer,filter,record,recordindex,records){
     if(filter.isOK(record)){

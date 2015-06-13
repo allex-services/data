@@ -62,9 +62,9 @@ function createStorageBase(execlib){
       this.newRecord.fire(datahash);
     }
   };
-  StorageBaseEventing.prototype.fireUpdated = function(filter,datahash,updatecount){
-    if(updatecount){
-      this.updated.fire(filter,datahash,updatecount);
+  StorageBaseEventing.prototype.fireUpdated = function(filter,datahash,updateresult){
+    if(updateresult.updated || updateresult.upserted){
+      this.updated.fire(filter,datahash,updateresult);
     }
   };
   StorageBaseEventing.prototype.fireDeleted = function(filter,deletecount){
@@ -107,10 +107,10 @@ function createStorageBase(execlib){
     }
     return d.promise;
   };
-  StorageBase.prototype.update = function(filter,datahash){
+  StorageBase.prototype.update = function(filter,datahash,options){
     //console.log('StorageBase update',filter,datahash);
     var d = q.defer();
-    lib.runNext(this.doUpdate.bind(this,filter,datahash,d));
+    lib.runNext(this.doUpdate.bind(this,filter,datahash,options,d));
     if(this.events){
       d.promise.then(this.events.fireUpdated.bind(this.events,filter,datahash));
     }

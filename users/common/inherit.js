@@ -101,7 +101,7 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
       defer.notify.bind(defer)
     );
   };
-  ChildClass.prototype.update = function(filterdescriptor,datahash,defer){
+  ChildClass.prototype.update = function(filterdescriptor,datahash,options,defer){
     var f = filterFactory.createFromDescriptor(filterdescriptor);
     if(!f){
       var e = new lib.Error('INVALID_FILTER_DESCRIPTOR');
@@ -109,7 +109,7 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
       defer.reject(e);
       return;
     }
-    this.__service.data.update(f,datahash).done(
+    this.__service.data.update(f,datahash,options).done(
       defer.resolve.bind(defer),
       defer.reject.bind(defer),
       defer.notify.bind(defer)

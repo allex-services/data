@@ -78,9 +78,9 @@ function createDataManager(execlib){
     }
     defer.resolve(res);
   };
-  DataManager.prototype.update = function(filter,datahash){
+  DataManager.prototype.update = function(filter,datahash,options){
     var d = lib.q.defer();
-    this.storage.update(filter,datahash).done(
+    this.storage.update(filter,datahash,options).done(
       this.doNativeUpdate.bind(this,d,filter,datahash),
       this.onStorageError.bind(this),
       this.doNativeUpdateExact.bind(this,d)

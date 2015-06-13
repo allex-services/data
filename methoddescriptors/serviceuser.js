@@ -9,6 +9,9 @@ module.exports = {
   },{
     title: 'Operation descriptor',
     type: 'object'
+  },{
+    title: 'Options object',
+    type: 'object'
   }],
   delete: [{
     title: 'Filter descriptor',
