@@ -2,7 +2,7 @@ function createDataSession(execlib){
   'use strict';
   var lib = execlib.lib,
     execSuite = execlib.execSuite,
-    UserSession = execSuite.UserSession,
+    UserSession = execSuite.registry.get('.').Service.prototype.userFactory.get('user').prototype.getSessionCtor('.'),
     Channel = UserSession.Channel,
     dataSuite = execlib.dataSuite,
     QueryClone = dataSuite.QueryClone;

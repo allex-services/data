@@ -10,8 +10,8 @@ function createDataService(execlib){
     recordSuite = dataSuite.recordSuite,
     NullStorage = dataSuite.NullStorage,
     DistributedDataManager = dataSuite.DistributedDataManager,
-    DataChannel = require('./users/common/datasessioncreator')(execlib),
-    userSessionFactory = execSuite.userSessionFactoryCreator(DataChannel);
+    DataSession = require('./users/common/datasessioncreator')(execlib),
+    userSessionFactory = execSuite.userSessionFactoryCreator(DataSession);
 
   function factoryCreator(parentFactory){
     return {
