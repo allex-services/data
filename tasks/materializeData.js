@@ -58,15 +58,20 @@ function createMaterializeDataTask(execlib){
       this.initiatedListener.destroy();
     }
     this.initiatedListener = null;
+    this.onRecordDeletion = null;
     this.onDelete = null;
+    this.onRecordUpdate = null;
     this.onUpdate = null;
     this.onNewRecord = null;
+    this.onRecordCreation = null;
+    this.onInitiated = null;
     this.data = null;
     this.sink = null;
     if(this.storage){
       this.storage.destroy();
     }
     this.storage = null;
+    SinkTask.prototype.__cleanUp.call(this);
   };
   MaterializeDataTask.prototype.go = function(){
     this.storage = new MemoryStorage({
