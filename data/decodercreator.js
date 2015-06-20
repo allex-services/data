@@ -78,7 +78,7 @@ function createDataDecoder(execlib){
       console.log('NO FILTER FOR',item.d);
       this.deq();
     }else{
-      //console.log(this.storable.__id,this.storable.data,'will delete');
+      //console.log(this.storable,this.storable.delete.toString(),'will delete');
       this.storable.delete(f).then(this.deq.bind(this));
     }
   };

@@ -108,9 +108,6 @@ function createMemoryStorage(execlib){
   MemoryStorage.prototype.doDelete = function(filter,defer){
     var todelete = [], data = this.data;
     this.data.forEach(this.processDelete.bind(this,todelete,defer,filter));
-    /*
-    console.log('deleted',deletecount,'records');
-    */
     todelete.forEach(function(di){data.splice(di,1);});
     defer.resolve(todelete.length);
   };

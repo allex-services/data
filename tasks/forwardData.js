@@ -12,14 +12,14 @@ function createFollowDataTask(execlib){
   }
   ChildSinkStorage.prototype.beginInit = lib.dummyFunc;
   ChildSinkStorage.prototype.endInit = lib.dummyFunc;
-  ChildSinkStorage.prototype.create = function(item){
-    return this.sink.call('create',item);
+  ChildSinkStorage.prototype.create = function(datahash){
+    return this.sink.call('create',datahash);
   };
-  ChildSinkStorage.prototype.update = function(item){
-    return this.sink.call('update',item);
+  ChildSinkStorage.prototype.update = function(filter,datahash,options){
+    return this.sink.call('update',filter.__descriptor,datahash,options);
   };
-  ChildSinkStorage.prototype.delete = function(item){
-    return this.sink.call('delete',item);
+  ChildSinkStorage.prototype.delete = function(filter){
+    return this.sink.call('delete',filter.__descriptor);
   };
 
   function FollowDataTask(prophash){
