@@ -72,14 +72,13 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
   };
   ChildClass.prototype.attachSession = function(session){
     ParentClass.prototype.attachSession.call(this,session);
-    var c = session.addDataChannel('d'),
+    var c = session.channels.get('d'),
+      d = lib.q.defer(),
       q = new EventQ;
     this.distributor.attach(q);
-    var d = lib.q.defer();
     d.promise.done(
       this.attachChannel.bind(this,c,q),
-      function(){
-      },
+      null,
       c.onStream.bind(c)
     );
     this.__service.data.read(this,d);

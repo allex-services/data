@@ -7,8 +7,8 @@ function createDataSession(execlib){
     dataSuite = execlib.dataSuite,
     QueryClone = dataSuite.QueryClone;
 
-  function DataChannel(usersession,name){
-    Channel.call(this,usersession,name);
+  function DataChannel(usersession){
+    Channel.call(this,usersession);
     QueryClone.call(this,usersession.user);
     //QueryClone.call(this,{original:usersession.user});
   }
@@ -22,9 +22,11 @@ function createDataSession(execlib){
       return this.usersession.pagesize*this.usersession.page;
     }
   };
+  DataChannel.prototype.name = 'd';
 
   function DataSession(user,session,gate){
     UserSession.call(this,user,session,gate);
+    this.addChannel(DataChannel);
   }
   UserSession.inherit(DataSession,{
     setPaging: [{
@@ -61,9 +63,6 @@ function createDataSession(execlib){
     }
     //TODO
     defer.resolve(null);
-  };
-  DataSession.prototype.addDataChannel = function(channelname){
-    return this.addChannel(channelname,DataChannel);
   };
   return DataSession;
 }
