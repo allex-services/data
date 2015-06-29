@@ -14,17 +14,30 @@ function createMemoryStorage(execlib){
     StorageBase.prototype.destroy.call(this);
   };
   MemoryStorage.prototype.doCreate = function(record,defer){
-    if(this.__record.primaryKey){
-      var pkval = record.get(record.primaryKey);
-      if(pkval!==null){
-        if(this.checkForExistenceOnPrimaryKey(pkval)){
-          defer.reject(new lib.Error('PRIMARY_KEY_VIOLATION'));
+    try{
+    var mpk = this.__record.primaryKey;
+    if (mpk) {
+      if (lib.isArray(mpk)) {
+        var violation = this.recordViolatesComplexPrimaryKey(record);
+        if (violation) {
+          defer.reject(violation);
+          return;
+        }
+      } else {
+        var violation = this.recordViolatesSimplePrimaryKey(record);
+        if (violation) {
+          defer.reject(violation);
           return;
         }
       }
     }
     this.data.push(record);
     defer.resolve(record.clone());
+    }
+    catch(e){
+      console.error(e.stack);
+      console.error(e);
+    }
   };
   function processRead(query,defer,item){
     if(query.isOK(item)){
@@ -111,16 +124,53 @@ function createMemoryStorage(execlib){
     todelete.forEach(function(di){data.splice(di,1);});
     defer.resolve(todelete.length);
   };
-  MemoryStorage.prototype.checkForExistenceOnPrimaryKey = function(pkval){
-    var pkname = this.__record.primaryKey;
-    if(!pkname){
-      return false;
-    }
-    return this.data.some(function(record){
-      if(record.get(pkname)===pkval){
+  MemoryStorage.prototype.recordViolatesSimplePrimaryKey = function (rec) {
+    var spk = this.__record.primaryKey, spv = rec.get(spk), affectedrecord;
+    if (this.data.some(function (record) {
+      if (record.get(spk) === spv) {
+        affectedrecord = record;
         return true;
       }
-    });
+    })) {
+      var e = new lib.Error('PRIMARY_KEY_VIOLATION');
+      e.affectedrecord = affectedrecord;
+      return e;
+    }
+  };
+  MemoryStorage.prototype.recordViolatesComplexPrimaryKey = function (rec) {
+    var pknames = this.__record.primaryKey,
+      missingpkvals = [],
+      pkvals = pknames.map(function (pkn) {
+        var ret = rec.get(pkn);
+        if (ret === null) {
+          missingpkvals.push(pkn);
+        }
+        return ret;
+      }),
+      e,
+      pkcount = pknames.length,
+      affectedrecord;
+    if (missingpkvals.length){
+      e = new lib.Error('MISSING_PRIMARY_KEY_SEGMENT','Complex primary key violated at certain segments');
+      e.missing = missingpkvals;
+      return e;
+    }
+    if (this.data.some(function (record) {
+      var matchcnt = 0;
+      pknames.forEach(function (pkn, pknind) {
+        if (record.get(pkn) === pkvals[pknind]){
+          matchcnt++;
+        }
+      });
+      if (matchcnt===pkcount) {
+        affectedrecord = record;
+        return true;
+      }
+    })) {
+      e = new lib.Error('PRIMARY_KEY_VIOLATION');
+      e.affectedrecord = affectedrecord;
+      return e;
+    }
   };
   return MemoryStorage;
 }

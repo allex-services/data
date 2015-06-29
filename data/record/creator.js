@@ -102,7 +102,15 @@ function createRecord(execlib){
   };
   Record.prototype.updatingFilterDescriptorFor = function(datahash){
     if(this.primaryKey){
-      return {op:'eq',field:this.primaryKey,value:datahash[this.primaryKey]};
+      if(lib.isArray(this.primaryKey)){
+        var ret = {op: 'and', filters : this.primaryKey.map(function(pkfield){
+          return {
+            op: 'eq', field: pkfield, value:datahash[pkfield]
+          };
+        })};
+      }else{
+        return {op:'eq',field:this.primaryKey,value:datahash[this.primaryKey]};
+      }
     }else{
       return {op:'hash',d:this.filterObject(record)};
     }
