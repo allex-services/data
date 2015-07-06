@@ -2,6 +2,7 @@ function createDataSuite(execlib){
   'use strict';
   var execSuite = execlib.execSuite,
     dataSuite = {
+      storageRegistry: new execSuite.RegistryBase(),
       recordSuite: require('./record')(execlib)
     };
     execlib.dataSuite = dataSuite;

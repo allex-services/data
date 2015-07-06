@@ -22,7 +22,10 @@ function createDataService(execlib){
 
   function DataService(prophash){
     ParentService.call(this,prophash);
-    this.data = new DistributedDataManager(this.createStorage(this.storageDescriptor),{});
+    this.data = null;
+    this.createStorageAsync(prophash).done(
+      this.createData.bind(this, prophash)
+    );
   }
   ParentService.inherit(DataService,factoryCreator);
   DataService.prototype.storageDescriptor = {record:{fields:[]}};
@@ -30,6 +33,30 @@ function createDataService(execlib){
   DataService.inherit = function(childCtor,factoryProducer,childStorageDescriptor){
     dsio.call(this,childCtor,factoryProducer);
     childCtor.prototype.storageDescriptor = dataSuite.inherit(this.prototype.storageDescriptor,childStorageDescriptor);
+  };
+  DataService.prototype.__cleanUp = function () {
+    if(this.data){
+      this.data.destroy();
+    }
+    this.data = null;
+    ParentService.prototype.__cleanUp.call(this);
+  };
+  DataService.prototype.createData = function (prophash,storageinstance) {
+    this.data = new DistributedDataManager(storageinstance,{});
+    this.users.traverse(function(user){
+      user.notifyServiceData();
+      //data.distributor.attach(user);
+    });
+  };
+  DataService.prototype.createStorageAsync = function (prophash){
+    var d;
+    if(prophash && prophash.storage && prophash.storage.modulename){
+      prophash.storage.propertyhash.record = this.storageDescriptor.record;
+      return dataSuite.storageRegistry.spawn(prophash.storage.modulename,prophash.storage.propertyhash);
+    }
+    d = q.defer();
+    d.resolve(this.createStorage(this.storageDescriptor));
+    return d.promise;
   };
   DataService.prototype.createStorage = function(recorddescriptor){
     return new NullStorage(recorddescriptor);

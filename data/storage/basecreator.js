@@ -77,7 +77,6 @@ function createStorageBase(execlib){
     if(!(storagedescriptor && storagedescriptor.record)){
       console.trace();
       console.log("No storagedescriptor.record!");
-      process.exit(0);
     }
     this.__record = new Record(storagedescriptor.record);
     this.events = storagedescriptor.events ? new StorageBaseEventing : null;

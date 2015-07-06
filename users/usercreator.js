@@ -10,6 +10,9 @@ function createUser(execlib,ParentUser,userSessionFactory){
 
   ParentUser = ParentUser||_User;
   function User(prophash){
+    this.distributor = null;
+    this._filter = null;
+    this._sessionsToAttach = new lib.Fifo();
     this.constructSelf(prophash);
   }
   require('./common/inherit')(execlib,User,ParentUser,require('../methoddescriptors/user'),userSessionFactory);
