@@ -11,6 +11,9 @@ function createServicePack(execlib){
     },{
       name: 'forwardData',
       klass: require('./tasks/forwardData')(execlib)
+    },{
+      name: 'readFromDataSink',
+      klass: require('./tasks/readFromDataSink')(execlib)
     }]
   };
 }
