@@ -1,13 +1,7 @@
-function createServicePack(execlib){
+function createClientSide(execlib) {
   'use strict';
-  var ret = require('./clientside')(execlib);
-  ret.Service = require('./servicecreator')(execlib);
-
-  return ret;
-
-/*
+  require('./data')(execlib); //extend execlib with dataSuite;
   return {
-    Service: require('./servicecreator')(execlib),
     SinkMap: require('./sinkmapcreator')(execlib),
     Tasks: [{
       name: 'materializeData',
@@ -20,7 +14,6 @@ function createServicePack(execlib){
       klass: require('./tasks/readFromDataSink')(execlib)
     }]
   };
-  */
 }
 
-module.exports = createServicePack;
+module.exports = createClientSide;
