@@ -1,10 +1,10 @@
 function createSuite(execlib){
   'use strict';
-  var suite = {},
-    utils = require('./utils')(execlib,suite),
-    Record = require('./creator')(execlib);
 
-  suite.Record = Record;
+  var suite = {};
+  require('./utils')(execlib,suite);
+
+  suite.Record = require('./creator')(execlib);
   
   return suite;
 };

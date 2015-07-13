@@ -1,6 +1,7 @@
 function createServicePack(execlib){
   'use strict';
   var ret = require('./clientside')(execlib);
+  require('./data/serversideindex')(execlib);
   ret.Service = require('./servicecreator')(execlib);
 
   return ret;
