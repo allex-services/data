@@ -1,4 +1,9 @@
 {
+  "js" : {
+    "all":{
+      "src/index.js"
+    }
+  },
   "browserify": {
     "dist/browserified.js":"../browserify.js"
   },
