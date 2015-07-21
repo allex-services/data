@@ -1,7 +1,8 @@
 {
   "js" : {
     "all":[
-      "src/index.js"
+      "src/index.js",
+      "src/grid.js"
     ]
   },
   "browserify": {
@@ -10,5 +11,10 @@
   "protoboard": {
     "role":"web_component",
     "public_dirs": ["dist"]
+  },
+  "bower": {
+    "requires": {
+      "angular-ui-grid": "~3.0.1"
+    }
   }
 }

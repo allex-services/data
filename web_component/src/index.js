@@ -1,2 +1,2 @@
 (function (module, lib, allex) {
-})(angular.module('allex_data', ['allex.lib']), ALLEX.lib, ALLEX);
+})(angular.module('allex.data', ['allex.lib', 'ui.grid']), ALLEX.lib, ALLEX);
