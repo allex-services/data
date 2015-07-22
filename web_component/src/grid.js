@@ -42,12 +42,21 @@
   }]);
 
 
+  module.directive('allexDataGridAutoResize', [function () {
+    return {
+      restrict:'E',
+      transclude:true,
+      replace:true,
+      template: '<div class="allexdatagrid"><div class="grid_container" ui-grid="_ctrl.gridOptions" ui-grid-auto-resize></div></div>'
+    };
+  }]);
+
   module.directive('allexDataGrid', [function () {
     return {
       restrict: 'E',
       transclude:true,
       replace:true,
-      template: '<div class="allexdatagrid"><div class="grid_container" ui-grid="_ctrl.gridOptions"></div></div>',
+      template: '<div class="allexdatagrid"><div class="grid_container" ui-grid="_ctrl.gridOptions"></div></div>'
     };
   }]);
 

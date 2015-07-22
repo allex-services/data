@@ -1,5 +1,5 @@
 (function (module, lib, allex) {
-})(angular.module('allex.data', ['allex.lib', 'ui.grid']), ALLEX.lib, ALLEX);
+})(angular.module('allex.data', ['allex.lib', 'ui.grid','ui.grid.autoResize']), ALLEX.lib, ALLEX);
 //samo da te vidim
 (function (module, lib, allex) {
 
@@ -45,12 +45,21 @@
   }]);
 
 
+  module.directive('allexDataGridAutoResize', [function () {
+    return {
+      restrict:'E',
+      transclude:true,
+      replace:true,
+      template: '<div class="allexdatagrid"><div class="grid_container" ui-grid="_ctrl.gridOptions" ui-grid-auto-resize></div></div>'
+    };
+  }]);
+
   module.directive('allexDataGrid', [function () {
     return {
       restrict: 'E',
       transclude:true,
       replace:true,
-      template: '<div class="allexdatagrid"><div class="grid_container" ui-grid="_ctrl.gridOptions"></div></div>',
+      template: '<div class="allexdatagrid"><div class="grid_container" ui-grid="_ctrl.gridOptions"></div></div>'
     };
   }]);
 
