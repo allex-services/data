@@ -1,8 +1,33 @@
 (function (module, lib, allex) {
 
   module.factory('allex.data.TreeMixIn', ['allex.data.DataMonitorMixIn', function(DataMonitorMixIn) {
+    var DEFAULT_TREE_CONFIG = {
+      core : {
+        multiple : false,
+        animation: true,
+        error : function(error) {
+          log.error('treeCtrl: error from js tree - ' + angular.toJson(error));
+        },
+        check_callback : true,
+        worker : true
+      },
+      types : {
+        default : {
+          icon : 'glyphicon glyphicon-flash'
+        },
+        star : {
+          icon : 'glyphicon glyphicon-star'
+        },
+        cloud : {
+          icon : 'glyphicon glyphicon-cloud'
+        }
+      },
+      version : 1,
+      plugins : ['types','checkbox']
+    };
+
     function TreeMixIn ($scope, config, subsinkPath) {
-      this.treeConfig = config|| {};
+      this.treeConfig = angular.extend({}, DEFAULT_TREE_CONFIG, config);
       this.treeInstance = null;
       this.treeData = null;
 

@@ -24,6 +24,7 @@
 
     DataMonitorMixIn.prototype.set_subsink = function (subsink) {
       this.subsink = subsink;
+      console.log('SAMO DA VIDIM ...', subsink.data);
       ///hoce li mi ovaj reci destroyed? mislim da ne i da nema potrebe, samo ce da se zanovi valjda
       this.$apply();
     };
@@ -40,8 +41,14 @@
   }]);
 
   module.factory ('allex.data.GridMixIn', ['allex.data.DataMonitorMixIn', function (DataMonitorMixIn) {
+
+    var DEFAULT_GRID_OPTIONS = {
+      enableSorting:false,
+      minimumColumnSize: 150 ///not working at the moment ...
+    };
+
     function AllexDataGridMixIn ($scope, gridOptions, subsinkPath) {
-      this.gridOptions = gridOptions || {};
+      this.gridOptions = angular.extend({}, DEFAULT_GRID_OPTIONS, gridOptions);
       this.gridOptions.data = "_ctrl.subsink.data";
       DataMonitorMixIn.call(this, $scope, subsinkPath);
     }
@@ -80,8 +87,33 @@
 (function (module, lib, allex) {
 
   module.factory('allex.data.TreeMixIn', ['allex.data.DataMonitorMixIn', function(DataMonitorMixIn) {
+    var DEFAULT_TREE_CONFIG = {
+      core : {
+        multiple : false,
+        animation: true,
+        error : function(error) {
+          log.error('treeCtrl: error from js tree - ' + angular.toJson(error));
+        },
+        check_callback : true,
+        worker : true
+      },
+      types : {
+        default : {
+          icon : 'glyphicon glyphicon-flash'
+        },
+        star : {
+          icon : 'glyphicon glyphicon-star'
+        },
+        cloud : {
+          icon : 'glyphicon glyphicon-cloud'
+        }
+      },
+      version : 1,
+      plugins : ['types','checkbox']
+    };
+
     function TreeMixIn ($scope, config, subsinkPath) {
-      this.treeConfig = config|| {};
+      this.treeConfig = angular.extend({}, DEFAULT_TREE_CONFIG, config);
       this.treeInstance = null;
       this.treeData = null;
 
@@ -97,7 +129,7 @@
 
     TreeMixIn.addMethods = function (extended) {
       lib.inheritMethods(extended, DataMonitorMixIn, 'set_subsink', 'get_data', '_ad_usr_stateChanged');
-      lib.inheritMethods(extended, TreeMixIn, '_onTreeReady', '_onTreeNodeCreated');
+      lib.inheritMethods(extended, TreeMixIn, '_onTreeReady', '_onTreeNodeCreated', '_reprocessStructure');
     };
 
     TreeMixIn.prototype._onTreeReady = function () {
@@ -107,6 +139,10 @@
       ///override if you need
     };
 
+    TreeMixIn.prototype._reprocessStructure = function () {
+      ///SHOULD DO REPROCESSING PART UPON FETCHED DATA ....
+    };
+
     return TreeMixIn;
   }]);
 
@@ -114,10 +150,7 @@
     return {
       restrict: 'E',
       replace: true,
-      template: '<div js-tree="_ctrl.treeConfig", ng-model="_ctrl.treeData" tree="_ctrl.treeInstance" tree-events="ready:_ctrl._onTreeReady; create_node:_ctrl._onTreeNodeCreated"></div>',
-      link: function () {
-        console.log('SAMO DA TE VIDIM ...');
-      }
+      template: '<div js-tree="_ctrl.treeConfig", ng-model="_ctrl.treeData" tree="_ctrl.treeInstance" tree-events="ready:_ctrl._onTreeReady; create_node:_ctrl._onTreeNodeCreated"></div>'
     };
   });
 

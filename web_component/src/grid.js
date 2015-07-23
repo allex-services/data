@@ -21,7 +21,6 @@
 
     DataMonitorMixIn.prototype.set_subsink = function (subsink) {
       this.subsink = subsink;
-      ///hoce li mi ovaj reci destroyed? mislim da ne i da nema potrebe, samo ce da se zanovi valjda
       this.$apply();
     };
 
@@ -37,8 +36,14 @@
   }]);
 
   module.factory ('allex.data.GridMixIn', ['allex.data.DataMonitorMixIn', function (DataMonitorMixIn) {
+
+    var DEFAULT_GRID_OPTIONS = {
+      enableSorting:false,
+      minimumColumnSize: 150 ///not working at the moment ...
+    };
+
     function AllexDataGridMixIn ($scope, gridOptions, subsinkPath) {
-      this.gridOptions = gridOptions || {};
+      this.gridOptions = angular.extend({}, DEFAULT_GRID_OPTIONS, gridOptions);
       this.gridOptions.data = "_ctrl.subsink.data";
       DataMonitorMixIn.call(this, $scope, subsinkPath);
     }
