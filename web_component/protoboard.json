@@ -2,7 +2,8 @@
   "js" : {
     "all":[
       "src/index.js",
-      "src/grid.js"
+      "src/grid.js",
+      "src/tree.js"
     ]
   },
   "browserify": {
