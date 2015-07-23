@@ -18,7 +18,7 @@
 
     TreeMixIn.addMethods = function (extended) {
       lib.inheritMethods(extended, DataMonitorMixIn, 'set_subsink', 'get_data', '_ad_usr_stateChanged');
-      lib.inheritMethods(extended, TreeMixIn, '_onTreeReady', '_onTreeNodeCreated');
+      lib.inheritMethods(extended, TreeMixIn, '_onTreeReady', '_onTreeNodeCreated', '_reprocessStructure');
     };
 
     TreeMixIn.prototype._onTreeReady = function () {
@@ -26,6 +26,10 @@
     };
     TreeMixIn.prototype._onTreeNodeCreated = function () {
       ///override if you need
+    };
+
+    TreeMixIn.prototype._reprocessStructure = function () {
+      ///SHOULD DO REPROCESSING PART UPON FETCHED DATA ....
     };
 
     return TreeMixIn;
