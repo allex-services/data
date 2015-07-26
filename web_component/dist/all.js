@@ -24,8 +24,6 @@
 
     DataMonitorMixIn.prototype.set_subsink = function (subsink) {
       this.subsink = subsink;
-      console.log('SAMO DA VIDIM ...', subsink.data);
-      ///hoce li mi ovaj reci destroyed? mislim da ne i da nema potrebe, samo ce da se zanovi valjda
       this.$apply();
     };
 
