@@ -22,12 +22,10 @@
     };
 
     DataMonitorMixIn.prototype._ad_usr_stateChanged = function (state) {
-      console.log('===============>>>', this.subsink);
       this.set_subsink(this.get('user').getSubSink(this.subsinkPath));
     };
 
     DataMonitorMixIn.prototype.set_subsink = function (subsink) {
-      console.log('SAAAAAAAAAAAAAMO DA TE VIDIM ....');
       this.data = subsink.data;
       subsink.monitorDataForGui(this.$apply.bind(this));
       this.$apply();
@@ -82,10 +80,11 @@
     };
   }]);
 
-  console.log('BLA');
 })(angular.module('allex.data'), ALLEX.lib, ALLEX);
 //samo da te vidim
 (function (module, lib, allex) {
+
+  ///TODO: aj sad poteci, malo prepakuj nesto ;)
 
   module.factory('allex.data.TreeMixIn', ['allex.data.DataMonitorMixIn', function(DataMonitorMixIn) {
     var DEFAULT_TREE_CONFIG = {

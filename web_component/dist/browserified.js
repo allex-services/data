@@ -22,7 +22,7 @@ function createClientSide(execlib) {
 
 module.exports = createClientSide;
 
-},{"./data":20,"./sinkmapcreator":35,"./tasks/forwardData":38,"./tasks/materializeData":39,"./tasks/readFromDataSink":41}],3:[function(require,module,exports){
+},{"./data":20,"./sinkmapcreator":36,"./tasks/forwardData":40,"./tasks/materializeData":41,"./tasks/readFromDataSink":43}],3:[function(require,module,exports){
 function createDataCoder(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1679,18 +1679,21 @@ module.exports = {
 },{}],34:[function(require,module,exports){
 arguments[4][33][0].apply(exports,arguments)
 },{"dup":33}],35:[function(require,module,exports){
+arguments[4][33][0].apply(exports,arguments)
+},{"dup":33}],36:[function(require,module,exports){
 function sinkMapCreator(execlib){
   'use strict';
   var sinkmap = new (execlib.lib.Map);
   sinkmap.add('service',require('./sinks/servicesinkcreator')(execlib));
   sinkmap.add('user',require('./sinks/usersinkcreator')(execlib));
+  sinkmap.add('writer',require('./sinks/writersinkcreator')(execlib));
   
   return sinkmap;
 }
 
 module.exports = sinkMapCreator;
 
-},{"./sinks/servicesinkcreator":36,"./sinks/usersinkcreator":37}],36:[function(require,module,exports){
+},{"./sinks/servicesinkcreator":37,"./sinks/usersinkcreator":38,"./sinks/writersinkcreator":39}],37:[function(require,module,exports){
 function createServiceSink(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1709,7 +1712,7 @@ function createServiceSink(execlib){
 
 module.exports = createServiceSink;
 
-},{"../methoddescriptors/serviceuser":33}],37:[function(require,module,exports){
+},{"../methoddescriptors/serviceuser":33}],38:[function(require,module,exports){
 function createUserSink(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1728,7 +1731,26 @@ function createUserSink(execlib){
 
 module.exports = createUserSink;
 
-},{"../methoddescriptors/user":34}],38:[function(require,module,exports){
+},{"../methoddescriptors/user":34}],39:[function(require,module,exports){
+function createWriterSink(execlib){
+  'use strict';
+  var lib = execlib.lib,
+      execSuite = execlib.execSuite,
+      ServiceSink = execSuite.registry.get('.').SinkMap.get('user'),
+      recordSuite = execlib.dataSuite.recordSuite;
+
+  function WriterSink(prophash,client){
+    ServiceSink.call(this,prophash,client);
+  }
+  ServiceSink.inherit(WriterSink,require('../methoddescriptors/writeruser'));
+  WriterSink.inherit = recordSuite.sinkInheritProc;
+  WriterSink.prototype.visibleFields = [];
+  return WriterSink;
+}
+
+module.exports = createWriterSink;
+
+},{"../methoddescriptors/writeruser":35}],40:[function(require,module,exports){
 function createFollowDataTask(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1778,7 +1800,7 @@ function createFollowDataTask(execlib){
 
 module.exports = createFollowDataTask;
 
-},{}],39:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 function createMaterializeDataTask(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1888,7 +1910,7 @@ function createMaterializeDataTask(execlib){
 
 module.exports = createMaterializeDataTask;
 
-},{}],40:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 function createReadFromSinkProc (execlib, prophash) {
   'use strict';
   var data = [],
@@ -1952,7 +1974,7 @@ function createReadFromSinkProc (execlib, prophash) {
 
 module.exports = createReadFromSinkProc;
 
-},{}],41:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 function createReadFromDataSink(execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -2006,4 +2028,4 @@ function createReadFromDataSink(execlib) {
 
 module.exports = createReadFromDataSink;
 
-},{"./proc/readFromSink":40}]},{},[1]);
+},{"./proc/readFromSink":42}]},{},[1]);
