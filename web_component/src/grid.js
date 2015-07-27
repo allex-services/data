@@ -4,28 +4,28 @@
     function DataMonitorMixIn ($scope, subsinkPath) {
       UserDependentMixIn.call(this, $scope);
       this.subsinkPath = subsinkPath;
-      this.subsink = null;
+      this.data = null;
       this._ad_usr_state_l= this.get('user').attachListener('state', this._ad_usr_stateChanged.bind(this));
+      this._mgl = null;
     }
 
     DataMonitorMixIn.prototype.__cleanUp = function () {
       this._ad_usr_state_l.destroy();
       this._ad_usr_state_l = null;
       this.subsinkPath = null;
-      this.subsink = null;
+      this.data = null;
+      this._mgl.destroy();
+      this._mgl = null;
     };
 
     DataMonitorMixIn.prototype._ad_usr_stateChanged = function (state) {
-      this.set('subsink', this.get('user').getSubSink(this.subsinkPath));
+      this.set_subsink(this.get('user').getSubSink(this.subsinkPath));
     };
 
     DataMonitorMixIn.prototype.set_subsink = function (subsink) {
-      this.subsink = subsink;
+      this.data = subsink.data;
+      subsink.monitorDataForGui(this.$apply.bind(this));
       this.$apply();
-    };
-
-    DataMonitorMixIn.prototype.get_data = function () {
-      return this.subsink ? this.subsink.data : null;
     };
 
     DataMonitorMixIn.addMethods = function (extendedClass) {
@@ -44,7 +44,7 @@
 
     function AllexDataGridMixIn ($scope, gridOptions, subsinkPath) {
       this.gridOptions = angular.extend({}, DEFAULT_GRID_OPTIONS, gridOptions);
-      this.gridOptions.data = "_ctrl.subsink.data";
+      this.gridOptions.data = "_ctrl.data";
       DataMonitorMixIn.call(this, $scope, subsinkPath);
     }
 

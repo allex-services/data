@@ -1,5 +1,7 @@
 (function (module, lib, allex) {
 
+  ///TODO: aj sad poteci, malo prepakuj nesto ;)
+
   module.factory('allex.data.TreeMixIn', ['allex.data.DataMonitorMixIn', function(DataMonitorMixIn) {
     var DEFAULT_TREE_CONFIG = {
       core : {
