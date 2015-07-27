@@ -23,8 +23,12 @@
     };
 
     DataMonitorMixIn.prototype.set_subsink = function (subsink) {
-      this.data = subsink.data;
-      subsink.monitorDataForGui(this.$apply.bind(this));
+      if (subsink) {
+        this.data = subsink.data;
+        subsink.monitorDataForGui(this.$apply.bind(this));
+      }else{
+        this.data = null;
+      }
       this.$apply();
     };
 
