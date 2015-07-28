@@ -25,29 +25,26 @@
       if (subsink) {
         this.data = subsink.data;
         this._mgl = subsink.monitorDataForGui(this.$apply.bind(this));
+        this.set('record_descriptor', subsink.sink.recordDescriptor);
       }
-
-      /*
-      DONT YOU EVER AGAIN DO SOMETHING LIKE THIS ... changing reference in the scope on the fly was neve a good thing ...
-      else{
-        this.data = null;
-      }
-      */
       this.$apply();
+    };
+    DataMonitorMixIn.prototype.set_record_descriptor = function () {
     };
 
     DataMonitorMixIn.addMethods = function (extendedClass) {
-      lib.inheritMethods (extendedClass, DataMonitorMixIn, 'set_subsink', 'get_data', '_ad_usr_stateChanged');
+      lib.inheritMethods (extendedClass, DataMonitorMixIn, 'set_subsink', 'get_data', '_ad_usr_stateChanged', 'set_record_descriptor');
     };
 
     return DataMonitorMixIn;
   }]);
 
+
 })(angular.module('allex.data', ['allex.lib', 'ui.grid','ui.grid.autoResize']), ALLEX.lib, ALLEX);
 //samo da te vidim
 (function (module, lib, allex) {
 
-  module.factory ('allex.data.GridMixIn', ['allex.data.DataMonitorMixIn', function (DataMonitorMixIn) {
+  module.factory ('allex.data.GridMixIn', ['allex.data.DataMonitorMixIn', '$compile', function (DataMonitorMixIn, $compile) {
 
     var DEFAULT_GRID_OPTIONS = {
       enableSorting:false,
@@ -57,27 +54,55 @@
     function AllexDataGridMixIn ($scope, gridOptions, subsinkPath) {
       this.gridOptions = angular.extend({}, DEFAULT_GRID_OPTIONS, gridOptions);
       this.gridOptions.data = "_ctrl.data";
+      this.renderer = '<div class="grid_container" ui-grid="_ctrl.gridOptions"></div>';
+      this.autoresize = null;
+      this._ready = false;
       DataMonitorMixIn.call(this, $scope, subsinkPath);
     }
 
     AllexDataGridMixIn.prototype.__cleanUp = function () {
+      this.renderer = null;
+      this.autoresize = null;
       this.gridOptions = null;
+      this._ready = null;
+      DataMonitorMixIn.prototype.__cleanUp.call(this);
     };
 
     AllexDataGridMixIn.addMethods = function (extendedClass) {
       DataMonitorMixIn.addMethods(extendedClass);
+      lib.inheritMethods(extendedClass, AllexDataGridMixIn, 'set_el', '_doRender', 'set_record_descriptor', 'set_auto_resize');
     };
+    AllexDataGridMixIn.prototype.set_auto_resize = function (ar) {
+      this.autoresize = ar;
+      this._doRender();
+    };
+
+    AllexDataGridMixIn.prototype.set_el = function (el) {
+      this.el = el;
+      this._doRender();
+    };
+
+    AllexDataGridMixIn.prototype.set_record_descriptor = function (rd) {
+      this.gridOptions.columnDefs = this.produceColumnDefs(rd);
+      this._ready = true;
+      this._doRender();
+    };
+
+    AllexDataGridMixIn.prototype._doRender = function () {
+      if (!(this._ready && this.el)) return;
+      this.el.empty();
+      var $ap = $(this.renderer);
+      if (this.autoresize) {
+        $ap.attr('ui-grid-auto-resize' ,'');
+      }
+      this.el.append($ap);
+      $compile(this.el.contents())(this.scope);
+    };
+
+
+
+
     return AllexDataGridMixIn;
-  }]);
-
-
-  module.directive('allexDataGridAutoResize', [function () {
-    return {
-      restrict:'E',
-      transclude:true,
-      replace:true,
-      template: '<div class="allexdatagrid"><div class="grid_container" ui-grid="_ctrl.gridOptions" ui-grid-auto-resize></div></div>'
-    };
   }]);
 
   module.directive('allexDataGrid', [function () {
@@ -85,7 +110,10 @@
       restrict: 'E',
       transclude:true,
       replace:true,
-      template: '<div class="allexdatagrid"><div class="grid_container" ui-grid="_ctrl.gridOptions"></div></div>'
+      template: '<div class="allexdatagrid"></div>',
+      link:function (scope, el) {
+        scope._ctrl.set('el', el);
+      }
     };
   }]);
 
@@ -137,7 +165,7 @@
     };
 
     TreeMixIn.addMethods = function (extended) {
-      lib.inheritMethods(extended, DataMonitorMixIn, 'set_subsink', 'get_data', '_ad_usr_stateChanged');
+      DataMonitorMixIn.addMethods(extended);
       lib.inheritMethods(extended, TreeMixIn, '_onTreeReady', '_onTreeNodeCreated', '_reprocessStructure');
     };
 

@@ -44,7 +44,7 @@
     };
 
     TreeMixIn.addMethods = function (extended) {
-      lib.inheritMethods(extended, DataMonitorMixIn, 'set_subsink', 'get_data', '_ad_usr_stateChanged');
+      DataMonitorMixIn.addMethods(extended);
       lib.inheritMethods(extended, TreeMixIn, '_onTreeReady', '_onTreeNodeCreated', '_reprocessStructure');
     };
 

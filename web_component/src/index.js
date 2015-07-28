@@ -25,22 +25,19 @@
       if (subsink) {
         this.data = subsink.data;
         this._mgl = subsink.monitorDataForGui(this.$apply.bind(this));
+        this.set('record_descriptor', subsink.sink.recordDescriptor);
       }
-
-      /*
-      DONT YOU EVER AGAIN DO SOMETHING LIKE THIS ... changing reference in the scope on the fly was neve a good thing ...
-      else{
-        this.data = null;
-      }
-      */
       this.$apply();
+    };
+    DataMonitorMixIn.prototype.set_record_descriptor = function () {
     };
 
     DataMonitorMixIn.addMethods = function (extendedClass) {
-      lib.inheritMethods (extendedClass, DataMonitorMixIn, 'set_subsink', 'get_data', '_ad_usr_stateChanged');
+      lib.inheritMethods (extendedClass, DataMonitorMixIn, 'set_subsink', 'get_data', '_ad_usr_stateChanged', 'set_record_descriptor');
     };
 
     return DataMonitorMixIn;
   }]);
+
 
 })(angular.module('allex.data', ['allex.lib', 'ui.grid','ui.grid.autoResize']), ALLEX.lib, ALLEX);
