@@ -1,8 +1,4 @@
 (function (module, lib, allex) {
-})(angular.module('allex.data', ['allex.lib', 'ui.grid','ui.grid.autoResize']), ALLEX.lib, ALLEX);
-//samo da te vidim
-(function (module, lib, allex) {
-
   module.factory('allex.data.DataMonitorMixIn', ['allex.lib.UserDependentMixIn', function (UserDependentMixIn) {
     function DataMonitorMixIn ($scope, subsinkPath) {
       UserDependentMixIn.call(this, $scope);
@@ -17,7 +13,7 @@
       this._ad_usr_state_l = null;
       this.subsinkPath = null;
       this.data = null;
-      this._mgl.destroy();
+      if (this._mgl) this._mgl.destroy();
       this._mgl = null;
     };
 
@@ -28,10 +24,15 @@
     DataMonitorMixIn.prototype.set_subsink = function (subsink) {
       if (subsink) {
         this.data = subsink.data;
-        subsink.monitorDataForGui(this.$apply.bind(this));
-      }else{
+        this._mgl = subsink.monitorDataForGui(this.$apply.bind(this));
+      }
+
+      /*
+      DONT YOU EVER AGAIN DO SOMETHING LIKE THIS ... changing reference in the scope on the fly was neve a good thing ...
+      else{
         this.data = null;
       }
+      */
       this.$apply();
     };
 
@@ -41,6 +42,10 @@
 
     return DataMonitorMixIn;
   }]);
+
+})(angular.module('allex.data', ['allex.lib', 'ui.grid','ui.grid.autoResize']), ALLEX.lib, ALLEX);
+//samo da te vidim
+(function (module, lib, allex) {
 
   module.factory ('allex.data.GridMixIn', ['allex.data.DataMonitorMixIn', function (DataMonitorMixIn) {
 
