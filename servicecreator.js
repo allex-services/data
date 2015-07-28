@@ -47,10 +47,6 @@ function createDataService(execlib){
   };
   DataService.prototype.createData = function (prophash,storageinstance) {
     this.data = new DistributedDataManager(storageinstance,{});
-    this.users.traverse(function(user){
-      user.notifyServiceData();
-      //data.distributor.attach(user);
-    });
     if (this.readyToAcceptUsersDefer) {
       this.readyToAcceptUsersDefer.resolve(true);
     }

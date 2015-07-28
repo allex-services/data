@@ -44,10 +44,6 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
   ChildClass.inherit = recordSuite.userInheritProc;
   ChildClass.prototype.visibleFields = [];
   ChildClass.prototype.__cleanUp = function(){
-    if (this._sessionsToAttach) {
-      this._sessionsToAttach.destroy();
-    }
-    this._sessionsToAttach = null;
     if (this._filter) {
       this._filter.destroy();
     }
@@ -64,31 +60,19 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
     QueryBase.call(this,this.__service.storageDescriptor.record,this.visibleFields);
     this.distributor = new DataStreamDistributor;
     this._filter = filterFactory.createFromDescriptor(prophash.filter);
-    if(this.__service.data){
-      this.__service.data.distributor.attach(this);
-    }
+    this.__service.data.distributor.attach(this);
   };
   ChildClass.prototype.filter = function(){
     return this._filter;
   };
   ChildClass.prototype.limit = lib.dummyFunc;
   ChildClass.prototype.offset = lib.dummyFunc;
-  ChildClass.prototype.notifyServiceData = function () {
-    this.__service.data.distributor.attach(this);
-    while (this._sessionsToAttach.length) {
-      this.attachSession(this._sessionsToAttach.pop());
-    }
-  };
   ChildClass.prototype.attachChannel = function(channel,eventq){
     eventq.dumpTo(channel);
     eventq.destroy();
     this.distributor.attach(channel);
   };
   ChildClass.prototype.attachSession = function(session){
-    if(!this.__service.data){
-      this._sessionsToAttach.push(session);
-      return;
-    }
     ParentClass.prototype.attachSession.call(this,session);
     var c = session.channels.get('d'),
       d = lib.q.defer(),
