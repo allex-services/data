@@ -42,12 +42,18 @@ function createDataService(execlib){
     this.data = null;
     ParentService.prototype.__cleanUp.call(this);
   };
+  DataService.prototype.isInitiallyReady = function (prophash) {
+    return !(prophash && prophash.storage && prophash.storage.modulename);
+  };
   DataService.prototype.createData = function (prophash,storageinstance) {
     this.data = new DistributedDataManager(storageinstance,{});
     this.users.traverse(function(user){
       user.notifyServiceData();
       //data.distributor.attach(user);
     });
+    if (this.readyToAcceptUsersDefer) {
+      this.readyToAcceptUsersDefer.resolve(true);
+    }
   };
   DataService.prototype.createStorageAsync = function (prophash){
     var d;
