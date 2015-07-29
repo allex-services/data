@@ -2,7 +2,7 @@
   module.factory('allex.data.DataMonitorMixIn', ['allex.lib.UserDependentMixIn', function (UserDependentMixIn) {
     function DataMonitorMixIn ($scope, subsinkPath) {
       UserDependentMixIn.call(this, $scope);
-      this.subsinkPath = subsinkPath;
+      this.subsinkPath = subsinkPath || null;
       this.data = null;
       this._ad_usr_state_l= this.get('user').attachListener('state', this._ad_usr_stateChanged.bind(this));
       this._mgl = null;
@@ -17,8 +17,17 @@
       this._mgl = null;
     };
 
+    DataMonitorMixIn.prototype._attach_subsink = function () {
+      if (!this.get('subsinkPath')) return;
+      this.set_subsink(this.get('user').getSubSink(this.get('subsinkPath')));
+    };
+
     DataMonitorMixIn.prototype._ad_usr_stateChanged = function (state) {
-      this.set_subsink(this.get('user').getSubSink(this.subsinkPath));
+      this._attach_subsink();
+    };
+
+    DataMonitorMixIn.prototype.set_subsinksPath = function () {
+      this._attach_subsink();
     };
 
     DataMonitorMixIn.prototype.set_subsink = function (subsink) {
@@ -33,7 +42,7 @@
     };
 
     DataMonitorMixIn.addMethods = function (extendedClass) {
-      lib.inheritMethods (extendedClass, DataMonitorMixIn, 'set_subsink', 'get_data', '_ad_usr_stateChanged', 'set_record_descriptor');
+      lib.inheritMethods (extendedClass, DataMonitorMixIn, 'set_subsink', 'get_data', '_ad_usr_stateChanged', 'set_record_descriptor', 'set_subsinksPath', '_attach_subsink');
     };
 
     return DataMonitorMixIn;
