@@ -1,4 +1,6 @@
 (function (module, lib, allex) {
+
+  ///OVO TREBA MOZDA RAZBUCATI ....
   module.factory('allex.data.DataMonitorMixIn', ['allex.lib.UserDependentMixIn', function (UserDependentMixIn) {
     function DataMonitorMixIn ($scope, subsinkPath) {
       UserDependentMixIn.call(this, $scope);

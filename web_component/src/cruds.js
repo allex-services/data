@@ -1,12 +1,11 @@
 (function (module, lib, allex) {
   var taskRegistry = allex.execSuite.taskRegistry;
 
-  module.factory ('allex.data.CrudControllers', ['allex.AllexViewChild', function (AllexViewChild) {
+  module.factory ('allex.data.CrudControllers', ['allex.AllexViewChild', 'DataMonitorMixIn', function (AllexViewChild, DataMonitorMixIn) {
     function Table ($scope) {
       lib.BasicController.call(this, $scope);
       AllexViewChild.call(this, $scope);
-      this.data = [];
-
+      DataMonitorMixIn.call(this, $scope);
       this.get('user').execute('askForRemote', 'Banks').done(
         this._subConnect.bind(this),
         console.error.bind(console,'nok')
@@ -22,7 +21,9 @@
     };
 
     Table.prototype._onSubSink = function (sink) {
+      try {
       if (!sink) {
+        console.log('crklo ...');
         ///TODO: connection down ... now what?
         return;
       }
@@ -32,9 +33,14 @@
         onInitiated: this._onInitiated.bind(this),
         onRecordCreation: this._onRecordCreation.bind(this)
       });
+      console.log('sta je ...', sink.modulename, sink.role);
+      }catch (e) {
+        console.log('===>', e, e.stack);
+      }
     };
 
     Table.prototype._onInitiated = function () {
+      console.log('onInitiated ', arguments);
       ///when we got initial data se
     };
 
@@ -57,6 +63,7 @@
 
 
   module.controller ('allex.data.CrudTableViewController', ['$scope', 'allex.data.CrudControllers', function ($scope, CrudControllers) {
+    console.log('DA LI SE OVO DESILO?');
     new CrudControllers.Table($scope);
   }]);
 
