@@ -57,6 +57,21 @@ function createFilterFactory(execlib){
   factory.add('startswith',StartsWithFilter);
   factory.add('endswith',EndsWithFilter);
   factory.add('contains',ContainsFilter);
+
+  Factory.prototype.extend = function (filtername, creatorfunc) {
+    var filter = creatorfunc(execlib,{
+      Filter: Filter,
+      AllPassFilter: AllPass,
+      BooleanFilters: BooleanFilters,
+      FieldFilter: FieldFilter,
+      StringFieldFilter: StringFieldFilter
+    });
+    if (filter) {
+      this.replace(filtername, filter);
+    } else {
+      console.log('No filter produced for',filtername,'from',creatorfunc.toString());
+    }
+  };
   
   return factory;
 }
