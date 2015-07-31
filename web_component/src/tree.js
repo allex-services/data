@@ -69,8 +69,4 @@
       template: '<div js-tree="_ctrl.treeConfig", ng-model="_ctrl.treeData" tree="_ctrl.treeInstance" tree-events="ready:_ctrl._onTreeReady; create_node:_ctrl._onTreeNodeCreated"></div>'
     };
   });
-
-
-
 })(angular.module('allex.data'), ALLEX.lib, ALLEX);
-

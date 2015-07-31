@@ -3,7 +3,8 @@
     "all":[
       "src/index.js",
       "src/grid.js",
-      "src/tree.js"
+      "src/tree.js",
+      "src/cruds.js"
     ]
   },
   "browserify": {
@@ -11,7 +12,7 @@
   },
   "protoboard": {
     "role":"web_component",
-    "public_dirs": ["dist"]
+    "public_dirs": ["dist", "partials"]
   },
   "bower": {
     "requires": {
