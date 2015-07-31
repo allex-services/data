@@ -22,7 +22,7 @@ function createClientSide(execlib) {
 
 module.exports = createClientSide;
 
-},{"./data":20,"./sinkmapcreator":36,"./tasks/forwardData":40,"./tasks/materializeData":41,"./tasks/readFromDataSink":43}],3:[function(require,module,exports){
+},{"./data":24,"./sinkmapcreator":40,"./tasks/forwardData":44,"./tasks/materializeData":45,"./tasks/readFromDataSink":47}],3:[function(require,module,exports){
 function createDataCoder(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -318,6 +318,24 @@ function createBooleanFilters(execlib,Filter,filterFactory){
 module.exports = createBooleanFilters;
 
 },{}],10:[function(require,module,exports){
+function createContainsFilter(execlib,StringFieldFilter){
+  'use strict';
+  var lib = execlib.lib;
+
+  function ContainsFilter(filterdescriptor){
+    StringFieldFilter.call(this,filterdescriptor);
+  }
+  lib.inherit(ContainsFilter,StringFieldFilter);
+  ContainsFilter.prototype.isFieldOK = function(fieldvalue){
+    return StringFieldFilter.prototype.isFieldOK(fieldvalue) && 
+      (fieldvalue.firstIndexOf(this.fieldvalue)>=0);
+  };
+  return ContainsFilter;
+}
+
+module.exports = createContainsFilter;
+
+},{}],11:[function(require,module,exports){
 function createFilter(execlib){
   'use strict';
   function Filter(filterdescriptor){
@@ -337,7 +355,25 @@ function createFilter(execlib){
 
 module.exports = createFilter;
 
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
+function createEndsWithFilter(execlib,StringFieldFilter){
+  'use strict';
+  var lib = execlib.lib;
+
+  function EndsWithFilter(filterdescriptor){
+    StringFieldFilter.call(this,filterdescriptor);
+  }
+  lib.inherit(EndsWithFilter,StringFieldFilter);
+  EndsWithFilter.prototype.isFieldOK = function(fieldvalue){
+    return StringFieldFilter.prototype.isFieldOK(fieldvalue) && 
+      (fieldvalue.firstIndexOf(this.fieldvalue)===fieldvalue.length-this.fieldvalue.length);
+  };
+  return EndsWithFilter;
+}
+
+module.exports = createEndsWithFilter;
+
+},{}],13:[function(require,module,exports){
 function createEQFilter(execlib,FieldFilter){
   'use strict';
   var lib = execlib.lib;
@@ -354,7 +390,7 @@ function createEQFilter(execlib,FieldFilter){
 
 module.exports = createEQFilter;
 
-},{}],12:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 function createExistsFilter(execlib,FieldFilter){
   'use strict';
   var lib = execlib.lib;
@@ -371,7 +407,7 @@ function createExistsFilter(execlib,FieldFilter){
 
 module.exports = createExistsFilter;
 
-},{}],13:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 function createFilterFactory(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -411,7 +447,11 @@ function createFilterFactory(execlib){
     GTFilter = require('./gtfiltercreator')(execlib,FieldFilter),
     GTEFilter = require('./gtfiltercreator')(execlib,FieldFilter),
     LTFilter = require('./gtfiltercreator')(execlib,FieldFilter),
-    LTEFilter = require('./gtfiltercreator')(execlib,FieldFilter);
+    LTEFilter = require('./gtfiltercreator')(execlib,FieldFilter),
+    StringFieldFilter = require('./stringfieldfiltercreator')(execlib,FieldFilter),
+    StartsWithFilter = require('./startswithfiltercreator')(execlib,StringFieldFilter),
+    EndsWithFilter = require('./endswithfiltercreator')(execlib,StringFieldFilter),
+    ContainsFilter = require('./containsfiltercreator')(execlib,StringFieldFilter);
 
   factory.add('hash',HashFilter);
   factory.add('not',NotFilter);
@@ -424,12 +464,31 @@ function createFilterFactory(execlib){
   factory.add('gte',GTEFilter);
   factory.add('lt',LTFilter);
   factory.add('lte',LTEFilter);
+  factory.add('startswith',StartsWithFilter);
+  factory.add('endswith',EndsWithFilter);
+  factory.add('contains',ContainsFilter);
+
+  Factory.prototype.extend = function (filtername, creatorfunc) {
+    var filter = creatorfunc(execlib,{
+      Filter: Filter,
+      AllPassFilter: AllPass,
+      BooleanFilters: BooleanFilters,
+      FieldFilter: FieldFilter,
+      StringFieldFilter: StringFieldFilter
+    });
+    if (filter) {
+      this.replace(filtername, filter);
+    } else {
+      console.log('No filter produced for',filtername,'from',creatorfunc.toString());
+    }
+  };
+  
   return factory;
 }
 
 module.exports = createFilterFactory;
 
-},{"./allpasscreator":7,"./andfilterscreator":8,"./booleanfilterscreator":9,"./creator":10,"./eqfiltercreator":11,"./existsfiltercreator":12,"./fieldfiltercreator":14,"./gtfiltercreator":15,"./hashfiltercreator":16,"./notexistsfiltercreator":17,"./notfiltercreator":18,"./orfilterscreator":19}],14:[function(require,module,exports){
+},{"./allpasscreator":7,"./andfilterscreator":8,"./booleanfilterscreator":9,"./containsfiltercreator":10,"./creator":11,"./endswithfiltercreator":12,"./eqfiltercreator":13,"./existsfiltercreator":14,"./fieldfiltercreator":16,"./gtfiltercreator":17,"./hashfiltercreator":18,"./notexistsfiltercreator":19,"./notfiltercreator":20,"./orfilterscreator":21,"./startswithfiltercreator":22,"./stringfieldfiltercreator":23}],16:[function(require,module,exports){
 function createFieldFilter(execlib,Filter){
   'use strict';
   var lib = execlib.lib;
@@ -462,7 +521,7 @@ function createFieldFilter(execlib,Filter){
 
 module.exports = createFieldFilter;
 
-},{}],15:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 function createGTFilter(execlib,FieldFilter){
   'use strict';
   var lib = execlib.lib;
@@ -479,7 +538,7 @@ function createGTFilter(execlib,FieldFilter){
 
 module.exports = createGTFilter;
 
-},{}],16:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 function createHashFilter(execlib,Filter){
   'use strict';
   var lib = execlib.lib;
@@ -501,7 +560,7 @@ function createHashFilter(execlib,Filter){
 module.exports = createHashFilter;
 
 
-},{}],17:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 function createNotExistsFilter(execlib,FieldFilter){
   'use strict';
   var lib = execlib.lib;
@@ -520,7 +579,7 @@ function createNotExistsFilter(execlib,FieldFilter){
 module.exports = createNotExistsFilter;
 
 
-},{}],18:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 function createNotFilter(execlib,Filter,factory){
   'use strict';
   var lib = execlib.lib;
@@ -545,7 +604,7 @@ function createNotFilter(execlib,Filter,factory){
 
 module.exports = createNotFilter;
 
-},{}],19:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 function createOrFilters(execlib,BooleanFilters){
   'use strict';
   var lib = execlib.lib;
@@ -560,7 +619,42 @@ function createOrFilters(execlib,BooleanFilters){
 
 module.exports = createOrFilters;
 
-},{}],20:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
+function createStartsWithFilter(execlib,StringFieldFilter){
+  'use strict';
+  var lib = execlib.lib;
+
+  function StartsWithFilter(filterdescriptor){
+    StringFieldFilter.call(this,filterdescriptor);
+  }
+  lib.inherit(StartsWithFilter,StringFieldFilter);
+  StartsWithFilter.prototype.isFieldOK = function(fieldvalue){
+    return StringFieldFilter.prototype.isFieldOK(fieldvalue) && 
+      (fieldvalue.firstIndexOf(this.fieldvalue)===0);
+  };
+  return StartsWithFilter;
+}
+
+module.exports = createStartsWithFilter;
+
+},{}],23:[function(require,module,exports){
+function createStringFieldFilter(execlib,FieldFilter){
+  'use strict';
+  var lib = execlib.lib;
+
+  function StringFieldFilter(filterdescriptor){
+    FieldFilter.call(this,filterdescriptor);
+  }
+  lib.inherit(StringFieldFilter,FieldFilter);
+  StringFieldFilter.prototype.isFieldOK = function(fieldvalue){
+    return lib.isString(fieldvalue);
+  };
+  return StringFieldFilter;
+}
+
+module.exports = createStringFieldFilter;
+
+},{}],24:[function(require,module,exports){
 function createDataSuite(execlib){
   'use strict';
   var execSuite = execlib.execSuite,
@@ -590,7 +684,7 @@ function createDataSuite(execlib){
 
 module.exports = createDataSuite;
 
-},{"./codercreator":3,"./decodercreator":4,"./distributedmanagercreator":5,"./distributorcreator":6,"./filters/factorycreator":13,"./managercreator":21,"./objectcreator":22,"./query/basecreator":23,"./query/clonecreator":24,"./record":26,"./storage/basecreator":28,"./storage/clonecreator":29,"./storage/memorycreator":30,"./storage/nullcreator":31,"./utils":32}],21:[function(require,module,exports){
+},{"./codercreator":3,"./decodercreator":4,"./distributedmanagercreator":5,"./distributorcreator":6,"./filters/factorycreator":15,"./managercreator":25,"./objectcreator":26,"./query/basecreator":27,"./query/clonecreator":28,"./record":30,"./storage/basecreator":32,"./storage/clonecreator":33,"./storage/memorycreator":34,"./storage/nullcreator":35,"./utils":36}],25:[function(require,module,exports){
 function createDataManager(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -714,7 +808,7 @@ function createDataManager(execlib){
 
 module.exports = createDataManager;
 
-},{}],22:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 function createDataObject(execlib){
   'use strict';
   var lib = execlib.lib;
@@ -809,7 +903,7 @@ function createDataObject(execlib){
 
 module.exports = createDataObject;
 
-},{}],23:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 function createQueryBase(execlib){
   'use strict';
   function QueryBase(recorddescriptor,visiblefields){
@@ -906,7 +1000,7 @@ function createQueryBase(execlib){
 
 module.exports = createQueryBase;
 
-},{}],24:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 function createQueryClone(execlib,QueryBase){
   'use strict';
   var lib = execlib.lib;
@@ -946,7 +1040,7 @@ function createQueryClone(execlib,QueryBase){
 
 module.exports = createQueryClone;
 
-},{}],25:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 function createRecord(execlib){
   'use strict';
   var lib = execlib.lib;
@@ -1094,7 +1188,7 @@ function createRecord(execlib){
 
 module.exports = createRecord;
 
-},{}],26:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 function createSuite(execlib){
   'use strict';
 
@@ -1108,7 +1202,7 @@ function createSuite(execlib){
 
 module.exports = createSuite;
 
-},{"./creator":25,"./utils":27}],27:[function(require,module,exports){
+},{"./creator":29,"./utils":31}],31:[function(require,module,exports){
 function createRecordUtils(execlib,suite){
   'use strict';
   var lib = execlib.lib;
@@ -1250,7 +1344,7 @@ function createRecordUtils(execlib,suite){
 
 module.exports = createRecordUtils;
 
-},{}],28:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 function createStorageBase(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1393,7 +1487,7 @@ function createStorageBase(execlib){
 
 module.exports = createStorageBase;
 
-},{}],29:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 function createCloneStorage(execlib){
   'use strict';
   var dataSuite = execlib.dataSuite,
@@ -1423,7 +1517,7 @@ function createCloneStorage(execlib){
 
 module.exports = createCloneStorage;
 
-},{}],30:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 function createMemoryStorage(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1603,7 +1697,7 @@ function createMemoryStorage(execlib){
 
 module.exports = createMemoryStorage;
 
-},{}],31:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 function createNullStorage(execlib){
   'use strict';
   var dataSuite = execlib.dataSuite,
@@ -1629,7 +1723,7 @@ function createNullStorage(execlib){
 
 module.exports = createNullStorage;
 
-},{}],32:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 function createDataUtils(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1654,7 +1748,7 @@ function createDataUtils(execlib){
 
 module.exports = createDataUtils;
 
-},{}],33:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 module.exports = {
   create: [{
     title: 'Data hash',
@@ -1676,11 +1770,11 @@ module.exports = {
   }]
 };
 
-},{}],34:[function(require,module,exports){
-arguments[4][33][0].apply(exports,arguments)
-},{"dup":33}],35:[function(require,module,exports){
-arguments[4][33][0].apply(exports,arguments)
-},{"dup":33}],36:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
+arguments[4][37][0].apply(exports,arguments)
+},{"dup":37}],39:[function(require,module,exports){
+arguments[4][37][0].apply(exports,arguments)
+},{"dup":37}],40:[function(require,module,exports){
 function sinkMapCreator(execlib){
   'use strict';
   var sinkmap = new (execlib.lib.Map);
@@ -1693,7 +1787,7 @@ function sinkMapCreator(execlib){
 
 module.exports = sinkMapCreator;
 
-},{"./sinks/servicesinkcreator":37,"./sinks/usersinkcreator":38,"./sinks/writersinkcreator":39}],37:[function(require,module,exports){
+},{"./sinks/servicesinkcreator":41,"./sinks/usersinkcreator":42,"./sinks/writersinkcreator":43}],41:[function(require,module,exports){
 function createServiceSink(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1712,7 +1806,7 @@ function createServiceSink(execlib){
 
 module.exports = createServiceSink;
 
-},{"../methoddescriptors/serviceuser":33}],38:[function(require,module,exports){
+},{"../methoddescriptors/serviceuser":37}],42:[function(require,module,exports){
 function createUserSink(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1731,7 +1825,7 @@ function createUserSink(execlib){
 
 module.exports = createUserSink;
 
-},{"../methoddescriptors/user":34}],39:[function(require,module,exports){
+},{"../methoddescriptors/user":38}],43:[function(require,module,exports){
 function createWriterSink(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1750,7 +1844,7 @@ function createWriterSink(execlib){
 
 module.exports = createWriterSink;
 
-},{"../methoddescriptors/writeruser":35}],40:[function(require,module,exports){
+},{"../methoddescriptors/writeruser":39}],44:[function(require,module,exports){
 function createFollowDataTask(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1800,7 +1894,7 @@ function createFollowDataTask(execlib){
 
 module.exports = createFollowDataTask;
 
-},{}],41:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 function createMaterializeDataTask(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1910,7 +2004,7 @@ function createMaterializeDataTask(execlib){
 
 module.exports = createMaterializeDataTask;
 
-},{}],42:[function(require,module,exports){
+},{}],46:[function(require,module,exports){
 function createReadFromSinkProc (execlib, prophash) {
   'use strict';
   var data = [],
@@ -1974,7 +2068,7 @@ function createReadFromSinkProc (execlib, prophash) {
 
 module.exports = createReadFromSinkProc;
 
-},{}],43:[function(require,module,exports){
+},{}],47:[function(require,module,exports){
 function createReadFromDataSink(execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -2028,4 +2122,4 @@ function createReadFromDataSink(execlib) {
 
 module.exports = createReadFromDataSink;
 
-},{"./proc/readFromSink":42}]},{},[1]);
+},{"./proc/readFromSink":46}]},{},[1]);
