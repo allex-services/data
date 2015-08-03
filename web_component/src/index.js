@@ -1,53 +1,150 @@
 (function (module, lib, allex) {
 
-  ///OVO TREBA MOZDA RAZBUCATI ....
-  module.factory('allex.data.DataMonitorMixIn', ['allex.lib.UserDependentMixIn', function (UserDependentMixIn) {
-    function DataMonitorMixIn ($scope, subsinkPath) {
-      UserDependentMixIn.call(this, $scope);
-      this.subsinkPath = subsinkPath || null;
-      this.data = null;
-      this._ad_usr_state_l= this.get('user').attachListener('state', this._ad_usr_stateChanged.bind(this));
-      this._mgl = null;
-    }
+  module.factory('allex.data.sinkFactory', [function () {
+    var CLDestroyable = lib.CLDestroyable,
+      taskRegistry = allex.execSuite.taskRegistry;
 
-    DataMonitorMixIn.prototype.__cleanUp = function () {
-      this._ad_usr_state_l.destroy();
-      this._ad_usr_state_l = null;
-      this.subsinkPath = null;
-      this.data = null;
+    function SinkAware(config){
+      CLDestroyable.call(this);
+      if (!config) config = {};
+      this.sinkPath = null;
+      this.sinkData = null;
+      this.user = config.user;
+      this._mgl = null;
+      ///THIS IS SOOOOO OBSOLETE ...
+      this.recordDescriptorTranslator = config.recordDescriptorTranslator || lib.dummyFunc;
+      this._onUpdateCB = config.onUpdate || lib.dummyFunc;
+      this.config = config;
+
+      this._user_state_l = this.user.attachListener ('state', this._onUserStateChanged.bind(this));
+    }
+    lib.inherit(SinkAware, CLDestroyable);
+
+    SinkAware.prototype.__cleanUp = function () {
+      this.config = null;
+      if (this._user_state_l) this._user_state_l.destroy();
+      this._user_state_l = null;
+
       if (this._mgl) this._mgl.destroy();
       this._mgl = null;
+
+      this.user = null;
+      this.sinkData = null;
+      this.sinkPath = null;
+      this._onUpdateCB = null;
+      this.recordDescriptorTranslator = null;
+      CLDestroyable.prototype.__cleanUp.call(this);
     };
 
-    DataMonitorMixIn.prototype._attach_subsink = function () {
-      if (!this.get('subsinkPath')) return;
-      this.set_subsink(this.get('user').getSubSink(this.get('subsinkPath')));
+    SinkAware.prototype._onUserStateChanged = function (user_state) {
+      this._createSink();
     };
 
-    DataMonitorMixIn.prototype._ad_usr_stateChanged = function (state) {
-      this._attach_subsink();
+    SinkAware.prototype.set_sinkPath = function (path) {
+      this.sinkPath = path;
+      this._createSink();
     };
 
-    DataMonitorMixIn.prototype.set_subsinksPath = function () {
-      this._attach_subsink();
-    };
+    SinkAware.prototype.set_sink = function (sink) {
+      if (this._mgl) this._mgl.destroy();
+      this._mgl = null;
 
-    DataMonitorMixIn.prototype.set_subsink = function (subsink) {
-      if (subsink) {
-        this.data = subsink.data;
-        this._mgl = subsink.monitorDataForGui(this.$apply.bind(this));
-        this.set('record_descriptor', subsink.sink.recordDescriptor);
+      if (sink) {
+        this.set('sinkData', sink.data);
+        this._mgl = sink.monitorDataForGui(this._onUpdateCB);
+        //OVDE kao da nikad ne dobijem recordDescriptor ....
+        this.recordDescriptorTranslator(sink.recordDescriptor);
+        
       }
-      this.$apply();
-    };
-    DataMonitorMixIn.prototype.set_record_descriptor = function () {
+      this._onUpdateCB();
     };
 
-    DataMonitorMixIn.addMethods = function (extendedClass) {
-      lib.inheritMethods (extendedClass, DataMonitorMixIn, 'set_subsink', 'get_data', '_ad_usr_stateChanged', 'set_record_descriptor', 'set_subsinksPath', '_attach_subsink');
+    function StaticSink(config) {
+      SinkAware.call(this, config);
+    }
+    lib.inherit(StaticSink, SinkAware);
+
+    StaticSink.prototype.__cleanUp = function () {
+      SinkAware.prototype.__cleanUp.call(this);
     };
 
-    return DataMonitorMixIn;
+    StaticSink.prototype._createSink = function () {
+      var path = this.get('sinkPath');
+      if (path) {
+        this.set('sink', this.get('user').getSubSink(path) || null);
+      }else{
+        this.set('sink', null);
+      }
+    };
+
+    function DynamicSink(config){
+      SinkAware.call(this, config);
+      this.propertyhash = config.propertyhash;
+      this._dataCbs = config.dataCallBacks;
+    }
+    lib.inherit(DynamicSink, SinkAware);
+    DynamicSink.prototype.__cleanUp = function () {
+      this._dataCbs = null;
+      this.propertyhash = null;
+      SinkAware.prototype.__cleanUp.call(this);
+    };
+
+    DynamicSink.prototype._createSink = function () {
+      var path = this.get('sinkPath');
+      if (path) {
+        this.get('user').execute('askForRemote', path)
+          .done(this._doConnect.bind(this), this._remoteFailed.bind(this));
+      }
+    };
+    DynamicSink.prototype._remoteFailed = function () {
+      //STA SAD?
+    };
+
+    DynamicSink.prototype._doConnect = function () {
+      taskRegistry.run('acquireSubSinks', {
+        state: taskRegistry.run('materializeState', {sink: this.get('user').get('user_sink')}),
+        subinits: [{name: this.get('sinkPath'), identity: {role: this.get('user').get('role')}, propertyhash: this.get('propertyhash') || {}, cb: this.set.bind(this, 'sink')}]
+      });
+    };
+
+    DynamicSink.prototype.set_sink = function (sink) {
+      if (sink) {
+        var c = this.config;
+        taskRegistry.run('materializeData', {
+          sink: sink,
+          data: this.sinkData,
+          onInitiated: c.onInitiated,
+          onRecordCreation: c.onRecordCreation,
+          onDelete: c.onDelete,
+          onNewRecord: c.onNewRecord,
+          onRecordDeletion: c.onRecordDeletion,
+          onUpdate: c.onUpdate,
+          onRecordUpdate: c.onRecordUpdate
+        });
+      }
+      SinkAware.prototype.set_sink.call(this, sink);
+    };
+
+
+    return function (type, config) {
+      if (type !== 'dynamic' && type !== 'static') throw new Error ('Unknown sink type: '+type);
+      return (type === 'dynamic') ? new DynamicSink(config) : new StaticSink(config);
+    };
+
+  }]);
+
+
+  module.factory('allex.data.ViewSetUp', [function () {
+    return function (sink, view) {
+      if (!sink) throw new Error('No sink given');
+      if (!view) throw new Error('No view given');
+      if (!ALLEX_CONFIGURATION.VIEWS[sink]) throw new Error('No view configuration for sink '+sink);
+      if (!ALLEX_CONFIGURATION.VIEWS[sink][view]) throw new Error('No view configuration for sink '+view);
+      return {
+        sink_type:ALLEX_CONFIGURATION.VIEWS[sink].sink_type,
+        view: ALLEX_CONFIGURATION.VIEWS[sink][view] 
+      };
+    };
   }]);
 
 

@@ -1,6 +1,5 @@
 (function (module, lib, allex) {
-
-  module.factory ('allex.data.GridMixIn', ['allex.data.DataMonitorMixIn', '$compile', function (DataMonitorMixIn, $compile) {
+  module.factory ('allex.data.GridMixIn', ['$compile', function ($compile) {
 
     var DEFAULT_GRID_OPTIONS = {
       enableSorting:false,
@@ -10,11 +9,10 @@
     function AllexDataGridMixIn ($scope, gridOptions, options) {
       options = options || {};
       this.gridOptions = angular.extend({}, DEFAULT_GRID_OPTIONS, gridOptions);
-      this.gridOptions.data = "_ctrl.data";
+      this.gridOptions.data = "_ctrl."+ options.dataPath ? options.dataPath : "sinkData";
       this.renderer = '<div class="grid_container" ui-grid="_ctrl.gridOptions"></div>';
       this.autoresize = options.autoresize || true;
       this._ready = false;
-      DataMonitorMixIn.call(this, $scope, options.subsinkPath);
     }
 
     AllexDataGridMixIn.prototype.__cleanUp = function () {
@@ -22,18 +20,10 @@
       this.autoresize = null;
       this.gridOptions = null;
       this._ready = null;
-      DataMonitorMixIn.prototype.__cleanUp.call(this);
     };
 
     AllexDataGridMixIn.addMethods = function (extendedClass) {
-      DataMonitorMixIn.addMethods(extendedClass);
       lib.inheritMethods(extendedClass, AllexDataGridMixIn, 'set_el', '_doRender', 'set_record_descriptor', 'set_auto_resize', 'set_subsinksPath');
-    };
-
-    AllexDataGridMixIn.prototype.set_subsinksPath = function (subsinkPath) {
-      var old_desc = this.get('record_descriptor');
-      this.set('record_descriptor', null);
-      DataMonitorMixIn.prototype.set_subsinksPath.call(this, subsinkPath);
     };
 
     AllexDataGridMixIn.prototype.set_auto_resize = function (ar) {
@@ -62,9 +52,6 @@
       this.el.append($ap);
       $compile(this.el.contents())(this.scope);
     };
-
-
-
 
     return AllexDataGridMixIn;
   }]);

@@ -1,70 +1,55 @@
 (function (module, lib, allex) {
   var taskRegistry = allex.execSuite.taskRegistry;
 
-  module.factory ('allex.data.CrudControllers', ['allex.AllexViewChild', 'DataMonitorMixIn', function (AllexViewChild, DataMonitorMixIn) {
-    function Table ($scope) {
-      lib.BasicController.call(this, $scope);
-      AllexViewChild.call(this, $scope);
-      DataMonitorMixIn.call(this, $scope);
-      this.get('user').execute('askForRemote', 'Banks').done(
-        this._subConnect.bind(this),
-        console.error.bind(console,'nok')
-      );
-    }
-    lib.inherit(Table, lib.BasicController);
-    AllexViewChild.addMethods(Table);
+  module.factory ('allex.data.Views', [
+    'allex.data.ViewSetUp',
+    'allex.AllexViewChild', 
+    'allex.lib.UserDependentMixIn',
+    'allex.data.sinkFactory', 
+    'allex.data.GridMixIn',
 
-    Table.prototype.__cleanUp = function () {
-      this.data = null;
-      AllexViewChild.prototype.__cleanUp.call(this);
-      lib.BasicController.prototype.__cleanUp.call(this);
-    };
+    function (viewSetup, AllexViewChild, UserDependentMixIn, sinkFactory, GridMixIn) {
 
-    Table.prototype._onSubSink = function (sink) {
-      try {
-      if (!sink) {
-        console.log('crklo ...');
-        ///TODO: connection down ... now what?
-        return;
+      function Table ($scope){
+        lib.BasicController.call(this, $scope);
+        AllexViewChild.call(this, $scope);
+        UserDependentMixIn.call(this, $scope);
+
+        var config = this.get('data');
+        this.view_setup = viewSetup(config.sink, config.view);
+        this.sink_wrapper = sinkFactory(this.view_setup.sink_type, {
+          user: this.get('user'),
+          onUpdate : this._onUpdate.bind(this)
+        });
+        GridMixIn.call(this, $scope, this.view_setup.view.grid, this.view_setup.view.config);
+        this.sink_wrapper.set('sinkPath', config.sink);
       }
-      taskRegistry.run ('materializeData', {
-        sink: sink, 
-        data: this.data,
-        onInitiated: this._onInitiated.bind(this),
-        onRecordCreation: this._onRecordCreation.bind(this)
-      });
-      console.log('sta je ...', sink.modulename, sink.role);
-      }catch (e) {
-        console.log('===>', e, e.stack);
-      }
-    };
+      lib.inherit(Table, lib.BasicController);
+      AllexViewChild.addMethods(Table);
+      UserDependentMixIn.addMethods(Table);
+      GridMixIn.addMethods(Table);
 
-    Table.prototype._onInitiated = function () {
-      console.log('onInitiated ', arguments);
-      ///when we got initial data se
-    };
+      Table.prototype.__cleanUp = function () {
+        this.sink_wrapper.destroy();
+        this.sink_wrapper = null;
+        this.view_setup = null;
+        UserDependentMixIn.prototype.__cleanUp.call(this);
+        AllexViewChild.prototype.__cleanUp.call(this);
+        GridMixIn.prototype.__cleanUp.call(this);
+        lib.BasicController.prototype.__cleanUp.call(this);
+      };
 
-    Table.prototype._onRecordCreation = function () {
-      ///when we got a new record
-    };
-
-    Table.prototype._subConnect = function () {
-      taskRegistry.run ('acquireSubSinks', {
-        state: taskRegistry.run('materializeState', { sink: this.get('user')._user.sink }),
-        subinits: [{name: 'Banks', identity: {role:'user'}, propertyhash:{bla:'truc'}, cb: this._onSubSink.bind(this)}]
-      });
-    };
-
+      Table.prototype._onUpdate = function () {
+        this.$apply();
+        console.log('AJ DA TE VIDIM ...');
+      };
     return {
       'Table': Table
     };
   }]);
 
-
-
-  module.controller ('allex.data.CrudTableViewController', ['$scope', 'allex.data.CrudControllers', function ($scope, CrudControllers) {
-    console.log('DA LI SE OVO DESILO?');
-    new CrudControllers.Table($scope);
+  module.controller ('allex.data.ViewsController', ['$scope', 'allex.data.Views', function ($scope, Views) {
+    new Views.Table($scope);
   }]);
 
 
