@@ -74,10 +74,6 @@ function createDataService(execlib){
     }
     userhash.name = userhash.role+':'+filterstring; //Crucial!
   };
-  DataService.prototype.introduceUser = function(userhash){
-    this.preProcessUserHash(userhash);
-    return ParentService.prototype.introduceUser.call(this,userhash);
-  };
   return DataService;
 }
 
