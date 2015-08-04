@@ -53,6 +53,7 @@
     };
 
     AllexDataViewController.prototype._updateCB = function () {
+      console.log('SAMO DA VIDIM DATU ... ', this.data);
       this.$apply();
     };
 
@@ -86,6 +87,17 @@
       link: function (scope, el, attrs) {
         scope._ctrl.set('el', el);
         scope._ctrl.configure($parse(attrs.config)(scope));
+      }
+    };
+  }]);
+
+
+  module.directive ('allexDataSetitem', ['$parse', function ($parse) {
+    return {
+      'restrict': 'A',
+      'scope': false,
+      'link': function (scope, el, attrs) {
+        scope._ctrl.set('item',scope.$parent._ctrl.data[$parse(attrs.allexDataSetitem)(scope)]);
       }
     };
   }]);

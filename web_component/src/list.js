@@ -2,6 +2,7 @@
   var DEFAULTS = {
     'no_item': '<strong>Items unavailable</strong>'
   };
+
   module.directive ('allexDataList', ['$compile', function ($compile) {
     return {
       restrict: 'E',
@@ -13,10 +14,6 @@
         var config = scope._ctrl.get('config');
         var repeat_attr = '$litem in _ctrl.data';
         repeat_attr+=(' track by '+(config.track?config.track:'$index'));
-
-        if (config.filter) {
-          ///TODO
-        }
         if (config.orderBy) {
           //TODO
         }
@@ -27,8 +24,14 @@
 
         var item = config.item;
         var $item = $('<li>'+config.item.content+'</li>');
-        $item.attr('data-ng-repeat', repeat_attr);
+        $item.attr({ 'data-ng-repeat': repeat_attr });
         $item.attr(item.attrs);
+        if (config.filter) {
+          $item.attr({'data-ng-if': config.filter});
+        }
+        if (config.list) {
+          if (config.list.attrs) el.find('ul').attr(config.list.attrs);
+        }
         el.find('ul').append($item);
         el.find('div.empty').append( config.empty ? config.empty : DEFAULTS.no_item);
         $compile(el.contents())(scope);
