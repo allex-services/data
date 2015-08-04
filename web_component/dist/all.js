@@ -11,6 +11,7 @@
       this.sinkData = null;
       this.user = config.user;
       this._mgl = null;
+
       ///THIS IS SOOOOO OBSOLETE ...
       this.recordDescriptorTranslator = config.recordDescriptorTranslator || lib.dummyFunc;
       this._onUpdateCB = config.onUpdate || lib.dummyFunc;
@@ -45,16 +46,14 @@
       this._createSink();
     };
 
-    SinkAware.prototype.set_sink = function (sink) {
+    SinkAware.prototype.set_sinkRepresentation = function (sinkRepresentation) {
       if (this._mgl) this._mgl.destroy();
       this._mgl = null;
 
-      if (sink) {
-        this.set('sinkData', sink.data);
-        this._mgl = sink.monitorDataForGui(this._onUpdateCB);
-        //OVDE kao da nikad ne dobijem recordDescriptor ....
-        this.recordDescriptorTranslator(sink.recordDescriptor);
-        
+      if (sinkRepresentation) {
+        this.set('sinkData', sinkRepresentation.data);
+        this._mgl = sinkRepresentation.monitorDataForGui(this._onUpdateCB);
+        this.recordDescriptorTranslator(sinkRepresentation.sink.recordDescriptor);
       }
       this._onUpdateCB();
     };
@@ -71,9 +70,9 @@
     StaticSink.prototype._createSink = function () {
       var path = this.get('sinkPath');
       if (path) {
-        this.set('sink', this.get('user').getSubSink(path) || null);
+        this.set('sinkRepresentation', this.get('user').getSubSink(path) || null);
       }else{
-        this.set('sink', null);
+        this.set('sinkRepresentation', null);
       }
     };
 
@@ -103,15 +102,15 @@
     DynamicSink.prototype._doConnect = function () {
       taskRegistry.run('acquireSubSinks', {
         state: taskRegistry.run('materializeState', {sink: this.get('user').get('user_sink')}),
-        subinits: [{name: this.get('sinkPath'), identity: {role: this.get('user').get('role')}, propertyhash: this.get('propertyhash') || {}, cb: this.set.bind(this, 'sink')}]
+        subinits: [{name: this.get('sinkPath'), identity: {role: this.get('user').get('role')}, propertyhash: this.get('propertyhash') || {}, cb: this.set.bind(this, 'sinkRepresentation')}]
       });
     };
 
-    DynamicSink.prototype.set_sink = function (sink) {
-      if (sink) {
+    DynamicSink.prototype.set_sinkRepresentation = function (sinkRepresentation) {
+      if (sinkRepresentation) {
         var c = this.config;
         taskRegistry.run('materializeData', {
-          sink: sink,
+          sink: sinkRepresentation.sink,
           data: this.sinkData,
           onInitiated: c.onInitiated,
           onRecordCreation: c.onRecordCreation,
@@ -122,7 +121,7 @@
           onRecordUpdate: c.onRecordUpdate
         });
       }
-      SinkAware.prototype.set_sink.call(this, sink);
+      SinkAware.prototype.set_sinkRepresentation.call(this, sinkRepresentation);
     };
 
 
@@ -151,7 +150,103 @@
 })(angular.module('allex.data', ['allex.lib', 'ui.grid','ui.grid.autoResize']), ALLEX.lib, ALLEX);
 //samo da te vidim
 (function (module, lib, allex) {
+  module.directive('allexDataView', ['$parse', 'allex.lib.UserDependentMixIn', function ($parse, UserDependentMixIn) {
+    function AllexDataViewController ($scope) {
+      lib.BasicController.call(this, $scope);
+      UserDependentMixIn.call(this, $scope);
+      this.el = null;
+      this.config = null;
+      this.name = null;
+      this.sink_name = null;
+      this.data = null;
+      this.viewType = null;
+      this._monitorForGui = null;
+    }
+    lib.inherit(AllexDataViewController, lib.BasicController);
+    UserDependentMixIn.addMethods(AllexDataViewController);
+
+    AllexDataViewController.prototype.__cleanUp = function () {
+      if (this._monitorForGui) this._monitorForGui.destroy();
+      this._monitorForGui = null;
+      this.sink_name = null;
+      this.name = null;
+      this.el = null;
+      this.config = null;
+      this.data = null;
+      this.viewType = null;
+      UserDependentMixIn.prototype.__cleanUp.call(this);
+      lib.BasicController.prototype.__cleanUp.call(this);
+    };
+
+    AllexDataViewController.prototype._fetchSink = function () {
+      var user = this.get('user');
+      if (!this.get('sink_name')) return;
+      if ('loggedin' !== user.get('state')) return; //reconsider this one ...
+
+      ///za sad samo statici ...
+      this.set('sinkRepresentation', this.get('user').getSubSink(this.sink_name));
+    };
+
+
+    AllexDataViewController.prototype.set_sinkRepresentation = function (sinkRepresentation) {
+      if (this._monitorForGui) this._monitorForGui.destroy();
+      this._monitorForGui = null;
+
+      if (sinkRepresentation) {
+        this.set('data', sinkRepresentation.data);
+        this._monitorForGui = sinkRepresentation.monitorDataForGui(this._updateCB.bind(this));
+        this.set('recordDescriptor', sinkRepresentation.sink.recordDescriptor);
+      }
+    };
+
+    AllexDataViewController.prototype.set_recordDescriptor = function (recordDescriptor) {
+      console.log('AND RECORD DESCRIPTOR IS ', recordDescriptor);
+    };
+
+    AllexDataViewController.prototype._updateCB = function () {
+      this.$apply();
+    };
+
+    AllexDataViewController.prototype.set_userState = function (state) {
+      UserDependentMixIn.prototype.set_userState.call(this, state);
+      this._fetchSink();
+    };
+
+    AllexDataViewController.prototype.set_sink_name = function (name) {
+      this.sink_name = name;
+      this._fetchSink();
+    };
+
+    AllexDataViewController.prototype.configure = function (config) {
+      if (!ALLEX_CONFIGURATION.VIEWS) throw new Error('No views configuration');
+      if (!ALLEX_CONFIGURATION.VIEWS[config.sink]) throw new Error('No view configuration for sink '+config.sink);
+      if (!ALLEX_CONFIGURATION.VIEWS[config.sink][config.name]) throw new Error('No view configuration for view '+config.name);
+      var configuration = ALLEX_CONFIGURATION.VIEWS[config.sink][config.name];
+      this.set('viewType', configuration.view);
+      this.set('config', configuration.config);
+      this.name = configuration.name;
+      this.set('sink_name', config.sink);
+    };
+
+    return {
+      restrict: 'E',
+      replace: true,
+      scope: true,
+      templateUrl: 'partials/allex_dataservice/partials/dataview.html',
+      controller: AllexDataViewController,
+      link: function (scope, el, attrs) {
+        scope._ctrl.set('el', el);
+        scope._ctrl.configure($parse(attrs.config)(scope));
+      }
+    };
+  }]);
+})(angular.module('allex.data'), ALLEX.lib, ALLEX);
+//samo da te vidim
+(function (module, lib, allex) {
   module.factory ('allex.data.GridMixIn', ['$compile', function ($compile) {
+
+
+    ///TODO: ovaj deo je djubre ....
 
     var DEFAULT_GRID_OPTIONS = {
       enableSorting:false,
@@ -189,7 +284,7 @@
     };
 
     AllexDataGridMixIn.prototype.set_record_descriptor = function (rd) {
-      this.gridOptions.columnDefs = this.produceColumnDefs(rd);
+      //this.gridOptions.columnDefs = this.produceColumnDefs(rd);
       this._ready = true;
       this._doRender();
     };
@@ -352,5 +447,44 @@
 
   module.config(['allex.PageRouterProvider', function (PageRouteProvider) {
     PageRouteProvider.router.setAlias('partials/allex_dataservice/partials/crudtableview.html','table_cruds');
+  }]);
+})(angular.module('allex.data'), ALLEX.lib, ALLEX);
+//samo da te vidim
+(function (module, lib, allex) {
+  var DEFAULTS = {
+    'no_item': '<strong>Items unavailable</strong>'
+  };
+  module.directive ('allexDataList', ['$compile', function ($compile) {
+    return {
+      restrict: 'E',
+      scope: false,
+      transclude: true,
+      template: '<div class="allex_data_list"><div class="empty" data-ng-hide="_ctrl.data.length"></div><ul class="allex_data_list" data-ng-show="_ctrl.data.length"></ul></div>',
+      replace: true,
+      link: function (scope, el, attrs) {
+        var config = scope._ctrl.get('config');
+        var repeat_attr = '$litem in _ctrl.data';
+        repeat_attr+=(' track by '+(config.track?config.track:'$index'));
+
+        if (config.filter) {
+          ///TODO
+        }
+        if (config.orderBy) {
+          //TODO
+        }
+
+        if (config.limitTo) {
+          //TODO
+        }
+
+        var item = config.item;
+        var $item = $('<li>'+config.item.content+'</li>');
+        $item.attr('data-ng-repeat', repeat_attr);
+        $item.attr(item.attrs);
+        el.find('ul').append($item);
+        el.find('div.empty').append( config.empty ? config.empty : DEFAULTS.no_item);
+        $compile(el.contents())(scope);
+      }
+    };
   }]);
 })(angular.module('allex.data'), ALLEX.lib, ALLEX);

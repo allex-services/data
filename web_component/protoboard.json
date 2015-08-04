@@ -2,9 +2,12 @@
   "js" : {
     "all":[
       "src/index.js",
+      "src/directives.js",
+
       "src/grid.js",
       "src/tree.js",
-      "src/cruds.js"
+      "src/cruds.js",
+      "src/list.js"
     ]
   },
   "browserify": {

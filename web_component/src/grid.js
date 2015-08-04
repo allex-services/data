@@ -1,6 +1,9 @@
 (function (module, lib, allex) {
   module.factory ('allex.data.GridMixIn', ['$compile', function ($compile) {
 
+
+    ///TODO: ovaj deo je djubre ....
+
     var DEFAULT_GRID_OPTIONS = {
       enableSorting:false,
       minimumColumnSize: 150 ///not working at the moment ...
@@ -37,7 +40,7 @@
     };
 
     AllexDataGridMixIn.prototype.set_record_descriptor = function (rd) {
-      this.gridOptions.columnDefs = this.produceColumnDefs(rd);
+      //this.gridOptions.columnDefs = this.produceColumnDefs(rd);
       this._ready = true;
       this._doRender();
     };

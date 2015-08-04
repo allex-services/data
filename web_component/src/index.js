@@ -11,6 +11,7 @@
       this.sinkData = null;
       this.user = config.user;
       this._mgl = null;
+
       ///THIS IS SOOOOO OBSOLETE ...
       this.recordDescriptorTranslator = config.recordDescriptorTranslator || lib.dummyFunc;
       this._onUpdateCB = config.onUpdate || lib.dummyFunc;
@@ -45,16 +46,14 @@
       this._createSink();
     };
 
-    SinkAware.prototype.set_sink = function (sink) {
+    SinkAware.prototype.set_sinkRepresentation = function (sinkRepresentation) {
       if (this._mgl) this._mgl.destroy();
       this._mgl = null;
 
-      if (sink) {
-        this.set('sinkData', sink.data);
-        this._mgl = sink.monitorDataForGui(this._onUpdateCB);
-        //OVDE kao da nikad ne dobijem recordDescriptor ....
-        this.recordDescriptorTranslator(sink.recordDescriptor);
-        
+      if (sinkRepresentation) {
+        this.set('sinkData', sinkRepresentation.data);
+        this._mgl = sinkRepresentation.monitorDataForGui(this._onUpdateCB);
+        this.recordDescriptorTranslator(sinkRepresentation.sink.recordDescriptor);
       }
       this._onUpdateCB();
     };
@@ -71,9 +70,9 @@
     StaticSink.prototype._createSink = function () {
       var path = this.get('sinkPath');
       if (path) {
-        this.set('sink', this.get('user').getSubSink(path) || null);
+        this.set('sinkRepresentation', this.get('user').getSubSink(path) || null);
       }else{
-        this.set('sink', null);
+        this.set('sinkRepresentation', null);
       }
     };
 
@@ -103,15 +102,15 @@
     DynamicSink.prototype._doConnect = function () {
       taskRegistry.run('acquireSubSinks', {
         state: taskRegistry.run('materializeState', {sink: this.get('user').get('user_sink')}),
-        subinits: [{name: this.get('sinkPath'), identity: {role: this.get('user').get('role')}, propertyhash: this.get('propertyhash') || {}, cb: this.set.bind(this, 'sink')}]
+        subinits: [{name: this.get('sinkPath'), identity: {role: this.get('user').get('role')}, propertyhash: this.get('propertyhash') || {}, cb: this.set.bind(this, 'sinkRepresentation')}]
       });
     };
 
-    DynamicSink.prototype.set_sink = function (sink) {
-      if (sink) {
+    DynamicSink.prototype.set_sinkRepresentation = function (sinkRepresentation) {
+      if (sinkRepresentation) {
         var c = this.config;
         taskRegistry.run('materializeData', {
-          sink: sink,
+          sink: sinkRepresentation.sink,
           data: this.sinkData,
           onInitiated: c.onInitiated,
           onRecordCreation: c.onRecordCreation,
@@ -122,7 +121,7 @@
           onRecordUpdate: c.onRecordUpdate
         });
       }
-      SinkAware.prototype.set_sink.call(this, sink);
+      SinkAware.prototype.set_sinkRepresentation.call(this, sinkRepresentation);
     };
 
 
