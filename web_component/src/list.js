@@ -13,9 +13,11 @@
       link: function (scope, el, attrs) {
         var config = scope._ctrl.get('config');
         var repeat_attr = '$litem in _ctrl.data';
-        repeat_attr+=(' track by '+(config.track?config.track:'$index'));
+        if (config.track) {
+          repeat_attr+=(" track by "+config.track);
+        }
         if (config.orderBy) {
-          //TODO
+          repeat_attr+= (" | orderBy:'"+config.orderBy+"'");
         }
 
         if (config.limitTo) {

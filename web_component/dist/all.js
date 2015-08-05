@@ -200,11 +200,11 @@
     };
 
     AllexDataViewController.prototype.set_recordDescriptor = function (recordDescriptor) {
-      console.log('AND RECORD DESCRIPTOR IS ', recordDescriptor);
+      //console.log('AND RECORD DESCRIPTOR IS ', recordDescriptor);
     };
 
     AllexDataViewController.prototype._updateCB = function () {
-      console.log('SAMO DA VIDIM DATU ... ', this.data);
+      //console.log('SAMO DA VIDIM DATU ... ', this.data);
       this.$apply();
     };
 
@@ -248,7 +248,7 @@
       'restrict': 'A',
       'scope': false,
       'link': function (scope, el, attrs) {
-        scope._ctrl.set('item',scope.$parent._ctrl.data[$parse(attrs.allexDataSetitem)(scope)]);
+        scope._ctrl.set('item',$parse(attrs.allexDataSetitem)(scope));
       }
     };
   }]);
@@ -477,9 +477,11 @@
       link: function (scope, el, attrs) {
         var config = scope._ctrl.get('config');
         var repeat_attr = '$litem in _ctrl.data';
-        repeat_attr+=(' track by '+(config.track?config.track:'$index'));
+        if (config.track) {
+          repeat_attr+=(" track by "+config.track);
+        }
         if (config.orderBy) {
-          //TODO
+          repeat_attr+= (" | orderBy:'"+config.orderBy+"'");
         }
 
         if (config.limitTo) {
