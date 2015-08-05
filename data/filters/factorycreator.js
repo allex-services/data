@@ -38,6 +38,7 @@ function createFilterFactory(execlib){
     GTEFilter = require('./gtfiltercreator')(execlib,FieldFilter),
     LTFilter = require('./gtfiltercreator')(execlib,FieldFilter),
     LTEFilter = require('./gtfiltercreator')(execlib,FieldFilter),
+    InFilter = require('./infiltercreator')(execlib,FieldFilter),
     StringFieldFilter = require('./stringfieldfiltercreator')(execlib,FieldFilter),
     StartsWithFilter = require('./startswithfiltercreator')(execlib,StringFieldFilter),
     EndsWithFilter = require('./endswithfiltercreator')(execlib,StringFieldFilter),
@@ -54,6 +55,7 @@ function createFilterFactory(execlib){
   factory.add('gte',GTEFilter);
   factory.add('lt',LTFilter);
   factory.add('lte',LTEFilter);
+  factory.add('in',InFilter);
   factory.add('startswith',StartsWithFilter);
   factory.add('endswith',EndsWithFilter);
   factory.add('contains',ContainsFilter);

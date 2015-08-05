@@ -30,6 +30,9 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
     this.q.push(item);
   };
   EventQ.prototype.dumpTo = function(sink){
+    if (!this.q) {
+      return;
+    }
     while(this.q.length){
       var item = this.q.pop();
       if(sink.isOK(item)){
