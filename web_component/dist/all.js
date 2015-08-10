@@ -13,6 +13,7 @@
       this.viewType = null;
       this._monitorForGui = null;
       this._is_remote = null;
+      this.recordDescriptor = null;
       UserDependentMixIn.call(this, $scope);
     }
     lib.inherit(AllexDataViewController, lib.BasicController);
@@ -26,6 +27,7 @@
       this.config = null;
       this.data = null;
       this.viewType = null;
+      this.recordDescriptor = null;
       UserDependentMixIn.prototype.__cleanUp.call(this);
       lib.BasicController.prototype.__cleanUp.call(this);
     };
@@ -34,7 +36,7 @@
       var user = this.get('user');
       if (!this.get('sink_name')) return;
       if ('loggedin' !== user.get('state')) return; //reconsider this one ...
-
+      //console.log('AJ DA VIDIMO ...', this.sink_name);
       this.set('sinkRepresentation', this.get('user').getSubSink(this.sink_name));
     };
 
@@ -51,6 +53,7 @@
     AllexDataViewController.prototype.set_sinkRepresentation = function (sinkRepresentation) {
       this._forgetSink();
       var user = this.get('user');
+      console.log(this.sink_name, sinkRepresentation);
 
       if (sinkRepresentation) {
         //at this point, we should check if this is a remote sink ... if is send askForRemote as well
@@ -74,7 +77,7 @@
     };
 
     AllexDataViewController.prototype.set_recordDescriptor = function (recordDescriptor) {
-      //console.log('AND RECORD DESCRIPTOR IS ', recordDescriptor);
+      this.recordDescriptor = recordDescriptor;
     };
 
     AllexDataViewController.prototype._updateCB = function () {
@@ -131,15 +134,81 @@
 })(angular.module('allex.data'), ALLEX.lib, ALLEX);
 //samo da te vidim
 (function (module, lib, allex) {
-  
-  module.directive('allexDataGrid', [function () {
+  module.directive('allexDataGrid', ['allex.lib.interfaces', '$compile', function (Interfaces, $compile) {
+    function AllexDataGrid($scope) {
+      lib.BasicController.call(this, $scope);
+      Interfaces.Element.call(this);
+      this._parent = $scope.$parent._ctrl;
+      this._record_descriptor_l = null;
+    }
+    lib.inherit(AllexDataGrid, lib.BasicController);
+    Interfaces.Element.addMethods(AllexDataGrid);
+    AllexDataGrid.prototype.__cleanUp = function () {
+      this._record_descriptor_l.destroy();
+      this._record_descriptor_l = null;
+      this._parent = null;
+      Interfaces.prototype.__cleanUp.call(this);
+      lib.BasicController.prototype.__cleanUp.call(this);
+    };
+
+    AllexDataGrid.prototype.get_data = function () {
+      return this._parent.get('data');
+    };
+
+    AllexDataGrid.prototype.build = function () {
+      this._parent.attachListener('recordDescriptor', this.set.bind(this, 'recordDescriptor'));
+    };
+
+    AllexDataGrid.prototype.releaseGrid = function () {
+      this.get('el').empty();
+    };
+
+    AllexDataGrid.prototype.set_recordDescriptor = function (recordDescriptor) {
+      this.releaseGrid();
+      if (!recordDescriptor) {
+        return; ///TODO: append something like: no descriptor, can not move on?
+      }
+
+      var config = this._parent.get('config');
+      this.gridOptions = this.prepareGridOptions(recordDescriptor);
+      this.gridOptions.data = this._parent.get('data');
+      var $grid = $('<div>').addClass('allex_grid').attr('data-ui-grid', '_ctrl.gridOptions');
+
+      if (config.autoresize) {
+        $grid.attr('ui-grid-auto-resize', '');
+      }
+
+      var el = this.get('el');
+      el.append($grid);
+      el.removeClass();
+      el.addClass('allex_grid_container');
+
+      if (config.container_class) el.addClass(config.container_class);
+      if (config.grid_class) $grid.addClass(config.grid_class);
+
+      $compile(this.get('el').contents())(this.scope);
+    };
+
+    AllexDataGrid.prototype.prepareGridOptions = function (recordDescriptor) {
+      var config = angular.extend({}, this._parent.get('config').grid);
+      var cfgd = config.columnDefs;
+      config.columnDefs = recordDescriptor.fields.map (this._buildColumnDef.bind(this, cfgd));
+      return config;
+    };
+
+    AllexDataGrid.prototype._buildColumnDef = function (cfgd, rditem) {
+      return angular.extend(cfgd[rditem.name] || {}, {displayName: rditem.title, 'field': rditem.name});
+    };
+
     return {
       restrict: 'E',
       replace: true,
-      scope: false,
+      scope: true,
       transclude: true,
+      controller: AllexDataGrid,
+      template: '<div class="allex_grid_container"></div>',
       link: function (scope, el, attrs) {
-        console.log('SAMO DA TE VIDIM ...');
+        scope._ctrl.set('el', el);
       }
     };
   }]);

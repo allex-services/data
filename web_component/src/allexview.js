@@ -10,6 +10,7 @@
       this.viewType = null;
       this._monitorForGui = null;
       this._is_remote = null;
+      this.recordDescriptor = null;
       UserDependentMixIn.call(this, $scope);
     }
     lib.inherit(AllexDataViewController, lib.BasicController);
@@ -23,6 +24,7 @@
       this.config = null;
       this.data = null;
       this.viewType = null;
+      this.recordDescriptor = null;
       UserDependentMixIn.prototype.__cleanUp.call(this);
       lib.BasicController.prototype.__cleanUp.call(this);
     };
@@ -31,7 +33,7 @@
       var user = this.get('user');
       if (!this.get('sink_name')) return;
       if ('loggedin' !== user.get('state')) return; //reconsider this one ...
-
+      //console.log('AJ DA VIDIMO ...', this.sink_name);
       this.set('sinkRepresentation', this.get('user').getSubSink(this.sink_name));
     };
 
@@ -48,6 +50,7 @@
     AllexDataViewController.prototype.set_sinkRepresentation = function (sinkRepresentation) {
       this._forgetSink();
       var user = this.get('user');
+      console.log(this.sink_name, sinkRepresentation);
 
       if (sinkRepresentation) {
         //at this point, we should check if this is a remote sink ... if is send askForRemote as well
@@ -71,7 +74,7 @@
     };
 
     AllexDataViewController.prototype.set_recordDescriptor = function (recordDescriptor) {
-      //console.log('AND RECORD DESCRIPTOR IS ', recordDescriptor);
+      this.recordDescriptor = recordDescriptor;
     };
 
     AllexDataViewController.prototype._updateCB = function () {
