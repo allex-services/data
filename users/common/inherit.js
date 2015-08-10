@@ -76,6 +76,9 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
     this.distributor.attach(channel);
   };
   ChildClass.prototype.attachSession = function(session){
+    if (!session.channels) {
+      return;
+    }
     ParentClass.prototype.attachSession.call(this,session);
     var c = session.channels.get('d'),
       d = lib.q.defer(),
