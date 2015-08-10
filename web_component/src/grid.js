@@ -12,7 +12,7 @@
       this._record_descriptor_l.destroy();
       this._record_descriptor_l = null;
       this._parent = null;
-      Interfaces.prototype.__cleanUp.call(this);
+      Interfaces.Element.prototype.__cleanUp.call(this);
       lib.BasicController.prototype.__cleanUp.call(this);
     };
 
@@ -21,7 +21,7 @@
     };
 
     AllexDataGrid.prototype.build = function () {
-      this._parent.attachListener('recordDescriptor', this.set.bind(this, 'recordDescriptor'));
+      this._record_descriptor_l = this._parent.attachListener('recordDescriptor', this.set.bind(this, 'recordDescriptor'));
     };
 
     AllexDataGrid.prototype.releaseGrid = function () {
