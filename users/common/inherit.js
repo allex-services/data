@@ -71,6 +71,9 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
   ChildClass.prototype.limit = lib.dummyFunc;
   ChildClass.prototype.offset = lib.dummyFunc;
   ChildClass.prototype.attachChannel = function(channel,eventq){
+    if (!this.distributor) {
+      return;
+    }
     eventq.dumpTo(channel);
     eventq.destroy();
     this.distributor.attach(channel);
