@@ -15,6 +15,10 @@ function createMemoryStorage(execlib){
   };
   MemoryStorage.prototype.doCreate = function(record,defer){
     try{
+    if (!this.__record) {
+      defer.resolve(null);
+      return;
+    }
     var mpk = this.__record.primaryKey;
     if (mpk) {
       if (lib.isArray(mpk)) {
@@ -46,6 +50,10 @@ function createMemoryStorage(execlib){
     }
   }
   MemoryStorage.prototype.doRead = function(query,defer){
+    if (!this.data) {
+      defer.resolve(null);
+      return;
+    }
     if(!(query.isLimited()||query.isOffset())){
       this.data.forEach(processRead.bind(null,query,defer));
     }else{
@@ -119,6 +127,10 @@ function createMemoryStorage(execlib){
     }*/
   }
   MemoryStorage.prototype.doDelete = function(filter,defer){
+    if (!this.data) {
+      defer.resolve(0);
+      return;
+    }
     var todelete = [], data = this.data;
     this.data.forEach(this.processDelete.bind(this,todelete,defer,filter));
     todelete.forEach(function(di){data.splice(di,1);});

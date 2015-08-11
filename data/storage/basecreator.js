@@ -91,6 +91,10 @@ function createStorageBase(execlib){
   };
   StorageBase.prototype.create = function(datahash){
     var d = q.defer();
+    if (!this.__record) {
+      d.resolve(null);
+      return d.promise;
+    }
     lib.runNext(this.doCreate.bind(this,this.__record.filterObject(datahash),d));
     if(this.events){
       d.promise.then(this.events.fireNewRecord.bind(this.events));
@@ -109,6 +113,10 @@ function createStorageBase(execlib){
   StorageBase.prototype.update = function(filter,datahash,options){
     //console.log('StorageBase update',filter,datahash);
     var d = q.defer();
+    if (!this.__record) {
+      d.resolve(null);
+      return d.promise;
+    }
     lib.runNext(this.doUpdate.bind(this,filter,datahash,options,d));
     if(this.events){
       d.promise.then(this.events.fireUpdated.bind(this.events,filter,datahash));
@@ -129,6 +137,10 @@ function createStorageBase(execlib){
   StorageBase.prototype.delete = function(filter){
     //console.log('StorageBase delete',filter);
     var d = q.defer();
+    if (!this.__record) {
+      d.resolve(null);
+      return d.promise;
+    }
     lib.runNext(this.doDelete.bind(this,filter,d));
     if(this.events){
       d.promise.then(this.events.fireDeleted.bind(this.events,filter));

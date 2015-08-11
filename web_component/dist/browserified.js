@@ -1460,6 +1460,10 @@ function createStorageBase(execlib){
   };
   StorageBase.prototype.create = function(datahash){
     var d = q.defer();
+    if (!this.__record) {
+      d.resolve(null);
+      return d.promise;
+    }
     lib.runNext(this.doCreate.bind(this,this.__record.filterObject(datahash),d));
     if(this.events){
       d.promise.then(this.events.fireNewRecord.bind(this.events));
@@ -1478,6 +1482,10 @@ function createStorageBase(execlib){
   StorageBase.prototype.update = function(filter,datahash,options){
     //console.log('StorageBase update',filter,datahash);
     var d = q.defer();
+    if (!this.__record) {
+      d.resolve(null);
+      return d.promise;
+    }
     lib.runNext(this.doUpdate.bind(this,filter,datahash,options,d));
     if(this.events){
       d.promise.then(this.events.fireUpdated.bind(this.events,filter,datahash));
@@ -1498,6 +1506,10 @@ function createStorageBase(execlib){
   StorageBase.prototype.delete = function(filter){
     //console.log('StorageBase delete',filter);
     var d = q.defer();
+    if (!this.__record) {
+      d.resolve(null);
+      return d.promise;
+    }
     lib.runNext(this.doDelete.bind(this,filter,d));
     if(this.events){
       d.promise.then(this.events.fireDeleted.bind(this.events,filter));
@@ -1557,6 +1569,10 @@ function createMemoryStorage(execlib){
   };
   MemoryStorage.prototype.doCreate = function(record,defer){
     try{
+    if (!this.__record) {
+      defer.resolve(null);
+      return;
+    }
     var mpk = this.__record.primaryKey;
     if (mpk) {
       if (lib.isArray(mpk)) {
@@ -1588,6 +1604,10 @@ function createMemoryStorage(execlib){
     }
   }
   MemoryStorage.prototype.doRead = function(query,defer){
+    if (!this.data) {
+      defer.resolve(null);
+      return;
+    }
     if(!(query.isLimited()||query.isOffset())){
       this.data.forEach(processRead.bind(null,query,defer));
     }else{
@@ -1661,6 +1681,10 @@ function createMemoryStorage(execlib){
     }*/
   }
   MemoryStorage.prototype.doDelete = function(filter,defer){
+    if (!this.data) {
+      defer.resolve(0);
+      return;
+    }
     var todelete = [], data = this.data;
     this.data.forEach(this.processDelete.bind(this,todelete,defer,filter));
     todelete.forEach(function(di){data.splice(di,1);});
