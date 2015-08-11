@@ -253,8 +253,7 @@
 
     AllexDataCrud.prototype.doCreate = function (vals) {
       var defer = lib.q.defer();
-
-      console.log('SAAAAAAAAAAAAAAMO DA TA VIDIM ...', vals);
+      console.log('SAAAAAAAAAAAAAAMO DA TA VIDIM ...', vals); ///TODO: STIGAO SI DO OVDE ...
       return defer.promise;
     };
 
