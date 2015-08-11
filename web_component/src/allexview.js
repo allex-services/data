@@ -152,7 +152,7 @@
 
 
   module.controller('allex.data.CreateNewItemController',['$scope', '$modalInstance', 'settings', 'allex.data.CreateNewItemControllerF', function ($scope, $modalInstance, settings, CreateNewItemController) {
-    new CreateNewItemController($scope, $modalInstance, settings
+    new CreateNewItemController($scope, $modalInstance, settings);
   }]);
 
   module.directive('allexDataNew', ['$compile', 'allex.Router', 'allex.dialog', function ($compile, Router, Dialog) {

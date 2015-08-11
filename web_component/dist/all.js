@@ -147,6 +147,17 @@
     };
   }]);
 
+  module.factory ('allex.data.CreateNewItemControllerF', [function () {
+    function CreateNewItemController($scope, $modalInstance) {
+    }
+    return CreateNewItemController;
+  }]);
+
+
+  module.controller('allex.data.CreateNewItemController',['$scope', '$modalInstance', 'settings', 'allex.data.CreateNewItemControllerF', function ($scope, $modalInstance, settings, CreateNewItemController) {
+    new CreateNewItemController($scope, $modalInstance, settings);
+  }]);
+
   module.directive('allexDataNew', ['$compile', 'allex.Router', 'allex.dialog', function ($compile, Router, Dialog) {
     var CREATE_DEFAULTS = {
       label: 'Add new',
@@ -183,7 +194,7 @@
         return Router.go('dialog.CRUDNoConfig', [this.get('sink_name'), 'create']);
       }
       if (lib.isBoolean(crudc) || !crudc.dialogs) {
-        console.log('===========>', this._parent.get('recordDescriptor'));
+        Dialog.open(null, {controller:'allex.data.CreateNewItemController'});
       }else{
         if (!crudc.dialogs[this.get('role')]){
           return Router.go('dialog.CRUDCreateNotAllowed', [this.get('sink_name')]);
