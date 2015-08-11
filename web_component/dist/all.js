@@ -15,6 +15,7 @@
       this._is_remote = null;
       this.recordDescriptor = null;
       this.crudable = null;
+      this.actionable = null;
       UserDependentMixIn.call(this, $scope);
     }
     lib.inherit(AllexDataViewController, lib.BasicController);
@@ -30,6 +31,7 @@
       this.viewType = null;
       this.recordDescriptor = null;
       this.crudable = null;
+      this.actionable = null;
       UserDependentMixIn.prototype.__cleanUp.call(this);
       lib.BasicController.prototype.__cleanUp.call(this);
     };
@@ -117,7 +119,10 @@
 
       this.set('viewType', VIEW.view);
       this.set('config', VIEW.config);
-      this.set('crudable', !!SINK.crud);
+
+
+      this.set('crudable', (!!SINK.crud) && VIEW.crud);
+      this.set('actionable', (!!SINK.actions) && VIEW.actions);
       this._fetchSink();
     };
 
