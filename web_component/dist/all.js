@@ -147,9 +147,52 @@
     };
   }]);
 
-  module.factory ('allex.data.CreateNewItemControllerF', [function () {
-    function CreateNewItemController($scope, $modalInstance) {
+  module.factory ('allex.data.CreateNewItemControllerF', ['allex.lib.form.WaitingUserModalTwoButtonForm',function (WaitingUserModalTwoButtonForm) {
+    function CreateNewItemController($scope, $modalInstance, settings) {
+      WaitingUserModalTwoButtonForm.call(this, $scope, $modalInstance, {
+        settings: {
+          dialog: {
+            data: null,
+            title: 'Create new item: '+settings.sink_name,
+            '#content': 'jsonform',
+          },
+          button_config: {
+            buttons: {
+              save: {
+                'cb': this._onCreate.bind(this, settings.doCreate),
+                'visible': false
+              },
+              cancel: {
+                'action': 'close'
+              }
+            }
+          }
+        },
+        form: this._buildFormDescriptor(settings.recordDescriptor)
+      });
     }
+
+    lib.inherit(CreateNewItemController, WaitingUserModalTwoButtonForm);
+    CreateNewItemController.prototype.__cleanUp = function () {
+      WaitingUserModalTwoButtonForm.prototype.__cleanUp.call(this);
+    };
+
+    function tofd (item) {
+      return {schema: angular.extend({}, item, {required: true})};
+    }
+    CreateNewItemController.prototype._buildFormDescriptor = function (rd) {
+      return {fields: rd.fields.map(tofd)};
+    };
+
+    CreateNewItemController.prototype.set_form_ready = function (val) {
+      WaitingUserModalTwoButtonForm.prototype.set_form_ready.call(this, val);
+      this.settings.setButton('save', 'visible', val);
+    };
+
+    CreateNewItemController.prototype._onCreate = function (cb) {
+      this.set('promise', cb(this.vals));
+    };
+
     return CreateNewItemController;
   }]);
 
@@ -194,7 +237,11 @@
         return Router.go('dialog.CRUDNoConfig', [this.get('sink_name'), 'create']);
       }
       if (lib.isBoolean(crudc) || !crudc.dialogs) {
-        Dialog.open(null, {controller:'allex.data.CreateNewItemController'});
+        Dialog.open({controller:'allex.data.CreateNewItemController'}, {
+          sink_name: this.get('sink_name'),
+          recordDescriptor : this.get('recordDescriptor'),
+          doCreate : this.doCreate.bind(this)
+        });
       }else{
         if (!crudc.dialogs[this.get('role')]){
           return Router.go('dialog.CRUDCreateNotAllowed', [this.get('sink_name')]);
@@ -202,6 +249,13 @@
           return Router.go(crudc.dialogs[this.get('role')]);
         }
       }
+    };
+
+    AllexDataCrud.prototype.doCreate = function (vals) {
+      var defer = lib.q.defer();
+
+      console.log('SAAAAAAAAAAAAAAMO DA TA VIDIM ...', vals);
+      return defer.promise;
     };
 
     AllexDataCrud.prototype._onRecordDescriptor = function (rd) {
@@ -220,6 +274,10 @@
 
     AllexDataCrud.prototype.get_role = function () {
       return this._parent.get('user').get('role');
+    };
+
+    AllexDataCrud.prototype.get_recordDescriptor = function () {
+      return this._parent.get('recordDescriptor');
     };
     return {
       restrict: 'E',
