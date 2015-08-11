@@ -11,6 +11,7 @@
       this._monitorForGui = null;
       this._is_remote = null;
       this.recordDescriptor = null;
+      this.crudable = null;
       UserDependentMixIn.call(this, $scope);
     }
     lib.inherit(AllexDataViewController, lib.BasicController);
@@ -25,6 +26,7 @@
       this.data = null;
       this.viewType = null;
       this.recordDescriptor = null;
+      this.crudable = null;
       UserDependentMixIn.prototype.__cleanUp.call(this);
       lib.BasicController.prototype.__cleanUp.call(this);
     };
@@ -60,6 +62,9 @@
             .done(this._got_sinkReady.bind(this, sinkRepresentation), this._failed.bind(this));
         }
         this._got_sinkReady(sinkRepresentation);
+      }else{
+        this.set('data', null);
+        this.set('recordDescriptor', null);
       }
     };
 
@@ -87,20 +92,43 @@
       this._fetchSink();
     };
 
-    AllexDataViewController.prototype.set_sink_name = function (name) {
-      this.sink_name = name;
-      this._fetchSink();
+    AllexDataViewController.prototype.get_sinkConfiguration = function () {
+      return ALLEX_CONFIGURATION && ALLEX_CONFIGURATION.VIEWS ? ALLEX_CONFIGURATION.VIEWS[this.get('sink_name')] : null;
+    };
+
+    AllexDataViewController.prototype.get_viewConfiguration = function () {
+      var SINK = this.get('sinkConfiguration');
+      return SINK ? SINK[this.get('name')] : null;
     };
 
     AllexDataViewController.prototype.configure = function (config) {
-      if (!ALLEX_CONFIGURATION.VIEWS) throw new Error('No views configuration');
-      if (!ALLEX_CONFIGURATION.VIEWS[config.sink]) throw new Error('No view configuration for sink '+config.sink);
-      if (!ALLEX_CONFIGURATION.VIEWS[config.sink][config.name]) throw new Error('No view configuration for view '+config.name);
-      var configuration = ALLEX_CONFIGURATION.VIEWS[config.sink][config.name];
-      this.set('viewType', configuration.view);
-      this.set('config', configuration.config);
-      this.name = configuration.name;
+
       this.set('sink_name', config.sink);
+      this.set('name', config.name);
+
+      var SINK = this.get('sinkConfiguration');
+      var VIEW = this.get('viewConfiguration');
+
+      if (!SINK) throw new Error('No view configuration for sink '+config.sink);
+      if (!VIEW) throw new Error('No view configuration for view '+config.name);
+
+      this.set('viewType', VIEW.view);
+      this.set('config', VIEW.config);
+      this.set('crudable', !!SINK.crud);
+      this._fetchSink();
+    };
+
+    AllexDataViewController.prototype.isCRUDAllowed = function (action) {
+      var csc = this.get('sinkConfiguration').crud;
+      if (!csc || !csc[action]) return false;
+      if (lib.isBoolean(csc[action])) return csc[action];
+      if (!csc[action].roles) return false;
+      return (csc[action].roles.split(',').indexOf(this.get('user').get('role')) > -1);
+    };
+
+    AllexDataViewController.prototype.getCRUDConfig = function (action) {
+      var csc = this.get('sinkConfiguration').crud;
+      return lib.isBoolean(csc[action]) ? null : csc[action];
     };
 
     return {
@@ -114,6 +142,99 @@
         scope._ctrl.configure($parse(attrs.config)(scope));
       }
     };
+  }]);
+
+  module.factory ('allex.data.CreateNewItemControllerF', [function () {
+    function CreateNewItemController($scope, $modalInstance) {
+    }
+    return CreateNewItemController;
+  }]);
+
+
+  module.controller('allex.data.CreateNewItemController',['$scope', '$modalInstance', 'settings', 'allex.data.CreateNewItemControllerF', function ($scope, $modalInstance, settings, CreateNewItemController) {
+    new CreateNewItemController($scope, $modalInstance, settings
+  }]);
+
+  module.directive('allexDataNew', ['$compile', 'allex.Router', 'allex.dialog', function ($compile, Router, Dialog) {
+    var CREATE_DEFAULTS = {
+      label: 'Add new',
+      klass:'btn-default'
+    };
+    function AllexDataCrud ($scope) {
+      lib.BasicController.call(this, $scope);
+      this._parent = $scope.$parent._ctrl;
+      this._ready = false;
+      this._config = null;
+      this._rdl = this._parent.attachListener('recordDescriptor', this._onRecordDescriptor.bind(this));
+      this.label = 'Add new';
+    }
+    lib.inherit(AllexDataCrud, lib.BasicController);
+    AllexDataCrud.prototype.__cleanUp = function () {
+      this._parent = null;
+      this._ready = false;
+      this._config = null;
+      this._rdl.destroy();
+      this._rdl = null;
+      lib.BasicController.prototype.__cleanUp.call(this);
+    };
+
+    AllexDataCrud.prototype.isAllowed = function () {
+      return this._ready && this._allowed;
+    };
+
+    AllexDataCrud.prototype.onClick = function () {
+      if (!this._parent.isCRUDAllowed('create')) {
+        return Router.go('dialog.CRUDCreateNotAllowed', [this.get('sink_name')]);
+      }
+      var crudc = this._parent.getCRUDConfig('create');
+      if (!crudc) {
+        return Router.go('dialog.CRUDNoConfig', [this.get('sink_name'), 'create']);
+      }
+      if (lib.isBoolean(crudc) || !crudc.dialogs) {
+        Dialog.open(null, {controller:'allex.data.CreateNewItemController'});
+      }else{
+        if (!crudc.dialogs[this.get('role')]){
+          return Router.go('dialog.CRUDCreateNotAllowed', [this.get('sink_name')]);
+        }else{
+          return Router.go(crudc.dialogs[this.get('role')]);
+        }
+      }
+    };
+
+    AllexDataCrud.prototype._onRecordDescriptor = function (rd) {
+      ///use record descriptor as a moment detector: when sink is ready ...
+      this._ready = !!rd;
+      this._config = null;
+      if (this._parent.isCRUDAllowed('create')) {
+        this._config = angular.extend({}, CREATE_DEFAULTS, this._parent.getCRUDConfig ('create') || {});
+      }
+      this.$apply();
+    };
+
+    AllexDataCrud.prototype.get_sink_name = function ( ){
+      return this._parent.sink_name;
+    };
+
+    AllexDataCrud.prototype.get_role = function () {
+      return this._parent.get('user').get('role');
+    };
+    return {
+      restrict: 'E',
+      replace: true,
+      controller: AllexDataCrud,
+      scope: true,
+      template: '<button class="btn" data-ng-class="_ctrl._config.klass" data-ng-show="_ctrl._ready && _ctrl._config" data-ng-click="_ctrl.onClick()">{{_ctrl._config.label}}</button>'
+    };
+  }]);
+
+  module.run (['allex.Router', 'allex.dialog', function (Router, Dialog) {
+    Router.register('dialog.CRUDCreateNotAllowed', function (sink_name) {
+      return Dialog.error({'content': "You are not allowed to do create on sink <strong>{{_ctrl.getData().sink_name}}</strong>", data: {sink_name: sink_name}});
+    });
+
+    Router.register('dialog.CRUDNoConfig', function (sink_name, action) {
+      return Dialog.error({'content': 'Unable to find configuration for action <strong>{{_ctrl.getData().action}}</strong> for sink <strong>{{_ctrl.getData().sink_name}}', data: {sink_name: sink_name, action: action}});
+    });
   }]);
 
 })(angular.module('allex.data'), ALLEX.lib, ALLEX);

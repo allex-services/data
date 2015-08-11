@@ -34,35 +34,35 @@
         return; ///TODO: append something like: no descriptor, can not move on?
       }
 
-      var config = this._parent.get('config');
+
       this.gridOptions = this.prepareGridOptions(recordDescriptor);
       this.gridOptions.data = this._parent.get('data');
       var $grid = $('<div>').addClass('allex_grid').attr('data-ui-grid', '_ctrl.gridOptions');
-
-      if (config.autoresize) {
-        $grid.attr('ui-grid-auto-resize', '');
-      }
-
       var el = this.get('el');
       el.append($grid);
       el.removeClass();
       el.addClass('allex_grid_container');
 
-      if (config.container_class) el.addClass(config.container_class);
-      if (config.grid_class) $grid.addClass(config.grid_class);
+      var config = this._parent.get('config');
+      if (config) {
+        if (config.autoresize) $grid.attr('ui-grid-auto-resize', '');
+        if (config.container_class) el.addClass(config.container_class);
+        if (config.grid_class) $grid.addClass(config.grid_class);
+      }
 
       $compile(this.get('el').contents())(this.scope);
     };
 
     AllexDataGrid.prototype.prepareGridOptions = function (recordDescriptor) {
-      var config = angular.extend({}, this._parent.get('config').grid);
+      var grid = this._parent.get('config') ? this._parent.get('config').grid: null;
+      var config = angular.extend({}, grid);
       var cfgd = config.columnDefs;
       config.columnDefs = recordDescriptor.fields.map (this._buildColumnDef.bind(this, cfgd));
       return config;
     };
 
     AllexDataGrid.prototype._buildColumnDef = function (cfgd, rditem) {
-      return angular.extend(cfgd[rditem.name] || {}, {displayName: rditem.title, 'field': rditem.name});
+      return angular.extend( (cfgd && cfgd[rditem.name]) || {}, {displayName: rditem.title, 'field': rditem.name});
     };
 
     return {

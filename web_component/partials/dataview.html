@@ -1,4 +1,5 @@
 <div class="dataview_container">
+  <allex-data-new data-ng-if="_ctrl.get('crudable')"></allex-data-new>
   <allex-data-grid class="grid" data-ng-if="_ctrl.get('viewType') === 'grid'"></allex-data-grid>
   <allex-data-list class="list" data-ng-if="_ctrl.get('viewType') === 'list'"></allex-data-list>
 </div>
