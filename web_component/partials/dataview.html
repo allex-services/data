@@ -2,4 +2,5 @@
   <allex-data-new data-ng-if="_ctrl.get('crudable')"></allex-data-new>
   <allex-data-grid class="grid" data-ng-if="_ctrl.get('viewType') === 'grid'"></allex-data-grid>
   <allex-data-list class="list" data-ng-if="_ctrl.get('viewType') === 'list'"></allex-data-list>
+  <allex-dynamic-content class="custom" data-ng-if="_ctrl.get('viewType') === 'custom'" data-hdccontent="_ctrl.get('config').content"></allex-dynamic-content>
 </div>

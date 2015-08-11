@@ -37,7 +37,6 @@
       var user = this.get('user');
       if (!this.get('sink_name')) return;
       if ('loggedin' !== user.get('state')) return; //reconsider this one ...
-      //console.log('AJ DA VIDIMO ...', this.sink_name);
       this.set('sinkRepresentation', this.get('user').getSubSink(this.sink_name));
     };
 
