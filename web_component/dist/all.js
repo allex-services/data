@@ -83,6 +83,7 @@
     };
 
     AllexDataViewController.prototype.set_recordDescriptor = function (recordDescriptor) {
+      console.log('AND RECORD DESCRIPTOR IS ', JSON.stringify(recordDescriptor, null, 2));
       this.recordDescriptor = recordDescriptor;
     };
 
