@@ -2,7 +2,67 @@
 })(angular.module('allex.data', ['allex.lib', 'ui.grid','ui.grid.autoResize']), ALLEX.lib, ALLEX);
 //samo da te vidim
 (function (module, lib, allex) {
-  module.directive('allexDataView', ['$parse', 'allex.lib.UserDependentMixIn', function ($parse, UserDependentMixIn) {
+  ///TODO: complex primary key not covered ...
+
+  module.factory ('allex.CRUDAHelpers', [function () {
+    function hasPermission (cruds, actions, role, name) {
+      if ('create' === name) return false; //discard create, it's not allowed action ...
+      var c = name in cruds ? cruds[name] : actions[name];
+      if (!c) return false;
+
+      if (!('roles' in c)) return true; ///no roles given ... so allowd to all
+      if (!c.roles || !c.roles.length) return false; // roles: null or roles: '' will forbid for all
+      
+      return c.roles.split(',').indexOf(role) > -1;
+    }
+
+    function itemActions (view) {
+      var sc = view.get('sinkConfiguration'), user = view.get('user'), primaryKey = view.get('recordDescriptor').primaryKey;
+      if (!primaryKey) return null;
+      if (!sc || !sc.actions || !sc.crud) return null;
+      return (sc.item_actions ? sc.item_actions : ['edit', 'delete']).filter(hasPermission.bind(null, sc.crud, sc.actions, user.get('role')));
+    }
+
+    function buildWidget (DEFAULTS, type, sc, name) {
+      var c = name in sc.crud ? sc.crud[name] : sc.actions[name];
+      if (!c) return '';
+      return (c.widget ? c.widget : DEFAULTS[name]) || '';
+    }
+
+    function buildActionsWidget (view) {
+      var actions = itemActions(view);
+      if (!actions || !actions.length) return;
+      var type = view.get('viewType');
+      var DEFAULTS = ALLEX_CONFIGURATION.DEFAULT_VIEW_ACTION_WIDGETS[type];
+      if (!DEFAULTS) {
+        console.warn('NO DEFAULTS FOR VIEW ACTIONS for type ',type);
+      }
+      return actions.map(buildWidget.bind(null, DEFAULTS, type, view.get('sinkConfiguration'))).join('');
+    }
+
+    function tofd (defaults, item) {
+      var ext = {required: true};
+      if (defaults && defaults[item.name]) ext.default = defaults[item.name];
+      return {schema: angular.extend({}, item, ext)};
+    }
+
+    function trd (ret, defaults, item) {
+      ret[item.name] = tofd(defaults, item);
+    }
+    function buildFormDescriptor (recordDescriptor, defaults) {
+      var ret = {fields: {}};
+      recordDescriptor.fields.forEach (trd.bind(null, ret.fields, defaults));
+      return ret;
+    }
+    return {
+      itemActions: itemActions,
+      buildActionsWidget: buildActionsWidget,
+      buildFormDescriptor: buildFormDescriptor
+    };
+  }]);
+
+
+  module.directive('allexDataView', ['$parse', 'allex.lib.UserDependentMixIn', 'allex.Router', function ($parse, UserDependentMixIn, Router) {
     function AllexDataViewController ($scope) {
       lib.BasicController.call(this, $scope);
       this.el = null;
@@ -83,7 +143,7 @@
     };
 
     AllexDataViewController.prototype.set_recordDescriptor = function (recordDescriptor) {
-      console.log('AND RECORD DESCRIPTOR IS ', JSON.stringify(recordDescriptor, null, 2));
+      //console.log('AND RECORD DESCRIPTOR IS ', JSON.stringify(recordDescriptor, null, 2));
       this.recordDescriptor = recordDescriptor;
     };
 
@@ -140,6 +200,49 @@
       return lib.isBoolean(csc[action]) ? null : csc[action];
     };
 
+    AllexDataViewController.prototype._doAction = function (dialog, action, data) {
+      Router.go(dialog, [action, data, this]);
+    };
+
+    AllexDataViewController.prototype._doEdit = function (dialog, data) {
+      var rd = this.get('recordDescriptor');
+      if (!rd.primaryKey) {
+        Router.go('dialog.error', [{'content':'No primary key in record descriptor, can not edit'}]);
+        return;
+      }
+      this._doAction(dialog, 'edit', data);
+    };
+
+    AllexDataViewController.prototype._doRemove = function (data) {
+      var rd = this.get('recordDescriptor');
+      if (!rd.primaryKey) {
+        Router.go('dialog.error', [{'content':'No primary key in record descriptor, can not remove'}]);
+        return;
+      }
+
+      Router.go('dialog.singleConfirm', [{
+        dialog:{content: 'samo da te vidim..'}
+      }, this._doActualRemove.bind(this, data)]);
+    };
+
+    AllexDataViewController.prototype._doActualRemove = function (data) {
+      var rd = this.get('recordDescriptor'), primaryKey = rd.primaryKey;
+      this.get('user').getSubSink(this.get('sink_name')).sink.call('delete', {op:'eq', field: primaryKey, value:data[primaryKey]}).done (this._onRemoveSuccessfull.bind(this,primaryKey, data[primaryKey]), this._onRemoveFailed.bind(this, primaryKey, data[primaryKey]));
+    };
+
+    AllexDataViewController.prototype._onRemoveSuccessfull = function (primaryKey, value) {
+      Router.go('dialog.success', [{
+        data: {primaryKey: primaryKey, value: value}, 
+        content: 'Record with key <strong>{{_ctrl.settings.data.primaryKey}}: {{_ctrl.settings.data.value}}</strong> was successfuly removed'
+      }]);
+    };
+    AllexDataViewController.prototype._onRemoveFailed = function (primaryKey, value) {
+      Router.go('dialog.error', [{
+        data: {primaryKey: primaryKey, value: value}, 
+        content: 'Failed to remove record with key <strong>{{_ctrl.settings.data.primaryKey}}: {{_ctrl.settings.data.value}}</strong>'
+      }]);
+    };
+
     return {
       restrict: 'E',
       replace: true,
@@ -153,8 +256,9 @@
     };
   }]);
 
-  module.factory ('allex.data.CreateNewItemControllerF', ['allex.lib.form.WaitingUserModalTwoButtonForm',function (WaitingUserModalTwoButtonForm) {
+  module.factory ('allex.data.CreateNewItemControllerF', ['allex.lib.form.WaitingUserModalTwoButtonForm','allex.CRUDAHelpers', function (WaitingUserModalTwoButtonForm, CRUDAHelpers) {
     function CreateNewItemController($scope, $modalInstance, settings) {
+      this.sink_name = settings.sink_name;
       WaitingUserModalTwoButtonForm.call(this, $scope, $modalInstance, {
         settings: {
           dialog: {
@@ -174,29 +278,18 @@
             }
           }
         },
-        form: this._buildFormDescriptor(settings.recordDescriptor)
+        form: CRUDAHelpers.buildFormDescriptor(settings.recordDescriptor)
       });
     }
 
     lib.inherit(CreateNewItemController, WaitingUserModalTwoButtonForm);
     CreateNewItemController.prototype.__cleanUp = function () {
+      this.sink_name = null;
       WaitingUserModalTwoButtonForm.prototype.__cleanUp.call(this);
     };
 
-    function tofd (item) {
-      return {schema: angular.extend({}, item, {required: true})};
-    }
-    CreateNewItemController.prototype._buildFormDescriptor = function (rd) {
-      return {fields: rd.fields.map(tofd)};
-    };
-
-    CreateNewItemController.prototype.set_form_ready = function (val) {
-      WaitingUserModalTwoButtonForm.prototype.set_form_ready.call(this, val);
-      this.settings.setButton('save', 'visible', val);
-    };
-
     CreateNewItemController.prototype._onCreate = function (cb) {
-      this.set('promise', cb(this.vals));
+      this.set('promise', this.get('user').getSubSink(this.get('sink_name')).sink.call('create',this.vals));
     };
 
     return CreateNewItemController;
@@ -245,8 +338,7 @@
       if (lib.isBoolean(crudc) || !crudc.dialogs) {
         Dialog.open({controller:'allex.data.CreateNewItemController'}, {
           sink_name: this.get('sink_name'),
-          recordDescriptor : this.get('recordDescriptor'),
-          doCreate : this.doCreate.bind(this)
+          recordDescriptor : this.get('recordDescriptor')
         });
       }else{
         if (!crudc.dialogs[this.get('role')]){
@@ -255,12 +347,6 @@
           return Router.go(crudc.dialogs[this.get('role')]);
         }
       }
-    };
-
-    AllexDataCrud.prototype.doCreate = function (vals) {
-      var defer = lib.q.defer();
-      console.log('SAAAAAAAAAAAAAAMO DA TA VIDIM ...', vals); ///TODO: STIGAO SI DO OVDE ...
-      return defer.promise;
     };
 
     AllexDataCrud.prototype._onRecordDescriptor = function (rd) {
@@ -293,7 +379,7 @@
     };
   }]);
 
-  module.run (['allex.Router', 'allex.dialog', function (Router, Dialog) {
+  module.run (['allex.Router', 'allex.dialog', function (Router, Dialog, TBActionSettings) {
     Router.register('dialog.CRUDCreateNotAllowed', function (sink_name) {
       return Dialog.error({'content': "You are not allowed to do create on sink <strong>{{_ctrl.getData().sink_name}}</strong>", data: {sink_name: sink_name}});
     });
@@ -301,6 +387,68 @@
     Router.register('dialog.CRUDNoConfig', function (sink_name, action) {
       return Dialog.error({'content': 'Unable to find configuration for action <strong>{{_ctrl.getData().action}}</strong> for sink <strong>{{_ctrl.getData().sink_name}}', data: {sink_name: sink_name, action: action}});
     });
+
+    Router.register('dialog.data.action.edit', function (action, data, view) {
+      return Dialog.open({controller: 'allex.data.EditController'}, {action:action, data: data, view: view});
+    });
+  }]);
+
+  module.factory('allex.data.EditControllerF', ['allex.CRUDAHelpers','allex.lib.form.WaitingUserModalTwoButtonForm', function (CRUDAHelpers, WaitingUserModalTwoButtonForm) {
+    function EditController($scope, $modalInstance, settings) {
+      this.view = settings.view;
+      var rd = this.view.get('recordDescriptor');
+      if (!rd.primaryKey) {
+        //ovo  mora ranije
+        throw new Error('NO PRIMARY KEY ...');
+      }
+      this.primaryKey = rd.primaryKey;
+      var form = CRUDAHelpers.buildFormDescriptor(settings.view.get('recordDescriptor'), settings.data);
+
+      form.fields[this.get('primaryKey')].attribs = {
+        'ng-disabled':'1'
+      };
+      WaitingUserModalTwoButtonForm.call(this, $scope, $modalInstance, {
+        settings: {
+          dialog : { 
+            messages: {autofade: 2000},
+            success: { autoclose: 1000 },
+            title: 'Edit',
+            '#content': 'jsonform'
+          },
+          button_config: {
+            buttons: {
+              save: {
+                cb: this.doSave.bind(this),
+                visible: false
+              },
+              cancel: {action : 'close'}
+            }
+          }
+        },
+        form: form
+      });
+    }
+
+    lib.inherit(EditController, WaitingUserModalTwoButtonForm);
+    EditController.prototype.__cleanUp = function () {
+      this.primaryKey = null;
+      this.view = null;
+      WaitingUserModalTwoButtonForm.prototype.__cleanUp.call(this);
+    };
+
+    EditController.prototype.doSave = function () {
+      var primaryKey = this.get('primaryKey'),
+        promise = this.get('user').getSubSink(this.view.get('sink_name')).sink.call('update', {op:'eq', field:primaryKey, value: this.vals[primaryKey]} ,this.vals);
+      //TODO: sad bismo trebali da odgovorimo nesto pametno ...
+      this.set('promise', promise);
+    };
+
+    return EditController;
+  }]);
+
+
+  module.controller('allex.data.EditController', ['$scope', '$modalInstance', 'settings', 'allex.data.EditControllerF', function ($scope, $modalInstance, settings, EditController) {
+    new EditController($scope, $modalInstance, settings);
   }]);
 
 })(angular.module('allex.data'), ALLEX.lib, ALLEX);
@@ -318,7 +466,7 @@
 })(angular.module('allex.data'), ALLEX.lib, ALLEX);
 //samo da te vidim
 (function (module, lib, allex) {
-  module.directive('allexDataGrid', ['allex.lib.interfaces', '$compile', function (Interfaces, $compile) {
+  module.directive('allexDataGrid', ['allex.lib.interfaces', '$compile', 'allex.CRUDAHelpers', function (Interfaces, $compile, CRUDAHelpers) {
     function AllexDataGrid($scope) {
       lib.BasicController.call(this, $scope);
       Interfaces.Element.call(this);
@@ -333,6 +481,18 @@
       this._parent = null;
       Interfaces.Element.prototype.__cleanUp.call(this);
       lib.BasicController.prototype.__cleanUp.call(this);
+    };
+
+    AllexDataGrid.prototype._doAction = function (form, action, data) {
+      this._parent._doAction.call(this._parent, form, action, data.toHash(data.fieldNames()));
+    };
+
+    AllexDataGrid.prototype._doEdit = function (form, data) {
+      this._parent._doEdit.call(this._parent, form, data.toHash(data.fieldNames()));
+    };
+
+    AllexDataGrid.prototype._doRemove = function (data) {
+      this._parent._doRemove.call(this._parent, data.toHash(data.fieldNames()));
     };
 
     AllexDataGrid.prototype.get_data = function () {
@@ -356,7 +516,9 @@
 
       this.gridOptions = this.prepareGridOptions(recordDescriptor);
       this.gridOptions.data = this._parent.get('data');
-      var $grid = $('<div>').addClass('allex_grid').attr('data-ui-grid', '_ctrl.gridOptions');
+      var $grid = $('<div>').addClass('allex_grid').attr({
+        'data-ui-grid':'_ctrl.gridOptions',
+      });
       var el = this.get('el');
       el.append($grid);
       el.removeClass();
@@ -377,7 +539,17 @@
       var config = angular.extend({}, grid);
       var cfgd = config.columnDefs;
       config.columnDefs = recordDescriptor.fields.map (this._buildColumnDef.bind(this, cfgd));
+      this._appendCrudAndActions(config.columnDefs);
       return config;
+    };
+
+    AllexDataGrid.prototype._appendCrudAndActions = function (defs) {
+      var item_actions = CRUDAHelpers.buildActionsWidget(this._parent);
+      if (!item_actions || !item_actions.length) return;
+      defs.unshift({
+        name: 'Actions',
+        cellTemplate: item_actions
+      });
     };
 
     AllexDataGrid.prototype._buildColumnDef = function (cfgd, rditem) {

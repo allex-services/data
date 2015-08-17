@@ -1352,11 +1352,12 @@ function createRecordUtils(execlib,suite){
   function sinkInheritProc(childCtor,methodDescriptors,visiblefieldsarray,classStorageDescriptor){
     sinkPreInheritProc.call(this,childCtor,methodDescriptors,visiblefieldsarray);
     var recordDescriptor = {};
-    lib.traverse(this.recordDescriptor,copierWOFields.bind(null,recordDescriptor));
+    lib.traverseShallow(this.prototype.recordDescriptor,copierWOFields.bind(null,recordDescriptor));
     var fields = [];
     if(this.prototype.recordDescriptor){
       copyNamedItems(this.prototype.recordDescriptor.fields,fields,childCtor.prototype.visibleFields);
     }
+    lib.traverseShallow(classStorageDescriptor.record, copierWOFields.bind(null,recordDescriptor));
     copyNamedItems(classStorageDescriptor.record.fields,fields,childCtor.prototype.visibleFields);
     recordDescriptor.fields = fields;
     childCtor.prototype.recordDescriptor = recordDescriptor;

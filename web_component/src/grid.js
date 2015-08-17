@@ -1,5 +1,5 @@
 (function (module, lib, allex) {
-  module.directive('allexDataGrid', ['allex.lib.interfaces', '$compile', function (Interfaces, $compile) {
+  module.directive('allexDataGrid', ['allex.lib.interfaces', '$compile', 'allex.CRUDAHelpers', function (Interfaces, $compile, CRUDAHelpers) {
     function AllexDataGrid($scope) {
       lib.BasicController.call(this, $scope);
       Interfaces.Element.call(this);
@@ -14,6 +14,18 @@
       this._parent = null;
       Interfaces.Element.prototype.__cleanUp.call(this);
       lib.BasicController.prototype.__cleanUp.call(this);
+    };
+
+    AllexDataGrid.prototype._doAction = function (form, action, data) {
+      this._parent._doAction.call(this._parent, form, action, data.toHash(data.fieldNames()));
+    };
+
+    AllexDataGrid.prototype._doEdit = function (form, data) {
+      this._parent._doEdit.call(this._parent, form, data.toHash(data.fieldNames()));
+    };
+
+    AllexDataGrid.prototype._doRemove = function (data) {
+      this._parent._doRemove.call(this._parent, data.toHash(data.fieldNames()));
     };
 
     AllexDataGrid.prototype.get_data = function () {
@@ -37,7 +49,9 @@
 
       this.gridOptions = this.prepareGridOptions(recordDescriptor);
       this.gridOptions.data = this._parent.get('data');
-      var $grid = $('<div>').addClass('allex_grid').attr('data-ui-grid', '_ctrl.gridOptions');
+      var $grid = $('<div>').addClass('allex_grid').attr({
+        'data-ui-grid':'_ctrl.gridOptions',
+      });
       var el = this.get('el');
       el.append($grid);
       el.removeClass();
@@ -58,7 +72,17 @@
       var config = angular.extend({}, grid);
       var cfgd = config.columnDefs;
       config.columnDefs = recordDescriptor.fields.map (this._buildColumnDef.bind(this, cfgd));
+      this._appendCrudAndActions(config.columnDefs);
       return config;
+    };
+
+    AllexDataGrid.prototype._appendCrudAndActions = function (defs) {
+      var item_actions = CRUDAHelpers.buildActionsWidget(this._parent);
+      if (!item_actions || !item_actions.length) return;
+      defs.unshift({
+        name: 'Actions',
+        cellTemplate: item_actions
+      });
     };
 
     AllexDataGrid.prototype._buildColumnDef = function (cfgd, rditem) {
