@@ -70,6 +70,9 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
   ChildClass.prototype.limit = lib.dummyFunc;
   ChildClass.prototype.offset = lib.dummyFunc;
   ChildClass.prototype.attachChannel = function(channel,eventq){
+    if (!channel.destroyed) { //he's dead, Jim...
+      return;
+    }
     if (!this.distributor) {
       return;
     }
