@@ -14,6 +14,10 @@ function createDataSession(execlib){
   }
   lib.inherit(DataChannel,Channel);
   lib.inheritMethods(DataChannel,QueryClone,'fields','filter',/*'limit','offset',*/'isEmpty','isLimited','isOffset','isOK');
+  DataChannel.prototype.__cleanUp = function () {
+    QueryClone.prototype.destroy.call(this);
+    Channel.prototype.__cleanUp.call(this);
+  };
   DataChannel.prototype.limit = function(){
     return this.usersession.pagesize;
   };

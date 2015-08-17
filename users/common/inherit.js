@@ -5,7 +5,6 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
       dataSuite = execlib.dataSuite,
       filterFactory = dataSuite.filterFactory,
       QueryBase = dataSuite.QueryBase,
-      QueryClone = dataSuite.QueryClone,
       recordSuite = dataSuite.recordSuite,
       execSuite = execlib.execSuite,
       DataStreamDistributor = dataSuite.StreamDistributor,
