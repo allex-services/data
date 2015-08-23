@@ -12,6 +12,9 @@ function createClientSide(execlib) {
     },{
       name: 'readFromDataSink',
       klass: require('./tasks/readFromDataSink')(execlib)
+    },{
+      name: 'joinFromDataSinks',
+      klass: require('./tasks/joinFromDataSinks')(execlib)
     }]
   };
 }

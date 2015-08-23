@@ -30,6 +30,11 @@ function createReadFromDataSink(execlib) {
   ReadFromDataSink.prototype.onSuccess = function (sink) {
     if(!sink){
       lib.runNext(this.destroy.bind(this));
+      return;
+    }
+    if(!sink.recordDescriptor){
+      console.error('no recordDescriptor on Sink', sink.modulename, sink.role);
+      return;
     }
     readFromSinkProc({
       sink: sink,
