@@ -312,6 +312,26 @@ function createJoinFromDataSinksTask(execlib) {
     DataSinkDataJob.prototype.destroy.call(this);
   };
 
+  function GlobalAcquirerDataJob(parnt, prophash) {
+    DataSinkDataJob.call(this, parnt, prophash);
+    //console.log('GlobalAcquirerDataJob listening for', prophash.sinkname);
+    this.sinkListener = taskRegistry.run('findSink', {
+      sinkname: prophash.sinkname, 
+      identity: prophash.identity || {},
+      onSink: this.onSink.bind(this)
+    });
+  }
+  lib.inherit(GlobalAcquirerDataJob, DataSinkDataJob);
+  GlobalAcquirerDataJob.prototype.destroy = function () {
+    if (this.sinkListener) {
+      lib.runNext(this.sinkListener.destroy.bind(this.sinkListener));
+      this.sinkListener = null;
+    }
+    this.sinkListener = null;
+    this.service = null;
+    DataSinkDataJob.prototype.destroy.call(this);
+  };
+
   function TargetSinkDataJob (parnt, jobdesc) {
     DataJob.call(this, parnt, jobdesc);
     this.sink = jobdesc.sink;
@@ -368,6 +388,8 @@ function createJoinFromDataSinksTask(execlib) {
       job = new TargetSinkDataJob(parentjob, jobdesc);
     } else if (jobdesc.type === 'sub') {
       job = new LocalAcquirerDataJob(parentjob, jobdesc);
+    } else if (jobdesc.type === 'global') {
+      job = new GlobalAcquirerDataJob(parentjob, jobdesc);
     }
     if (lib.isArray(jobdesc.jobs)) {
       jobdesc.jobs.forEach(createJob.bind(null, job));
