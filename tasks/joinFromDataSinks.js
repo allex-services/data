@@ -137,10 +137,10 @@ function createJoinFromDataSinksTask(execlib) {
     RootDataJob.prototype.destroy.call(this);
   };
   DataJob.prototype.produceOutput = function (defer, data, inputrow) {
-    console.log('produceOutput from', data, 'current input is', this.parnt.state.get('output'), 'input row is', inputrow);
+    //console.log('produceOutput from', data, 'current input is', this.parnt.state.get('output'), 'input row is', inputrow);
     var aggro = this.aggregator ? this.aggregator.aggregate(data) : data,
       input = this.state.get('output');
-    console.log('aggro is', aggro);
+    //console.log('aggro is', aggro);
     if (this.aggregator) {
       this.state.replace('output', (this.state.get('output') || []).concat(aggro));
     }
@@ -152,6 +152,7 @@ function createJoinFromDataSinksTask(execlib) {
   function DataSinkDataJob (parnt, prophash) {
     DataJob.call(this, parnt, prophash);
     this.filter = prophash.filter;
+    this.subsinks = [];
     if (!this.filter) {
       throw new lib.Error('FILTER_NEEDED', 'JobDescriptor misses the "filter" field');
     }
@@ -159,11 +160,15 @@ function createJoinFromDataSinksTask(execlib) {
   }
   lib.inherit(DataSinkDataJob, DataJob);
   DataSinkDataJob.prototype.destroy = function () {
+    if (this.subsinks) {
+      lib.arryDestroyAll(this.subsinks);
+    }
+    this.subsinks = null;
     this.filter = null;
     DataJob.prototype.destroy.call(this);
   };
   DataSinkDataJob.prototype.dataProduced = function () {
-    console.log('data produced', this.state.get('output'));
+    //console.log('data produced', this.state.get('output'));
     if (this.state.get('output')) {
       this.children.forEach(function(c){
         c.trigger();
@@ -171,7 +176,7 @@ function createJoinFromDataSinksTask(execlib) {
     }
   };
   DataSinkDataJob.prototype.onSink = function (sink) {
-    console.log('Job with filter', this.filter, 'onSink', sink ? sink.modulename : 'no sink');
+    //console.log('Job with filter', this.filter, 'onSink', sink ? sink.modulename : 'no sink');
     this.state.add('sink', sink);
     if (!sink) {
       return;
@@ -181,12 +186,16 @@ function createJoinFromDataSinksTask(execlib) {
     if (!subsink) {
       return;
     }
-    var data = [];
+    this.subsinks.push(subsink);
+    var data = [],
+      handler = this.produceOutput.bind(this, defer, data, inputrow);
     taskRegistry.run('materializeData', {
       sink: subsink,
       data: data,
-      onInitiated: this.produceOutput.bind(this, defer, data, inputrow),
-      onNewRecord: this.produceOutput.bind(this, defer, data, inputrow)
+      onInitiated: handler,
+      onNewRecord: handler,
+      onUpdate: handler,
+      onDelete: handler
     });
   };
   DataSinkDataJob.prototype.onNoSink = function (defer, reason) {
@@ -194,10 +203,12 @@ function createJoinFromDataSinksTask(execlib) {
     this.destroy();
   };
   DataSinkDataJob.prototype.trigger = execSuite.dependentMethod([{mapname: 'state', names: ['sink']}], function (sink, defer) {
+    lib.arryDestroyAll(this.subsinks);
+    this.subsinks = [];
     if ('function' === typeof this.filter) {
       var fr = this.filter();
       if ('function' === typeof fr.done) {
-        console.log('will wait on', fr);
+        //console.log('will wait on', fr);
         fr.done(this.onFilter.bind(this, defer));
       } else {
         this.onFilter(defer, fr);
@@ -209,29 +220,29 @@ function createJoinFromDataSinksTask(execlib) {
     return defer.promise;
   });
   DataSinkDataJob.prototype.onFilter = function (defer, filter) {
-    console.log('filter', this.filter, 'resulted in filter', filter);
+    //console.log('filter', this.filter, 'resulted in filter', filter);
     if (!filter) {
-      console.log('but no filter');
+      //console.log('but no filter');
       defer.resolve(null);
       return;
     }
     if (!this.parnt) {
-      console.log('but no parent');
+      //console.log('but no parent');
       defer.resolve(null);
       return;
     }
     if (!this.parnt.state) {
-      console.log('but no parent state');
+      //console.log('but no parent state');
       defer.resolve(null);
       return;
     }
     var input = this.parnt.state.get('output');
     if (!input) {
-      console.log('but no input');
+      //console.log('but no input');
       defer.resolve(null);
       return;
     }
-    console.log('filter can proceeed');
+    //console.log('filter can proceeed');
     if (this.isFilterInputDependent(filter)) {
       q.allSettled(input.map(this.applyDataDependentFilter.bind(this, defer, filter))).done(
         defer.resolve.bind(defer),
@@ -251,7 +262,7 @@ function createJoinFromDataSinksTask(execlib) {
       d.resolve(null);
       return d.promise;
     }
-    console.log(filter, 'subconnecting to', sink.modulename);
+    //console.log(filter, 'subconnecting to', sink.modulename);
     sink.subConnect('.', {
       name: 'user',
       role: 'user',
@@ -274,7 +285,7 @@ function createJoinFromDataSinksTask(execlib) {
   DataSinkDataJob.prototype.applyDataDependentFilter = function (defer, filter, datahash) {
     var ret = lib.extend({}, filter);
     ret.value = datahash[ret.value];
-    console.log(filter, '=>', ret);
+    //console.log(filter, '=>', ret);
     return this.applyFilter(ret, datahash);
   };
 
@@ -282,7 +293,7 @@ function createJoinFromDataSinksTask(execlib) {
     DataSinkDataJob.call(this, parnt, prophash);
     this.service = prophash.service;
     this.serviceDestroyedListener = this.service.destroyed.attach(this.destroy.bind(this));
-    console.log('LocalAcquirerDataJob listening for', prophash.sinkname);
+    //console.log('LocalAcquirerDataJob listening for', prophash.sinkname);
     this.sinkListener = this.service.listenForSubService(prophash.sinkname, this.onSink.bind(this), true);
   }
   lib.inherit(LocalAcquirerDataJob, DataSinkDataJob);
@@ -301,7 +312,24 @@ function createJoinFromDataSinksTask(execlib) {
     DataSinkDataJob.prototype.destroy.call(this);
   };
 
-  function FuncDataJob(parnt, func) {
+  function TargetSinkDataJob (parnt, jobdesc) {
+    DataJob.call(this, parnt, jobdesc);
+    this.sink = jobdesc.sink;
+  }
+  lib.inherit(TargetSinkDataJob, DataJob);
+  TargetSinkDataJob.prototype.destroy = function () {
+    this.sink = null;
+    DataJob.prototype.destroy.call(this);
+  };
+  TargetSinkDataJob.prototype.trigger = function () {
+    var input = this.parnt.state.get('output'),
+      sink = this.sink;
+    sink.call('delete', {}).then(
+      input.forEach(sink.call.bind(sink, 'create'))
+    );
+  };
+
+  function FuncDataJob (parnt, func) {
     DataJob.call(this, parnt, {});
     this.func = func;
   }
@@ -323,24 +351,35 @@ function createJoinFromDataSinksTask(execlib) {
     this.job = null;
   }
   lib.inherit(JoinFromDataSinks, Task);
+  JoinFromDataSinks.prototype.destroy = function () {
+    this.jobs = null;
+    if (this.job) {
+      this.job.destroy();
+    }
+    this.job = null;
+  };
+  function createJob (parentjob, jobdesc) {
+    var job;
+    if (lib.isArray(jobdesc)) {
+      job = this.createJob(parentjob, jobdesc[0]);
+    } else if ('function' === typeof jobdesc) {
+      job = new FuncDataJob(parentjob, jobdesc);
+    } else if (jobdesc.type === 'targetsink') {
+      job = new TargetSinkDataJob(parentjob, jobdesc);
+    } else if (jobdesc.type === 'sub') {
+      job = new LocalAcquirerDataJob(parentjob, jobdesc);
+    }
+    if (lib.isArray(jobdesc.jobs)) {
+      jobdesc.jobs.forEach(createJob.bind(null, job));
+    }
+  };
   JoinFromDataSinks.prototype.go = function () {
     if (this.job) {
       return;
     }
-    this.job = this.jobs.reduce(this.createJob.bind(this), this.job);
+    this.job = new RootDataJob();
+    this.jobs.forEach(createJob.bind(null, this.job));
     this.jobs = null;
-  };
-  JoinFromDataSinks.prototype.createJob = function (parentjob, jobdesc) {
-    var job;
-    if (!parentjob) {
-      parentjob = this.job = new RootDataJob();
-    }
-    if ('function' === typeof jobdesc) {
-      job = new FuncDataJob(parentjob, jobdesc);
-    } else if (jobdesc.type === 'sub') {
-      job = new LocalAcquirerDataJob(parentjob, jobdesc);
-    }
-    return job;
   };
   JoinFromDataSinks.prototype.compulsoryConstructionParameters = ['jobs'];
 

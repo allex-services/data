@@ -23,6 +23,8 @@ function createDataSuite(execlib){
     dataSuite.NullStorage = require('./storage/nullcreator')(execlib);
     dataSuite.CloneStorage = require('./storage/clonecreator')(execlib);
     dataSuite.MemoryStorage = require('./storage/memorycreator')(execlib);
+
+    dataSuite.storageRegistry.add('memory', dataSuite.MemoryStorage);
 }
 
 module.exports = createDataSuite;
