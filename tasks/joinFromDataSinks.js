@@ -403,7 +403,7 @@ function createJoinFromDataSinksTask(execlib) {
     this.jobs.forEach(createJob.bind(null, this.job));
     this.jobs = null;
   };
-  JoinFromDataSinks.prototype.compulsoryConstructionParameters = ['jobs'];
+  JoinFromDataSinks.prototype.compulsoryConstructionProperties = ['jobs'];
 
   return JoinFromDataSinks;
 }
