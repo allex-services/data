@@ -4,7 +4,7 @@
   module.factory ('allex.CRUDAHelpers', [function () {
     function hasPermission (cruds, actions, role, name) {
       if ('create' === name) return false; //discard create, it's not allowed action ...
-      var c = name in cruds ? cruds[name] : actions[name];
+      var c = name in cruds ? cruds[name] : (actions ? actions[name] : null);
       if (!c) return false;
 
       if (!('roles' in c)) return true; ///no roles given ... so allowd to all
@@ -16,7 +16,9 @@
     function itemActions (view) {
       var sc = view.get('sinkConfiguration'), user = view.get('user'), primaryKey = view.get('recordDescriptor').primaryKey;
       if (!primaryKey) return null;
-      if (!sc || !sc.actions || !sc.crud) return null;
+      if (!sc || !sc.crud) return null;
+      if (!(sc.crud.edit || sc.crud.delete)) return null;
+      ///AJ SAMO PROVERI OVAJ ILI ... ako imas sc.crud.edit ili 
       return (sc.item_actions ? sc.item_actions : ['edit', 'delete']).filter(hasPermission.bind(null, sc.crud, sc.actions, user.get('role')));
     }
 
@@ -46,11 +48,21 @@
     function trd (ret, defaults, item) {
       ret[item.name] = tofd(defaults, item);
     }
-    function buildFormDescriptor (recordDescriptor, defaults) {
+    function buildFormDescriptor (recordDescriptor, defaults, config) {
       var ret = {fields: {}};
       recordDescriptor.fields.forEach (trd.bind(null, ret.fields, defaults));
+
+      if (config && config.form) {
+        var f = config.form;
+        lib.traverse(f, buildFormDescriptor_extend.bind(null, ret.fields));
+      }
+
       return ret;
     }
+
+    buildFormDescriptor_extend = function (form, content, key){
+      form[key] = angular.extend({}, form[key], content);
+    };
     return {
       itemActions: itemActions,
       buildActionsWidget: buildActionsWidget,
@@ -256,6 +268,8 @@
   module.factory ('allex.data.CreateNewItemControllerF', ['allex.lib.form.WaitingUserModalTwoButtonForm','allex.CRUDAHelpers', function (WaitingUserModalTwoButtonForm, CRUDAHelpers) {
     function CreateNewItemController($scope, $modalInstance, settings) {
       this.sink_name = settings.sink_name;
+      var config = settings.config;
+      var form = CRUDAHelpers.buildFormDescriptor(settings.recordDescriptor, null, config ? angular.extend({}, config['#fields'], config.create) : null);
       WaitingUserModalTwoButtonForm.call(this, $scope, $modalInstance, {
         settings: {
           dialog: {
@@ -275,7 +289,7 @@
             }
           }
         },
-        form: CRUDAHelpers.buildFormDescriptor(settings.recordDescriptor)
+        form: form
       });
     }
 
@@ -335,7 +349,8 @@
       if (lib.isBoolean(crudc) || !crudc.dialogs) {
         Dialog.open({controller:'allex.data.CreateNewItemController'}, {
           sink_name: this.get('sink_name'),
-          recordDescriptor : this.get('recordDescriptor')
+          recordDescriptor : this.get('recordDescriptor'),
+          config: this._parent.get('config')
         });
       }else{
         if (!crudc.dialogs[this.get('role')]){
@@ -399,11 +414,13 @@
         throw new Error('NO PRIMARY KEY ...');
       }
       this.primaryKey = rd.primaryKey;
-      var form = CRUDAHelpers.buildFormDescriptor(settings.view.get('recordDescriptor'), settings.data);
+      var config = this.view.get('config');
+      var form = CRUDAHelpers.buildFormDescriptor(settings.view.get('recordDescriptor'), settings.data, config ? angular.extend({}, config['#fields'], config.edit) : null);
 
       form.fields[this.get('primaryKey')].attribs = {
         'ng-disabled':'1'
       };
+
       WaitingUserModalTwoButtonForm.call(this, $scope, $modalInstance, {
         settings: {
           dialog : { 
@@ -435,7 +452,7 @@
 
     EditController.prototype.doSave = function () {
       var primaryKey = this.get('primaryKey'),
-        promise = this.get('user').getSubSink(this.view.get('sink_name')).sink.call('update', {op:'eq', field:primaryKey, value: this.vals[primaryKey]} ,this.vals);
+        promise = this.get('user').getSubSink(this.view.get('sink_name')).sink.call('update', {op:'eq', field:primaryKey, value: this.vals[primaryKey]} ,this.get('vals'));
       //TODO: sad bismo trebali da odgovorimo nesto pametno ...
       this.set('promise', promise);
     };
