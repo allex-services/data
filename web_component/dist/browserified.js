@@ -772,7 +772,7 @@ function createDataManager(execlib){
     }
     this.storage.read(query).done(
       this.onReadDone.bind(this,defer,startreadrecord),
-      this.onStorageError.bind(this),
+      this.onStorageError.bind(this, defer),
       this.onReadOne.bind(this,defer,startreadrecord)
     );
   };
@@ -796,7 +796,7 @@ function createDataManager(execlib){
     var d = lib.q.defer();
     this.storage.update(filter,datahash,options).done(
       this.doNativeUpdate.bind(this,d,filter,datahash),
-      this.onStorageError.bind(this),
+      this.onStorageError.bind(this, d),
       this.doNativeUpdateExact.bind(this,d)
     );
     return d.promise;
@@ -814,7 +814,7 @@ function createDataManager(execlib){
     var d = lib.q.defer();
     this.storage.delete(filter).done(
       this.doNativeDelete.bind(this,d,filter),
-      this.onStorageError.bind(this)
+      this.onStorageError.bind(this, d)
     );
     return d.promise;
   };
@@ -2126,7 +2126,10 @@ function createJoinFromDataSinksTask(execlib) {
   };
   DataSinkDataJob.prototype.onSink = function (sink) {
     //console.log('Job with filter', this.filter, 'onSink', sink ? sink.modulename : 'no sink');
-    this.state.add('sink', sink);
+    if (!this.state) {
+      return;
+    }
+    this.state.replace('sink', sink);
     if (!sink) {
       return;
     }
@@ -2248,12 +2251,12 @@ function createJoinFromDataSinksTask(execlib) {
   lib.inherit(LocalAcquirerDataJob, DataSinkDataJob);
   LocalAcquirerDataJob.prototype.destroy = function () {
     if (this.serviceDestroyedListener) {
-      lib.runNext(this.serviceDestroyedListener.destroy.bind(this.serviceDestroyedListener));
+      lib.destroyASAP(this.serviceDestroyedListener);
       this.serviceDestroyedListener = null;
     }
     this.serviceDestroyedListener = null;
     if (this.sinkListener) {
-      lib.runNext(this.sinkListener.destroy.bind(this.sinkListener));
+      lib.destroyASAP(this.sinkListener);
       this.sinkListener = null;
     }
     this.sinkListener = null;
