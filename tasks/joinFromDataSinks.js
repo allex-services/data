@@ -177,7 +177,10 @@ function createJoinFromDataSinksTask(execlib) {
   };
   DataSinkDataJob.prototype.onSink = function (sink) {
     //console.log('Job with filter', this.filter, 'onSink', sink ? sink.modulename : 'no sink');
-    this.state.add('sink', sink);
+    if (!this.state) {
+      return;
+    }
+    this.state.replace('sink', sink);
     if (!sink) {
       return;
     }
@@ -299,12 +302,12 @@ function createJoinFromDataSinksTask(execlib) {
   lib.inherit(LocalAcquirerDataJob, DataSinkDataJob);
   LocalAcquirerDataJob.prototype.destroy = function () {
     if (this.serviceDestroyedListener) {
-      lib.runNext(this.serviceDestroyedListener.destroy.bind(this.serviceDestroyedListener));
+      lib.destroyASAP(this.serviceDestroyedListener);
       this.serviceDestroyedListener = null;
     }
     this.serviceDestroyedListener = null;
     if (this.sinkListener) {
-      lib.runNext(this.sinkListener.destroy.bind(this.sinkListener));
+      lib.destroyASAP(this.sinkListener);
       this.sinkListener = null;
     }
     this.sinkListener = null;

@@ -58,7 +58,7 @@ function createDataManager(execlib){
     }
     this.storage.read(query).done(
       this.onReadDone.bind(this,defer,startreadrecord),
-      this.onStorageError.bind(this),
+      this.onStorageError.bind(this, defer),
       this.onReadOne.bind(this,defer,startreadrecord)
     );
   };
@@ -82,7 +82,7 @@ function createDataManager(execlib){
     var d = lib.q.defer();
     this.storage.update(filter,datahash,options).done(
       this.doNativeUpdate.bind(this,d,filter,datahash),
-      this.onStorageError.bind(this),
+      this.onStorageError.bind(this, d),
       this.doNativeUpdateExact.bind(this,d)
     );
     return d.promise;
@@ -100,7 +100,7 @@ function createDataManager(execlib){
     var d = lib.q.defer();
     this.storage.delete(filter).done(
       this.doNativeDelete.bind(this,d,filter),
-      this.onStorageError.bind(this)
+      this.onStorageError.bind(this, d)
     );
     return d.promise;
   };
