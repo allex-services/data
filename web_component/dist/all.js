@@ -22,7 +22,7 @@
       if (!sc || !sc.crud) return null;
       if (!(sc.crud.edit || sc.crud.delete)) return null;
       ///AJ SAMO PROVERI OVAJ ILI ... ako imas sc.crud.edit ili 
-      return (sc.item_actions ? sc.item_actions : ['edit', 'delete']).filter(hasPermission.bind(null, sc.crud, sc.actions, user.get('role')));
+      return (sc.item_action_order ? sc.item_action_order : ['edit', 'delete']).filter(hasPermission.bind(null, sc.crud, sc.actions, user.get('role')));
     }
 
     function buildWidget (DEFAULTS, type, sc, name) {
@@ -556,17 +556,21 @@
       var config = angular.extend({}, grid);
       var cfgd = config.columnDefs;
       config.columnDefs = recordDescriptor.fields.map (this._buildColumnDef.bind(this, cfgd));
-      this._appendCrudAndActions(config.columnDefs);
+      var sf = this._parent.get('sinkConfiguration');
+      var global_config = sf.action_cell_config && sf.action_cell_config.grid ? sf.action_cell_config.grid : {};
+      this._appendCrudAndActions(config.columnDefs, global_config, this._parent.get('config'));
       return config;
     };
 
-    AllexDataGrid.prototype._appendCrudAndActions = function (defs) {
+    AllexDataGrid.prototype._appendCrudAndActions = function (defs, gc, viewc) {
       var item_actions = CRUDAHelpers.buildActionsWidget(this._parent);
       if (!item_actions || !item_actions.length) return;
-      defs.unshift({
-        name: 'Actions',
+
+      var desc = angular.extend({name: 'Action'}, gc.action_cell_config, viewc.action_cell_config, {
         cellTemplate: item_actions
       });
+      defs.unshift(desc);
+      console.log('====DESC', desc, gc, viewc);
     };
 
     AllexDataGrid.prototype._buildColumnDef = function (cfgd, rditem) {

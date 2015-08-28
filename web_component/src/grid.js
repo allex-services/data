@@ -72,17 +72,21 @@
       var config = angular.extend({}, grid);
       var cfgd = config.columnDefs;
       config.columnDefs = recordDescriptor.fields.map (this._buildColumnDef.bind(this, cfgd));
-      this._appendCrudAndActions(config.columnDefs);
+      var sf = this._parent.get('sinkConfiguration');
+      var global_config = sf.action_cell_config && sf.action_cell_config.grid ? sf.action_cell_config.grid : {};
+      this._appendCrudAndActions(config.columnDefs, global_config, this._parent.get('config'));
       return config;
     };
 
-    AllexDataGrid.prototype._appendCrudAndActions = function (defs) {
+    AllexDataGrid.prototype._appendCrudAndActions = function (defs, gc, viewc) {
       var item_actions = CRUDAHelpers.buildActionsWidget(this._parent);
       if (!item_actions || !item_actions.length) return;
-      defs.unshift({
-        name: 'Actions',
+
+      var desc = angular.extend({name: 'Action'}, gc.action_cell_config, viewc.action_cell_config, {
         cellTemplate: item_actions
       });
+      defs.unshift(desc);
+      console.log('====DESC', desc, gc, viewc);
     };
 
     AllexDataGrid.prototype._buildColumnDef = function (cfgd, rditem) {

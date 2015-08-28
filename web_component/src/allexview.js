@@ -19,7 +19,7 @@
       if (!sc || !sc.crud) return null;
       if (!(sc.crud.edit || sc.crud.delete)) return null;
       ///AJ SAMO PROVERI OVAJ ILI ... ako imas sc.crud.edit ili 
-      return (sc.item_actions ? sc.item_actions : ['edit', 'delete']).filter(hasPermission.bind(null, sc.crud, sc.actions, user.get('role')));
+      return (sc.item_action_order ? sc.item_action_order : ['edit', 'delete']).filter(hasPermission.bind(null, sc.crud, sc.actions, user.get('role')));
     }
 
     function buildWidget (DEFAULTS, type, sc, name) {
