@@ -300,7 +300,7 @@
     };
 
     CreateNewItemController.prototype._onCreate = function (cb) {
-      this.set('promise', this.get('user').getSubSink(this.get('sink_name')).sink.call('create',this.vals));
+      this.set('promise', this.get('user').getSubSink(this.get('sink_name')).sink.call('create',this.get('vals')));
     };
 
     return CreateNewItemController;
