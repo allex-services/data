@@ -136,17 +136,52 @@ function createJoinFromDataSinksTask(execlib) {
     this.aggregator = null;
     RootDataJob.prototype.destroy.call(this);
   };
-  DataJob.prototype.produceOutput = function (defer, data, inputrow) {
-    //console.log('produceOutput from', data, 'current input is', this.parnt.state.get('output'), 'input row is', inputrow);
-    var aggro = this.aggregator ? this.aggregator.aggregate(data) : data,
-      input = this.state.get('output');
-    //console.log('aggro is', aggro);
-    if (this.aggregator) {
-      this.state.replace('output', (this.state.get('output') || []).concat(aggro));
+
+  function DataSinkSubJob (parnt, sink, defer) {
+    this.parnt = parnt;
+    this.sink = sink;
+    this.data = [];
+    this.output = [];
+    this.defer = defer;
+    var handler = this.produceOutput.bind(this);
+    taskRegistry.run('materializeData', {
+      sink: sink,
+      data: this.data,
+      onInitiated: handler,
+      onNewRecord: handler,
+      onUpdate: handler,
+      onDelete: handler
+    });
+  }
+  DataSinkSubJob.prototype.destroy = function () {
+    this.defer = null;
+    this.output = null;
+    this.data = null;
+    if (this.sink.destroyed) {
+      lib.destroyASAP(this.sink);
     }
-    defer.resolve(true);
+    this.sink = null;
+    this.parnt = null;
   };
-  DataJob.prototype.map = function () {
+  DataSinkSubJob.prototype.produceOutput = function () {
+    if (!this.parnt) {
+      return;
+    }
+    var d = this.defer, assembleresult;
+    this.defer = null;
+    if (this.parnt.aggregator) {
+      this.output = this.parnt.aggregator.aggregate(this.data);
+    } else {
+      this.output = this.data;
+    }
+    assembleresult = this.parnt.assembleOutput();
+    if (d) {
+      d.resolve(true);
+    } else {
+      if (assembleresult) {
+        this.parnt.dataProduced();
+      }
+    }
   };
 
   function DataSinkDataJob (parnt, prophash) {
@@ -156,7 +191,6 @@ function createJoinFromDataSinksTask(execlib) {
     if (!this.filter) {
       throw new lib.Error('FILTER_NEEDED', 'JobDescriptor misses the "filter" field');
     }
-    this.trigger();
   }
   lib.inherit(DataSinkDataJob, DataJob);
   DataSinkDataJob.prototype.destroy = function () {
@@ -168,7 +202,6 @@ function createJoinFromDataSinksTask(execlib) {
     DataJob.prototype.destroy.call(this);
   };
   DataSinkDataJob.prototype.dataProduced = function () {
-    //console.log('data produced', this.state.get('output'));
     if (this.state.get('output')) {
       this.children.forEach(function(c){
         c.trigger();
@@ -184,81 +217,78 @@ function createJoinFromDataSinksTask(execlib) {
     if (!sink) {
       return;
     }
+    this.trigger();
   };
   DataSinkDataJob.prototype.onSubSink = function (defer, inputrow, subsink) {
     if (!subsink) {
       return;
     }
-    this.subsinks.push(subsink);
-    var data = [],
-      handler = this.produceOutput.bind(this, defer, data, inputrow);
-    taskRegistry.run('materializeData', {
-      sink: subsink,
-      data: data,
-      onInitiated: handler,
-      onNewRecord: handler,
-      onUpdate: handler,
-      onDelete: handler
+    this.subsinks.push(new DataSinkSubJob(this, subsink, defer));
+  };
+  DataSinkDataJob.prototype.assembleOutput = function () {
+    if(this.subsinks.some(function(ss) {return ss.defer;})){
+      return false;
+    }
+    var output = [];
+    this.subsinks.forEach(function(ss) {
+      Array.prototype.push.apply(output, ss.output);
     });
+    this.state.replace('output', output);
+    return true;
   };
   DataSinkDataJob.prototype.onNoSink = function (defer, reason) {
     defer.reject(reason);
     this.destroy();
   };
-  DataSinkDataJob.prototype.trigger = execSuite.dependentMethod([{mapname: 'state', names: ['sink']}], function (sink, defer) {
+  DataSinkDataJob.prototype.trigger = function () {
     lib.arryDestroyAll(this.subsinks);
     this.subsinks = [];
     if ('function' === typeof this.filter) {
       var fr = this.filter();
       if ('function' === typeof fr.done) {
-        //console.log('will wait on', fr);
-        fr.done(this.onFilter.bind(this, defer));
+        fr.done(this.onFilter.bind(this));
       } else {
-        this.onFilter(defer, fr);
+        this.onFilter(fr);
       }
     } else {
-      this.onFilter(defer, this.filter);
+      this.onFilter(this.filter);
     }
-    defer.promise.then(this.dataProduced.bind(this));
-    return defer.promise;
-  });
-  DataSinkDataJob.prototype.onFilter = function (defer, filter) {
+  };
+  DataSinkDataJob.prototype.onFilter = function (filter) {
     //console.log('filter', this.filter, 'resulted in filter', filter);
     if (!filter) {
       //console.log('but no filter');
-      defer.resolve(null);
       return;
     }
     if (!this.parnt) {
       //console.log('but no parent');
-      defer.resolve(null);
       return;
     }
     if (!this.parnt.state) {
       //console.log('but no parent state');
-      defer.resolve(null);
       return;
     }
     var input = this.parnt.state.get('output');
     if (!input) {
       //console.log('but no input');
-      defer.resolve(null);
       return;
     }
     //console.log('filter can proceeed');
-    if (this.isFilterInputDependent(filter)) {
-      q.allSettled(input.map(this.applyDataDependentFilter.bind(this, defer, filter))).done(
-        defer.resolve.bind(defer),
-        defer.reject.bind(defer)
+    var f = this.isFilterInputDependent(filter);
+    if (f) {
+      q.allSettled(input.map(this.applyDataDependentFilter.bind(this, f))).done(
+        this.dataProduced.bind(this),
+        console.error.bind(console, 'applyDataDependentFilter error')
       );
     } else { 
       this.applyFilter(filter).done(
-        defer.resolve.bind(defer),
-        defer.reject.bind(defer)
+        this.dataProduced.bind(this),
+        console.error.bind(console, 'applyFilter error')
       );
     }
   };
   DataSinkDataJob.prototype.applyFilter = function (filter, inputrow) {
+    try {
     var d = q.defer();
     var sink = this.state.get('sink');
     if (!(sink && sink.destroyed && sink.recordDescriptor)) {
@@ -275,17 +305,22 @@ function createJoinFromDataSinksTask(execlib) {
       this.onNoSink.bind(this, d)
     );
     return d.promise;
+    } catch (e) {
+      console.error(e.stack);
+      console.error(e);
+    }
   };
   DataSinkDataJob.prototype.isFilterInputDependent = function (filter) {
     if (filter.value && 
       filter.value.substring(0,2) === '{{' && 
       filter.value.substring(filter.value.length-2) === '}}') {
-      filter.value = filter.value.substring(2,filter.value.length-2);
-      return true;
+      var ret = lib.extend({}, filter);
+      ret.value = filter.value.substring(2,filter.value.length-2);
+      return ret;
     }
-    return false;
+    return null;
   };
-  DataSinkDataJob.prototype.applyDataDependentFilter = function (defer, filter, datahash) {
+  DataSinkDataJob.prototype.applyDataDependentFilter = function (filter, datahash) {
     var ret = lib.extend({}, filter);
     ret.value = datahash[ret.value];
     //console.log(filter, '=>', ret);
