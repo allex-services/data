@@ -22,9 +22,12 @@ function createDataSuite(execlib){
     dataSuite.StorageBase = require('./storage/basecreator')(execlib);
     dataSuite.NullStorage = require('./storage/nullcreator')(execlib);
     dataSuite.CloneStorage = require('./storage/clonecreator')(execlib);
-    dataSuite.MemoryStorage = require('./storage/memorycreator')(execlib);
+    var MemoryStorageBase = require('./storage/memorybasecreator')(execlib);
+    dataSuite.MemoryStorage = require('./storage/memorycreator')(execlib, MemoryStorageBase);
+    dataSuite.MemoryListStorage = require('./storage/memorylistcreator')(execlib, MemoryStorageBase);
 
     dataSuite.storageRegistry.add('memory', dataSuite.MemoryStorage);
+    dataSuite.storageRegistry.add('memorylist', dataSuite.MemoryListStorage);
 }
 
 module.exports = createDataSuite;

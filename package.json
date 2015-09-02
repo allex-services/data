@@ -15,7 +15,15 @@
     "Service",
     "Data"
   ],
-  "author": "HERS Belgrade",
-  "license": "ISC"
+  "author": {
+    "name": "HERS Belgrade"
+  },
+  "license": "ISC",
+  "gitHead": "afc78d3b1cf41854ea7793620f9015c374f32e9b",
+  "readme": "# DataService\n",
+  "readmeFilename": "README.md",
+  "_id": "allex_dataservice@0.1.1",
+  "_shasum": "453b2eb2275e01ab174225e7b25c5caee4d9181d",
+  "_from": "git+ssh://git@gitlab.hers.rs:allex_services/data",
+  "_resolved": "git+ssh://git@gitlab.hers.rs:allex_services/data#afc78d3b1cf41854ea7793620f9015c374f32e9b"
 }
-
