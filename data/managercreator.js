@@ -100,7 +100,7 @@ function createDataManager(execlib){
       var e = new lib.Error('INVALID_FILTER_DESCRIPTOR');
       e.filterdescriptor = filterdescriptor;
       defer.reject(e);
-      return;
+      return defer.promise;
     }
     this.storage.update(f,datahash,options).done(
       this.doNativeUpdate.bind(this,defer,f,datahash),

@@ -163,7 +163,7 @@ function createRecord(execlib){
   StateStreamFilter.prototype.onStream = function(item){
     var val = this.record.filterStateStream(item);
     if(val){
-      this.manager.updateByDescriptor(this.record.updatingFilterDescriptorFor(this.recordinstance),val);
+      this.manager.update(this.record.updatingFilterDescriptorFor(this.recordinstance),val);
     }
   };
   return Record;
