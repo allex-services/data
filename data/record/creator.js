@@ -47,15 +47,35 @@ function createRecord(execlib){
     return val;
   };
 
+  function createRecordObjectCtor (fields) {
+    var DataObject = execlib.dataSuite.DataObject, ret, fs = fields.map(function(f) { return "this."+f.name+" = null;"; }),
+      ctorcode = "ret = function DataObject_(prophash) {\n"+fs.join("\n")+"\n DataObject.call(this, prophash);\n};\nlib.inherit(ret, DataObject);",
+      hashtemplate = createHashTemplate(fields);
+    eval(ctorcode);
+    ret.prototype.templateHash = function (){
+      var ret;
+      eval(hashtemplate);
+      return ret;
+    };
+    return ret;
+    //return execlib.dataSuite.DataObject;
+  }
+
+  function createHashTemplate (fields) {
+    var fs = fields.map(function (f) {return f.name+": void 0";});
+    return "ret = {" + fs.join(',')+"}";
+  }
+
   function Record(prophash,visiblefields){
     if(!(prophash && prophash.fields)){
       console.trace();
       throw "Record needs the fields array in its property hash";
     }
     this.primaryKey = prophash.primaryKey;
-    this.objCtor = prophash.objCtor || execlib.dataSuite.DataObject;
+    this.objCtor = prophash.objCtor || createRecordObjectCtor(prophash.fields);
     this.fields = [];
     this.fieldsByName = new lib.Map();
+    this.hashTemplate = createHashTemplate(prophash.fields);
     prophash.fields.forEach(this.addField.bind(this,visiblefields));
   }
   Record.prototype.destroy = function(){
@@ -77,11 +97,17 @@ function createRecord(execlib){
     this.fields.push(field);
     this.fieldsByName.add(field.name,field);
   };
+  Record.prototype.createTemplateHash = function () {
+    var ret;
+    eval (this.hashTemplate);
+    return ret;
+  };
+  function hashFiller(prophash, obj, field) {
+    prophash[field.name] = field.valueFor(obj[field.name]);
+  }
   Record.prototype.filterHash = function(obj){
-    var prophash = {};
-    this.fields.forEach(function(field){
-      prophash[field.name] = field.valueFor(obj[field.name]);
-    });
+    var prophash = this.createTemplateHash();//{};
+    this.fields.forEach(hashFiller.bind(null, prophash, obj));
     return prophash;
   };
   Record.prototype.filterObject = function(obj){

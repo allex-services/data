@@ -107,46 +107,13 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
     }
   };
   ChildClass.prototype.create = function(datahash,defer){
-    this.__service.data.create(datahash).done(
-      defer.resolve.bind(defer),
-      defer.reject.bind(defer),
-      defer.notify.bind(defer)
-    );
+    this.__service.data.create(datahash, defer);
   };
   ChildClass.prototype.update = function(filterdescriptor,datahash,options,defer){
-    var f = filterFactory.createFromDescriptor(filterdescriptor);
-    if(!f){
-      var e = new lib.Error('INVALID_FILTER_DESCRIPTOR');
-      e.filterdescriptor = filterdescriptor;
-      defer.reject(e);
-      return;
-    }
-    this.__service.data.update(f,datahash,options).done(
-      defer.resolve.bind(defer),
-      defer.reject.bind(defer),
-      defer.notify.bind(defer)
-    );
+    this.__service.data.update(filterdescriptor,datahash,options,defer);
   };
   ChildClass.prototype.delete = function(filterdescriptor,defer){
-    var f = filterFactory.createFromDescriptor(filterdescriptor);
-    if(!f){
-      var e = new lib.Error('INVALID_FILTER_DESCRIPTOR');
-      e.filterdescriptor = filterdescriptor;
-      defer.reject(e);
-      return;
-    }
-    this.__service.data.delete(f).done(
-      defer.resolve.bind(defer),
-      defer.reject.bind(defer),
-      defer.notify.bind(defer)
-    );
-  };
-  ChildClass.prototype.updateByDescriptor = function(filterdescriptor,datahash,defer){
-    this.__service.data.updateByDescriptor(filterdescriptor,datahash).done(
-      defer.resolve.bind(defer),
-      defer.reject.bind(defer),
-      defer.notify.bind(defer)
-    );
+    this.__service.data.delete(filterdescriptor, defer);
   };
   ChildClass.prototype.getSessionCtor = userSessionFactory;
 

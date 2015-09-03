@@ -24,13 +24,17 @@ function createDataManager(execlib){
     DataSource.prototype.create.call(this,datahash);
     defer.resolve(datahash);
   };
-  DataManager.prototype.create = function(datahash){
-    var d = lib.q.defer();
+  DataManager.prototype.create = function(datahash, defer){
+    defer = defer || lib.q.defer();
+    if (!this.storage) {
+      defer.reject(new lib.Array('MANAGER_ALREADY_DESTROYED', 'DataManager is destroyed already'));
+      return defer.promise;
+    }
     this.storage.create(datahash).done(
-      this.doNativeCreate.bind(this,d),
-      this.onStorageError.bind(this,d)
+      this.doNativeCreate.bind(this,defer),
+      this.onStorageError.bind(this,defer)
     );
-    return d.promise;
+    return defer.promise;
   };
   DataManager.prototype.onReadOne = function(defer,startreadrecord,datahash){
     var item = this.Coder.prototype.readOne(startreadrecord,datahash);
@@ -50,6 +54,12 @@ function createDataManager(execlib){
     }
   };
   DataManager.prototype.read = function(query,defer){
+    if (!this.storage) {
+      if (defer) {
+        defer.reject(new lib.Array('MANAGER_ALREADY_DESTROYED', 'DataManager is destroyed already'));
+      }
+      return;
+    }
     var startreadrecord = this.Coder.prototype.startRead();
     if(defer){
       defer.notify(startreadrecord);
@@ -78,14 +88,26 @@ function createDataManager(execlib){
     }
     defer.resolve(res);
   };
-  DataManager.prototype.update = function(filter,datahash,options){
-    var d = lib.q.defer();
-    this.storage.update(filter,datahash,options).done(
-      this.doNativeUpdate.bind(this,d,filter,datahash),
-      this.onStorageError.bind(this, d),
-      this.doNativeUpdateExact.bind(this,d)
+  DataManager.prototype.update = function(filterdescriptor,datahash,options, defer){
+    var f;
+    defer = defer || lib.q.defer();
+    if (!this.storage) {
+      defer.reject(new lib.Array('MANAGER_ALREADY_DESTROYED', 'DataManager is destroyed already'));
+      return defer.promise;
+    }
+    f = filterFactory.createFromDescriptor(filterdescriptor);
+    if(!f){
+      var e = new lib.Error('INVALID_FILTER_DESCRIPTOR');
+      e.filterdescriptor = filterdescriptor;
+      defer.reject(e);
+      return;
+    }
+    this.storage.update(f,datahash,options).done(
+      this.doNativeUpdate.bind(this,defer,f,datahash),
+      this.onStorageError.bind(this, defer),
+      this.doNativeUpdateExact.bind(this,defer)
     );
-    return d.promise;
+    return defer.promise;
   };
   DataManager.prototype.doNativeDelete = function(defer,filter,res){
     if(res){
@@ -96,22 +118,25 @@ function createDataManager(execlib){
     }
     defer.resolve(res);
   };
-  DataManager.prototype.delete = function(filter){
-    var d = lib.q.defer();
-    this.storage.delete(filter).done(
-      this.doNativeDelete.bind(this,d,filter),
-      this.onStorageError.bind(this, d)
+  DataManager.prototype.delete = function(filterdescriptor, defer){
+    var f;
+    defer = defer || lib.q.defer();
+    if (!this.storage) {
+      defer.reject(new lib.Array('MANAGER_ALREADY_DESTROYED', 'DataManager is destroyed already'));
+      return defer.promise;
+    }
+    f = filterFactory.createFromDescriptor(filterdescriptor);
+    if(!f){
+      var e = new lib.Error('INVALID_FILTER_DESCRIPTOR');
+      e.filterdescriptor = filterdescriptor;
+      defer.reject(e);
+      return;
+    }
+    this.storage.delete(f).done(
+      this.doNativeDelete.bind(this, defer,f),
+      this.onStorageError.bind(this, defer)
     );
-    return d.promise;
-  };
-  DataManager.prototype.updateByDescriptor = function(filterdescriptor,datahash){
-    var f = filterFactory.createFromDescriptor(filterdescriptor),
-        d = lib.q.defer();
-    this.update(f,datahash).done(function(res){
-      d.resolve(res);
-      f.destroy();
-    },d.reject.bind(d));
-    return d.promise;
+    return defer.promise;
   };
   DataManager.prototype.stateStreamFilterForRecord = function(record){
     return this.storage.__record.stateStreamFilterForRecord(this,record);

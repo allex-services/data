@@ -17,15 +17,18 @@ function createDataObject(execlib){
     o.set(name,void 0);
   }
   DataObject.prototype.destroy = function(){
+    /*
     var opns = Object.getOwnPropertyNames(this);
     opns.forEach(undefize.bind(null,this));
-    /*
     console.trace();
     console.log(this,'destroyed');
     */
   };
+  DataObject.prototype.templateHash = function () {
+    return {};
+  };
   DataObject.prototype.toHash = function(fields){
-    var result = {};
+    var result = this.templateHash();
     fields.forEach(this._fieldToHash.bind(this,result));
     return result;
   };
