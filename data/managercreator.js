@@ -27,7 +27,7 @@ function createDataManager(execlib){
   DataManager.prototype.create = function(datahash, defer){
     defer = defer || lib.q.defer();
     if (!this.storage) {
-      defer.reject(new lib.Array('MANAGER_ALREADY_DESTROYED', 'DataManager is destroyed already'));
+      defer.reject(new lib.Error('MANAGER_ALREADY_DESTROYED', 'DataManager is destroyed already'));
       return defer.promise;
     }
     this.storage.create(datahash).done(
@@ -56,7 +56,7 @@ function createDataManager(execlib){
   DataManager.prototype.read = function(query,defer){
     if (!this.storage) {
       if (defer) {
-        defer.reject(new lib.Array('MANAGER_ALREADY_DESTROYED', 'DataManager is destroyed already'));
+        defer.reject(new lib.Error('MANAGER_ALREADY_DESTROYED', 'DataManager is destroyed already'));
       }
       return;
     }
@@ -92,7 +92,7 @@ function createDataManager(execlib){
     var f;
     defer = defer || lib.q.defer();
     if (!this.storage) {
-      defer.reject(new lib.Array('MANAGER_ALREADY_DESTROYED', 'DataManager is destroyed already'));
+      defer.reject(new lib.Error('MANAGER_ALREADY_DESTROYED', 'DataManager is destroyed already'));
       return defer.promise;
     }
     f = filterFactory.createFromDescriptor(filterdescriptor);
@@ -122,7 +122,7 @@ function createDataManager(execlib){
     var f;
     defer = defer || lib.q.defer();
     if (!this.storage) {
-      defer.reject(new lib.Array('MANAGER_ALREADY_DESTROYED', 'DataManager is destroyed already'));
+      defer.reject(new lib.Error('MANAGER_ALREADY_DESTROYED', 'DataManager is destroyed already'));
       return defer.promise;
     }
     f = filterFactory.createFromDescriptor(filterdescriptor);
