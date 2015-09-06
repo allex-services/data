@@ -15,80 +15,88 @@ function createDataDecoder(execlib){
     this.working = null;
     this.storable = null;
   };
-  Decoder.prototype.enq = function(command,item){
+  Decoder.prototype.enq = function() {
     if(this.working){
-      this.q.push({command:command,item:item});
+      //console.log('saving',Array.prototype.slice.call(arguments));
+      this.q.push(Array.prototype.slice.call(arguments));
     }else{
+      var command = arguments[0], args = Array.prototype.slice.call(arguments,1);
       this.working = true;
       //console.log('Decoder doing',command,'on',this.storable.__id,this.storable.data);
-      this[command](item);
+      //console.log('doing',command, args);
+      try {
+      (this[command]).apply(this,args);
+      } catch (e) {
+        console.error(e.stack);
+        console.error(e);
+      }
     }
   };
   Decoder.prototype.deq = function(){
     this.working = false;
     if(this.q.length){
       var p = this.q.pop();
-      this.enq(p.command,p.item);
+      this.enq.apply(this, p);
     }
   };
   Decoder.prototype.onStream = function(item){
     //console.log('Decoder got',item);
     //console.log('Decoder got',require('util').inspect(item,{depth:null}));
-    switch(item.o){
+    switch(item[0]){
       case 'rb':
-        this.enq('beginRead',item);
+        this.enq('beginRead',item[1]);
         break;
       case 're':
-        this.enq('endRead',item);
+        this.enq('endRead',item[1]);
         break;
       case 'r1':
-        this.enq('readOne',item);
+        this.enq('readOne',item[2]);
         break;
       case 'c':
-        this.enq('create',item);
+        this.enq('create',item[1]);
         break;
       case 'ue':
-        this.enq('updateExact',item);
+        this.enq('updateExact',item[1], item[2]);
         break;
       case 'u':
-        this.enq('update',item);
+        this.enq('update',item[1], item[2]);
         break;
       case 'd':
-        this.enq('delete',item);
+        this.enq('delete',item[1]);
         break;
     }
   };
-  Decoder.prototype.beginRead = function(item){
-    this.storable.beginInit(item.d);
+  Decoder.prototype.beginRead = function(itemdata){
+    this.storable.beginInit(itemdata);
     this.deq();
   };
-  Decoder.prototype.endRead = function(item){
-    this.storable.endInit(item.d);
+  Decoder.prototype.endRead = function(itemdata){
+    this.storable.endInit(itemdata);
     this.deq();
   };
-  Decoder.prototype.readOne = function(item){
-    this.storable.create(item.d.d).then(this.deq.bind(this));
+  Decoder.prototype.readOne = function(itemdata){
+    this.storable.create(itemdata).then(this.deq.bind(this),console.error.bind(console, 'readOne error'));
   };
-  Decoder.prototype.create = function(item){
-    this.storable.create(item.d).then(this.deq.bind(this));
+  Decoder.prototype.create = function(itemdata){
+    this.storable.create(itemdata).then(this.deq.bind(this));
   };
-  Decoder.prototype.delete = function(item){
-    var f = filterFactory.createFromDescriptor(item.d);
+  Decoder.prototype.delete = function(itemdata){
+    var f = filterFactory.createFromDescriptor(itemdata);
     if(!f){
-      console.log('NO FILTER FOR',item.d);
+      console.log('NO FILTER FOR',itemdata);
       this.deq();
     }else{
       //console.log(this.storable,this.storable.delete.toString(),'will delete');
       this.storable.delete(f).then(this.deq.bind(this));
     }
   };
-  Decoder.prototype.updateExact = function(item){
-    var f = filterFactory.createFromDescriptor({op:'hash',d:item.d.o});
-    this.storable.update(f,item.d.n).then(this.deq.bind(this));
+  Decoder.prototype.updateExact = function(newitem, olditem){
+    var f = filterFactory.createFromDescriptor({op:'hash',d:olditem});
+    this.storable.update(f,newitem).then(this.deq.bind(this));
   };
-  Decoder.prototype.update = function(item){
-    var f = filterFactory.createFromDescriptor(item.d.f);
-    this.storable.update(f,item.d.d).then(this.deq.bind(this));
+  Decoder.prototype.update = function(filter, datahash){
+    var f = filterFactory.createFromDescriptor(filter);
+    this.storable.update(f,datahash).then(this.deq.bind(this));
   };
   return Decoder;
 }

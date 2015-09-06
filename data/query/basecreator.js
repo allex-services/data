@@ -43,27 +43,15 @@ function createQueryBase(execlib){
       uf = this.record.updatingFilterDescriptorFor(original);
       if(_nok){
         //update
-        return {
-          o: 'u',
-          d: {
-            f: uf,
-            d: _new
-          }
-        };
+        return ['u', uf, _new];
       }else{
         //deletion
-        return {
-          o: 'd',
-          d: uf
-        };
+        return ['d', uf];
       }
     }else{
       if(_nok){
         //create
-        return {
-          o: 'c',
-          d: _new
-        };
+        return ['c', _new];
       }else{
         //nothing
       }
@@ -74,17 +62,14 @@ function createQueryBase(execlib){
     console.trace();
     console.log('Query onStream',item);
     */
-    switch(item.o){
+    switch(item[0]){
       case 'c':
-        if(this.isOK(item.d)){
-          return {
-            o: 'c',
-            d: this.record.filterHash(item.d)
-          }
+        if(this.isOK(item[1])){
+          return ['c', this.record.filterHash(item[1])];
         }
         break;
       case 'ue':
-        return this.processUpdateExact(item.d.o,item.d.n);
+        return this.processUpdateExact(item[2],item[1]);
       default:
         return item;
     }

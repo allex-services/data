@@ -111,7 +111,6 @@ function createStorageBase(execlib){
     return d.promise;
   };
   StorageBase.prototype.update = function(filter,datahash,options){
-    //console.log('StorageBase update',filter,datahash);
     var d = q.defer();
     if (!this.__record) {
       d.resolve(null);

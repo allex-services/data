@@ -37,7 +37,7 @@ function createDataManager(execlib){
     return defer.promise;
   };
   DataManager.prototype.onReadOne = function(defer,startreadrecord,datahash){
-    var item = this.Coder.prototype.readOne(startreadrecord,datahash);
+    var item = this.Coder.prototype.readOne.call(this,startreadrecord,datahash);
     if(defer){
       defer.notify(item);
     }else{
@@ -45,7 +45,7 @@ function createDataManager(execlib){
     }
   };
   DataManager.prototype.onReadDone = function(defer,startreadrecord){
-    var item = this.Coder.prototype.endRead(startreadrecord);
+    var item = this.Coder.prototype.endRead.call(this,startreadrecord);
     if(defer){
       defer.notify(item);
       defer.resolve(null);
@@ -60,7 +60,7 @@ function createDataManager(execlib){
       }
       return;
     }
-    var startreadrecord = this.Coder.prototype.startRead();
+    var startreadrecord = this.Coder.prototype.startRead.call(this);
     if(defer){
       defer.notify(startreadrecord);
     }else{
@@ -73,7 +73,7 @@ function createDataManager(execlib){
     );
   };
   DataManager.prototype.doNativeUpdateExact = function(defer,ueobj){
-    var item = this.Coder.prototype.updateExact(ueobj);
+    var item = this.Coder.prototype.updateExact.call(this,ueobj);
     if(item){
       this.handleStreamItem(item);
       defer.notify(item);
@@ -81,7 +81,7 @@ function createDataManager(execlib){
   };
   DataManager.prototype.doNativeUpdate = function(defer,filter,datahash,res){
     if(res){
-      var item = this.Coder.prototype.update(filter,datahash);
+      var item = this.Coder.prototype.update.call(this,filter,datahash);
       if(item){
         this.handleStreamItem(item);
       }
@@ -111,7 +111,7 @@ function createDataManager(execlib){
   };
   DataManager.prototype.doNativeDelete = function(defer,filter,res){
     if(res){
-      var item = this.Coder.prototype.delete(filter);
+      var item = this.Coder.prototype.delete.call(this,filter);
       if(item){
         this.handleStreamItem(item);
       }

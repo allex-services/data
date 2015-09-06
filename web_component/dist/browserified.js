@@ -25,7 +25,7 @@ function createClientSide(execlib) {
 
 module.exports = createClientSide;
 
-},{"./data":25,"./sinkmapcreator":41,"./tasks/forwardData":45,"./tasks/joinFromDataSinks":46,"./tasks/materializeData":47,"./tasks/readFromDataSink":49}],3:[function(require,module,exports){
+},{"./data":25,"./sinkmapcreator":43,"./tasks/forwardData":47,"./tasks/joinFromDataSinks":48,"./tasks/materializeData":49,"./tasks/readFromDataSink":51}],3:[function(require,module,exports){
 function createDataCoder(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -35,48 +35,64 @@ function createDataCoder(execlib){
   }
   DataCoder.prototype.destroy = execlib.lib.dummyFunc;
   DataCoder.prototype.create = function(datahash){
+    return ['c', datahash];
+    /*
     return {
       o: 'c',
       d: datahash
     };
+    */
   };
   DataCoder.prototype.startRead = function(){
+    return ['rb', uid()];
+    /*
     return {
       o: 'rb',
       d: uid()
     };
+    */
   };
   DataCoder.prototype.readOne = function(startreadrecord,datahash){
+    return ['r1', startreadrecord.d, datahash];
+    /*
     return {
       o: 'r1',
-      d: {
-        id: startreadrecord.d,
-        d: datahash
-      }
+      id: startreadrecord.d,
+      d: datahash
     };
+    */
   };
   DataCoder.prototype.endRead = function(startreadrecord){
+    return ['re', startreadrecord[1]];
+    /*
     return {
       o: 're',
       d: startreadrecord.d
     };
+    */
   };
   DataCoder.prototype.read = function(arrayofhashes){
+    return ['r', arrayofhashes];
+    /*
     return {
       o: 'r',
       d: arrayofhashes
     };
+    */
   };
   DataCoder.prototype.update = function(filter,datahash){
+    return ['u', filter.descriptor(), datahash];
+    /*
     return {
       o: 'u',
-      d: {
-        f:filter.descriptor(),
-        d:datahash
-      }
+      f:filter.descriptor(),
+      d:datahash
     };
+    */
   };
   DataCoder.prototype.updateExact = function(updateexactobject){
+    return ['ue', updateexactobject[0], updateexactobject[1]];
+    /*
     if(!('o' in updateexactobject && 'n' in updateexactobject)){
       throw "Bad updateExact";
     }
@@ -84,12 +100,16 @@ function createDataCoder(execlib){
       o: 'ue',
       d: updateexactobject
     };
+    */
   };
   DataCoder.prototype.delete = function(filter){
+    return ['d', filter.descriptor()];
+    /*
     return {
       o: 'd',
       d: filter.descriptor()
     };
+    */
   };
   return DataCoder;
 }
@@ -114,80 +134,88 @@ function createDataDecoder(execlib){
     this.working = null;
     this.storable = null;
   };
-  Decoder.prototype.enq = function(command,item){
+  Decoder.prototype.enq = function() {
     if(this.working){
-      this.q.push({command:command,item:item});
+      //console.log('saving',Array.prototype.slice.call(arguments));
+      this.q.push(Array.prototype.slice.call(arguments));
     }else{
+      var command = arguments[0], args = Array.prototype.slice.call(arguments,1);
       this.working = true;
       //console.log('Decoder doing',command,'on',this.storable.__id,this.storable.data);
-      this[command](item);
+      //console.log('doing',command, args);
+      try {
+      (this[command]).apply(this,args);
+      } catch (e) {
+        console.error(e.stack);
+        console.error(e);
+      }
     }
   };
   Decoder.prototype.deq = function(){
     this.working = false;
     if(this.q.length){
       var p = this.q.pop();
-      this.enq(p.command,p.item);
+      this.enq.apply(this, p);
     }
   };
   Decoder.prototype.onStream = function(item){
     //console.log('Decoder got',item);
     //console.log('Decoder got',require('util').inspect(item,{depth:null}));
-    switch(item.o){
+    switch(item[0]){
       case 'rb':
-        this.enq('beginRead',item);
+        this.enq('beginRead',item[1]);
         break;
       case 're':
-        this.enq('endRead',item);
+        this.enq('endRead',item[1]);
         break;
       case 'r1':
-        this.enq('readOne',item);
+        this.enq('readOne',item[2]);
         break;
       case 'c':
-        this.enq('create',item);
+        this.enq('create',item[1]);
         break;
       case 'ue':
-        this.enq('updateExact',item);
+        this.enq('updateExact',item[1], item[2]);
         break;
       case 'u':
-        this.enq('update',item);
+        this.enq('update',item[1], item[2]);
         break;
       case 'd':
-        this.enq('delete',item);
+        this.enq('delete',item[1]);
         break;
     }
   };
-  Decoder.prototype.beginRead = function(item){
-    this.storable.beginInit(item.d);
+  Decoder.prototype.beginRead = function(itemdata){
+    this.storable.beginInit(itemdata);
     this.deq();
   };
-  Decoder.prototype.endRead = function(item){
-    this.storable.endInit(item.d);
+  Decoder.prototype.endRead = function(itemdata){
+    this.storable.endInit(itemdata);
     this.deq();
   };
-  Decoder.prototype.readOne = function(item){
-    this.storable.create(item.d.d).then(this.deq.bind(this));
+  Decoder.prototype.readOne = function(itemdata){
+    this.storable.create(itemdata).then(this.deq.bind(this),console.error.bind(console, 'readOne error'));
   };
-  Decoder.prototype.create = function(item){
-    this.storable.create(item.d).then(this.deq.bind(this));
+  Decoder.prototype.create = function(itemdata){
+    this.storable.create(itemdata).then(this.deq.bind(this));
   };
-  Decoder.prototype.delete = function(item){
-    var f = filterFactory.createFromDescriptor(item.d);
+  Decoder.prototype.delete = function(itemdata){
+    var f = filterFactory.createFromDescriptor(itemdata);
     if(!f){
-      console.log('NO FILTER FOR',item.d);
+      console.log('NO FILTER FOR',itemdata);
       this.deq();
     }else{
       //console.log(this.storable,this.storable.delete.toString(),'will delete');
       this.storable.delete(f).then(this.deq.bind(this));
     }
   };
-  Decoder.prototype.updateExact = function(item){
-    var f = filterFactory.createFromDescriptor({op:'hash',d:item.d.o});
-    this.storable.update(f,item.d.n).then(this.deq.bind(this));
+  Decoder.prototype.updateExact = function(newitem, olditem){
+    var f = filterFactory.createFromDescriptor({op:'hash',d:olditem});
+    this.storable.update(f,newitem).then(this.deq.bind(this));
   };
-  Decoder.prototype.update = function(item){
-    var f = filterFactory.createFromDescriptor(item.d.f);
-    this.storable.update(f,item.d.d).then(this.deq.bind(this));
+  Decoder.prototype.update = function(filter, datahash){
+    var f = filterFactory.createFromDescriptor(filter);
+    this.storable.update(f,datahash).then(this.deq.bind(this));
   };
   return Decoder;
 }
@@ -704,14 +732,17 @@ function createDataSuite(execlib){
     dataSuite.StorageBase = require('./storage/basecreator')(execlib);
     dataSuite.NullStorage = require('./storage/nullcreator')(execlib);
     dataSuite.CloneStorage = require('./storage/clonecreator')(execlib);
-    dataSuite.MemoryStorage = require('./storage/memorycreator')(execlib);
+    var MemoryStorageBase = require('./storage/memorybasecreator')(execlib);
+    dataSuite.MemoryStorage = require('./storage/memorycreator')(execlib, MemoryStorageBase);
+    dataSuite.MemoryListStorage = require('./storage/memorylistcreator')(execlib, MemoryStorageBase);
 
     dataSuite.storageRegistry.add('memory', dataSuite.MemoryStorage);
+    dataSuite.storageRegistry.add('memorylist', dataSuite.MemoryListStorage);
 }
 
 module.exports = createDataSuite;
 
-},{"./codercreator":3,"./decodercreator":4,"./distributedmanagercreator":5,"./distributorcreator":6,"./filters/factorycreator":15,"./managercreator":26,"./objectcreator":27,"./query/basecreator":28,"./query/clonecreator":29,"./record":31,"./storage/basecreator":33,"./storage/clonecreator":34,"./storage/memorycreator":35,"./storage/nullcreator":36,"./utils":37}],26:[function(require,module,exports){
+},{"./codercreator":3,"./decodercreator":4,"./distributedmanagercreator":5,"./distributorcreator":6,"./filters/factorycreator":15,"./managercreator":26,"./objectcreator":27,"./query/basecreator":28,"./query/clonecreator":29,"./record":31,"./storage/basecreator":33,"./storage/clonecreator":34,"./storage/memorybasecreator":35,"./storage/memorycreator":36,"./storage/memorylistcreator":37,"./storage/nullcreator":38,"./utils":39}],26:[function(require,module,exports){
 function createDataManager(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -738,16 +769,20 @@ function createDataManager(execlib){
     DataSource.prototype.create.call(this,datahash);
     defer.resolve(datahash);
   };
-  DataManager.prototype.create = function(datahash){
-    var d = lib.q.defer();
+  DataManager.prototype.create = function(datahash, defer){
+    defer = defer || lib.q.defer();
+    if (!this.storage) {
+      defer.reject(new lib.Error('MANAGER_ALREADY_DESTROYED', 'DataManager is destroyed already'));
+      return defer.promise;
+    }
     this.storage.create(datahash).done(
-      this.doNativeCreate.bind(this,d),
-      this.onStorageError.bind(this,d)
+      this.doNativeCreate.bind(this,defer),
+      this.onStorageError.bind(this,defer)
     );
-    return d.promise;
+    return defer.promise;
   };
   DataManager.prototype.onReadOne = function(defer,startreadrecord,datahash){
-    var item = this.Coder.prototype.readOne(startreadrecord,datahash);
+    var item = this.Coder.prototype.readOne.call(this,startreadrecord,datahash);
     if(defer){
       defer.notify(item);
     }else{
@@ -755,7 +790,7 @@ function createDataManager(execlib){
     }
   };
   DataManager.prototype.onReadDone = function(defer,startreadrecord){
-    var item = this.Coder.prototype.endRead(startreadrecord);
+    var item = this.Coder.prototype.endRead.call(this,startreadrecord);
     if(defer){
       defer.notify(item);
       defer.resolve(null);
@@ -764,7 +799,13 @@ function createDataManager(execlib){
     }
   };
   DataManager.prototype.read = function(query,defer){
-    var startreadrecord = this.Coder.prototype.startRead();
+    if (!this.storage) {
+      if (defer) {
+        defer.reject(new lib.Error('MANAGER_ALREADY_DESTROYED', 'DataManager is destroyed already'));
+      }
+      return;
+    }
+    var startreadrecord = this.Coder.prototype.startRead.call(this);
     if(defer){
       defer.notify(startreadrecord);
     }else{
@@ -777,7 +818,7 @@ function createDataManager(execlib){
     );
   };
   DataManager.prototype.doNativeUpdateExact = function(defer,ueobj){
-    var item = this.Coder.prototype.updateExact(ueobj);
+    var item = this.Coder.prototype.updateExact.call(this,ueobj);
     if(item){
       this.handleStreamItem(item);
       defer.notify(item);
@@ -785,47 +826,62 @@ function createDataManager(execlib){
   };
   DataManager.prototype.doNativeUpdate = function(defer,filter,datahash,res){
     if(res){
-      var item = this.Coder.prototype.update(filter,datahash);
+      var item = this.Coder.prototype.update.call(this,filter,datahash);
       if(item){
         this.handleStreamItem(item);
       }
     }
     defer.resolve(res);
   };
-  DataManager.prototype.update = function(filter,datahash,options){
-    var d = lib.q.defer();
-    this.storage.update(filter,datahash,options).done(
-      this.doNativeUpdate.bind(this,d,filter,datahash),
-      this.onStorageError.bind(this, d),
-      this.doNativeUpdateExact.bind(this,d)
+  DataManager.prototype.update = function(filterdescriptor,datahash,options, defer){
+    var f;
+    defer = defer || lib.q.defer();
+    if (!this.storage) {
+      defer.reject(new lib.Error('MANAGER_ALREADY_DESTROYED', 'DataManager is destroyed already'));
+      return defer.promise;
+    }
+    f = filterFactory.createFromDescriptor(filterdescriptor);
+    if(!f){
+      var e = new lib.Error('INVALID_FILTER_DESCRIPTOR');
+      e.filterdescriptor = filterdescriptor;
+      defer.reject(e);
+      return defer.promise;
+    }
+    this.storage.update(f,datahash,options).done(
+      this.doNativeUpdate.bind(this,defer,f,datahash),
+      this.onStorageError.bind(this, defer),
+      this.doNativeUpdateExact.bind(this,defer)
     );
-    return d.promise;
+    return defer.promise;
   };
   DataManager.prototype.doNativeDelete = function(defer,filter,res){
     if(res){
-      var item = this.Coder.prototype.delete(filter);
+      var item = this.Coder.prototype.delete.call(this,filter);
       if(item){
         this.handleStreamItem(item);
       }
     }
     defer.resolve(res);
   };
-  DataManager.prototype.delete = function(filter){
-    var d = lib.q.defer();
-    this.storage.delete(filter).done(
-      this.doNativeDelete.bind(this,d,filter),
-      this.onStorageError.bind(this, d)
+  DataManager.prototype.delete = function(filterdescriptor, defer){
+    var f;
+    defer = defer || lib.q.defer();
+    if (!this.storage) {
+      defer.reject(new lib.Error('MANAGER_ALREADY_DESTROYED', 'DataManager is destroyed already'));
+      return defer.promise;
+    }
+    f = filterFactory.createFromDescriptor(filterdescriptor);
+    if(!f){
+      var e = new lib.Error('INVALID_FILTER_DESCRIPTOR');
+      e.filterdescriptor = filterdescriptor;
+      defer.reject(e);
+      return;
+    }
+    this.storage.delete(f).done(
+      this.doNativeDelete.bind(this, defer,f),
+      this.onStorageError.bind(this, defer)
     );
-    return d.promise;
-  };
-  DataManager.prototype.updateByDescriptor = function(filterdescriptor,datahash){
-    var f = filterFactory.createFromDescriptor(filterdescriptor),
-        d = lib.q.defer();
-    this.update(f,datahash).done(function(res){
-      d.resolve(res);
-      f.destroy();
-    },d.reject.bind(d));
-    return d.promise;
+    return defer.promise;
   };
   DataManager.prototype.stateStreamFilterForRecord = function(record){
     return this.storage.__record.stateStreamFilterForRecord(this,record);
@@ -855,15 +911,18 @@ function createDataObject(execlib){
     o.set(name,void 0);
   }
   DataObject.prototype.destroy = function(){
+    /*
     var opns = Object.getOwnPropertyNames(this);
     opns.forEach(undefize.bind(null,this));
-    /*
     console.trace();
     console.log(this,'destroyed');
     */
   };
+  DataObject.prototype.templateHash = function () {
+    return {};
+  };
   DataObject.prototype.toHash = function(fields){
-    var result = {};
+    var result = this.templateHash();
     fields.forEach(this._fieldToHash.bind(this,result));
     return result;
   };
@@ -976,6 +1035,7 @@ function createQueryBase(execlib){
       uf = this.record.updatingFilterDescriptorFor(original);
       if(_nok){
         //update
+        /*
         return {
           o: 'u',
           d: {
@@ -983,20 +1043,28 @@ function createQueryBase(execlib){
             d: _new
           }
         };
+        */
+        return ['u', uf, _new];
       }else{
         //deletion
+        /*
         return {
           o: 'd',
           d: uf
         };
+        */
+        return ['d', uf];
       }
     }else{
       if(_nok){
         //create
+        /*
         return {
           o: 'c',
           d: _new
         };
+        */
+        return ['c', _new];
       }else{
         //nothing
       }
@@ -1007,17 +1075,21 @@ function createQueryBase(execlib){
     console.trace();
     console.log('Query onStream',item);
     */
-    switch(item.o){
+    switch(item[0]){
       case 'c':
-        if(this.isOK(item.d)){
+        if(this.isOK(item[1])){
+          /*
           return {
             o: 'c',
             d: this.record.filterHash(item.d)
           }
+          */
+          return ['c', this.record.filterHash(item[1])];
         }
         break;
       case 'ue':
-        return this.processUpdateExact(item.d.o,item.d.n);
+        //return this.processUpdateExact(item.d.o,item.d.n);
+        return this.processUpdateExact(item[2],item[1]);
       default:
         return item;
     }
@@ -1117,15 +1189,35 @@ function createRecord(execlib){
     return val;
   };
 
+  function createRecordObjectCtor (fields) {
+    var DataObject = execlib.dataSuite.DataObject, ret, fs = fields.map(function(f) { return "this."+f.name+" = null;"; }),
+      ctorcode = "ret = function DataObject_(prophash) {\n"+fs.join("\n")+"\n DataObject.call(this, prophash);\n};\nlib.inherit(ret, DataObject);",
+      hashtemplate = createHashTemplate(fields);
+    eval(ctorcode);
+    ret.prototype.templateHash = function (){
+      var ret;
+      eval(hashtemplate);
+      return ret;
+    };
+    return ret;
+    //return execlib.dataSuite.DataObject;
+  }
+
+  function createHashTemplate (fields) {
+    var fs = fields.map(function (f) {return f.name+": void 0";});
+    return "ret = {" + fs.join(',')+"}";
+  }
+
   function Record(prophash,visiblefields){
     if(!(prophash && prophash.fields)){
       console.trace();
       throw "Record needs the fields array in its property hash";
     }
     this.primaryKey = prophash.primaryKey;
-    this.objCtor = prophash.objCtor || execlib.dataSuite.DataObject;
+    this.objCtor = prophash.objCtor || createRecordObjectCtor(prophash.fields);
     this.fields = [];
     this.fieldsByName = new lib.Map();
+    this.hashTemplate = createHashTemplate(prophash.fields);
     prophash.fields.forEach(this.addField.bind(this,visiblefields));
   }
   Record.prototype.destroy = function(){
@@ -1147,11 +1239,17 @@ function createRecord(execlib){
     this.fields.push(field);
     this.fieldsByName.add(field.name,field);
   };
+  Record.prototype.createTemplateHash = function () {
+    var ret;
+    eval (this.hashTemplate);
+    return ret;
+  };
+  function hashFiller(prophash, obj, field) {
+    prophash[field.name] = field.valueFor(obj[field.name]);
+  }
   Record.prototype.filterHash = function(obj){
-    var prophash = {};
-    this.fields.forEach(function(field){
-      prophash[field.name] = field.valueFor(obj[field.name]);
-    });
+    var prophash = this.createTemplateHash();//{};
+    this.fields.forEach(hashFiller.bind(null, prophash, obj));
     return prophash;
   };
   Record.prototype.filterObject = function(obj){
@@ -1207,7 +1305,7 @@ function createRecord(execlib){
   StateStreamFilter.prototype.onStream = function(item){
     var val = this.record.filterStateStream(item);
     if(val){
-      this.manager.updateByDescriptor(this.record.updatingFilterDescriptorFor(this.recordinstance),val);
+      this.manager.update(this.record.updatingFilterDescriptorFor(this.recordinstance),val);
     }
   };
   return Record;
@@ -1486,7 +1584,6 @@ function createStorageBase(execlib){
     return d.promise;
   };
   StorageBase.prototype.update = function(filter,datahash,options){
-    //console.log('StorageBase update',filter,datahash);
     var d = q.defer();
     if (!this.__record) {
       d.resolve(null);
@@ -1558,22 +1655,23 @@ function createCloneStorage(execlib){
 module.exports = createCloneStorage;
 
 },{}],35:[function(require,module,exports){
-function createMemoryStorage(execlib){
+function createMemoryStorageBase (execlib) {
   'use strict';
   var lib = execlib.lib,
-      dataSuite = execlib.dataSuite,
-      StorageBase = dataSuite.StorageBase;
+    dataSuite = execlib.dataSuite,
+    StorageBase = dataSuite.StorageBase;
 
-  function MemoryStorage(storagedescriptor,data){
+  function MemoryStorageBase(storagedescriptor,data){
     StorageBase.call(this,storagedescriptor);
-    this.data = data || [];
+    this.data = data || this._createData();
   }
-  execlib.lib.inherit(MemoryStorage,StorageBase);
-  MemoryStorage.prototype.destroy = function(){
+  execlib.lib.inherit(MemoryStorageBase,StorageBase);
+  MemoryStorageBase.prototype.destroy = function(){
+    this._destroyDataWithElements();
     this.data = null;
     StorageBase.prototype.destroy.call(this);
   };
-  MemoryStorage.prototype.doCreate = function(record,defer){
+  MemoryStorageBase.prototype.doCreate = function(record,defer){
     try{
     if (!this.__record) {
       defer.resolve(null);
@@ -1596,7 +1694,7 @@ function createMemoryStorage(execlib){
       }
     }
     this.data.push(record);
-    defer.resolve(record.clone());
+    defer.resolve(record/*.clone()*/);
     }
     catch(e){
       console.error(e.stack);
@@ -1609,22 +1707,25 @@ function createMemoryStorage(execlib){
       defer.notify(item);
     }
   }
-  MemoryStorage.prototype.doRead = function(query,defer){
+  MemoryStorageBase.prototype.doRead = function(query,defer){
     if (!this.data) {
       defer.resolve(null);
       return;
     }
     if(!(query.isLimited()||query.isOffset())){
-      this.data.forEach(processRead.bind(null,query,defer));
+      this._traverseData(processRead.bind(null,query,defer));
     }else{
       var start = query.offset, end=Math.min(start+query.limit,this.data.length);
+      this._traverseDataRange(processRead.bind(null, query, defer), start, end);
+      /*
       for(var i=start; i<end; i++){
         processRead(query,defer,this.__record.filterHash(this.data[i]));
       }
+      */
     }
     defer.resolve(null);
   };
-  MemoryStorage.prototype.updateFrom = function(countobj,record,updateitem,updateitemname){
+  MemoryStorageBase.prototype.updateFrom = function(countobj,record,updateitem,updateitemname){
     if(record.hasFieldNamed(updateitemname)){
       if(countobj.count<1){
         countobj.original = record.clone();
@@ -1634,10 +1735,10 @@ function createMemoryStorage(execlib){
       record.set(updateitemname,updateitem);
     }
   }
-  MemoryStorage.prototype.onUpsertSucceeded = function(defer,createdrecord){
+  MemoryStorageBase.prototype.onUpsertSucceeded = function(defer,createdrecord){
     defer.resolve({upserted:1});
   };
-  MemoryStorage.prototype.processUpsert = function(defer,countobj,filter,datahash,options,record){
+  MemoryStorageBase.prototype.processUpsert = function(defer,countobj,filter,datahash,options,record){
     var d = q.defer();
     this.doCreate(record,d);
     d.done(
@@ -1645,7 +1746,7 @@ function createMemoryStorage(execlib){
       defer.reject.bind(defer)
     );
   };
-  MemoryStorage.prototype.processUpdate = function(defer,countobj,filter,datahash,options,record){
+  MemoryStorageBase.prototype.processUpdate = function(defer,countobj,filter,datahash,options,record){
     if(filter.isOK(record)){
       var updatecountobj = {count:0,original:null};
       lib.traverse(datahash,this.updateFrom.bind(this,updatecountobj,record));
@@ -1654,51 +1755,52 @@ function createMemoryStorage(execlib){
           throw "No original";
         }
         if(this.events){
-          this.events.recordUpdated.fire(record.clone(),updatecountobj.original);
+          this.events.recordUpdated.fire(record/*.clone()*/,updatecountobj.original);
         }
-        defer.notify({o:updatecountobj.original,n:record.clone()});
+        //defer.notify({o:updatecountobj.original,n:record/*.clone()*/});
+        defer.notify([record, updatecountobj.original]);
         countobj.count++;
       }
     }
   }
-  MemoryStorage.prototype.doUpdate = function(filter,datahash,options,defer){
+  MemoryStorageBase.prototype.doUpdate = function(filter,datahash,options,defer){
     if(!this.data){
       return;
     }
     var countobj = {count:0};
-    this.data.forEach(this.processUpdate.bind(this,defer,countobj,filter,datahash,options));
+    this._traverseData(this.processUpdate.bind(this,defer,countobj,filter,datahash,options));
     if(countobj.count<1 && options && options.upsert){
       this.processUpsert(filter,datahash,options,defer);
     }else{
       defer.resolve({updated:countobj.count});
     }
   };
-  MemoryStorage.prototype.processDelete = function(todelete,defer,filter,record,recordindex,records){
+  MemoryStorageBase.prototype.processDelete = function(todelete,defer,filter,record,recordindex,records){
     if(filter.isOK(record)){
-      var rc = record.clone();
+      //var rc = record.clone();
       if(this.events){
-        this.events.recordDeleted.fire(rc);
+        this.events.recordDeleted.fire(record/*rc*/);
       }
-      defer.notify(rc);
+      defer.notify(record/*rc*/);
       record.destroy();
       todelete.unshift(recordindex);
     }/*else{
       console.log('not deleting',record,'due to mismatch in',require('util').inspect(filter,{depth:null}));
     }*/
   }
-  MemoryStorage.prototype.doDelete = function(filter,defer){
+  MemoryStorageBase.prototype.doDelete = function(filter,defer){
     if (!this.data) {
       defer.resolve(0);
       return;
     }
     var todelete = [], data = this.data;
-    this.data.forEach(this.processDelete.bind(this,todelete,defer,filter));
-    todelete.forEach(function(di){data.splice(di,1);});
+    this._traverseData(this.processDelete.bind(this,todelete,defer,filter));
+    todelete.forEach(this._removeDataAtIndex.bind(null, this.data));//function(di){data.splice(di,1);});
     defer.resolve(todelete.length);
   };
-  MemoryStorage.prototype.recordViolatesSimplePrimaryKey = function (rec) {
+  MemoryStorageBase.prototype.recordViolatesSimplePrimaryKey = function (rec) {
     var spk = this.__record.primaryKey, spv = rec.get(spk), affectedrecord;
-    if (this.data.some(function (record) {
+    if (this._traverseConditionally(function (record) {
       if (record.get(spk) === spv) {
         affectedrecord = record;
         return true;
@@ -1709,7 +1811,7 @@ function createMemoryStorage(execlib){
       return e;
     }
   };
-  MemoryStorage.prototype.recordViolatesComplexPrimaryKey = function (rec) {
+  MemoryStorageBase.prototype.recordViolatesComplexPrimaryKey = function (rec) {
     var pknames = this.__record.primaryKey,
       missingpkvals = [],
       pkvals = pknames.map(function (pkn) {
@@ -1727,7 +1829,7 @@ function createMemoryStorage(execlib){
       e.missing = missingpkvals;
       return e;
     }
-    if (this.data.some(function (record) {
+    if (this._traverseConditionally(function (record) {
       var matchcnt = 0;
       pknames.forEach(function (pkn, pknind) {
         if (record.get(pkn) === pkvals[pknind]){
@@ -1744,12 +1846,90 @@ function createMemoryStorage(execlib){
       return e;
     }
   };
+  return MemoryStorageBase;
+
+}
+
+module.exports = createMemoryStorageBase;
+
+},{}],36:[function(require,module,exports){
+function createMemoryStorage(execlib, MemoryStorageBase){
+  'use strict';
+  var lib = execlib.lib;
+
+  function MemoryStorage (storagedescriptor, data) {
+    MemoryStorageBase.call(this, storagedescriptor, data);
+  }
+  lib.inherit(MemoryStorage, MemoryStorageBase);
+  MemoryStorage.prototype._createData = function () {
+    return [];
+  };
+  MemoryStorage.prototype._destroyDataWithElements = function () {
+    lib.arryDestroyAll(this.data);
+  };
+  MemoryStorage.prototype._traverseData = function (cb) {
+    this.data.forEach(cb);
+  };
+  MemoryStorage.prototype._traverseDataRange = function (cb, start, endexclusive) {
+    for(var i=start; i<end; i++){
+      processRead(query,defer,this.__record.filterHash(this.data[i]));
+    }
+  };
+  MemoryStorage.prototype._removeDataAtIndex = function (data, index) {
+    data.splice(index, 1);
+  };
+  MemoryStorage.prototype._traverseConditionally = function (cb) {
+    return this.data.some(cb);
+  };
+
   return MemoryStorage;
 }
 
 module.exports = createMemoryStorage;
 
-},{}],36:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
+function createMemoryStorage(execlib, MemoryStorageBase){
+  'use strict';
+  var lib = execlib.lib;
+
+  function MemoryListStorage (storagedescriptor, data) {
+    MemoryStorageBase.call(this, storagedescriptor, data);
+  }
+  lib.inherit(MemoryListStorage, MemoryStorageBase);
+  MemoryListStorage.prototype._createData = function () {
+    return new lib.SortedList();
+  };
+  MemoryListStorage.prototype._destroyDataWithElements = function () {
+    lib.containerDestroyAll(this.data);
+    this.data.destroy();
+  };
+  MemoryListStorage.prototype._traverseData = function (cb) {
+    this.data.traverse(cb);
+  };
+  function rangeTraverser (start, endexclusive, cb, cntobj, item) {
+    if (cntobj.cnt >= start && cntobj.cnt < endexclusive) {
+      cb(item);
+    }
+    cntobj.cnt++;
+  };
+  MemoryListStorage.prototype._traverseDataRange = function (cb, start, endexclusive) {
+    var cntobj = {cnt:0};
+    this.data.traverse(rangeTraverser.bind(null, start, endexclusive, cb, cntobj));
+  };
+  MemoryListStorage.prototype._removeDataAtIndex = function (data, index) {
+    data.removeOne(index);
+  };
+  MemoryListStorage.prototype._traverseConditionally = function (cb) {
+    return this.data.traverseConditionally(cb);
+  };
+
+  return MemoryListStorage;
+}
+
+module.exports = createMemoryStorage;
+
+
+},{}],38:[function(require,module,exports){
 function createNullStorage(execlib){
   'use strict';
   var dataSuite = execlib.dataSuite,
@@ -1775,7 +1955,7 @@ function createNullStorage(execlib){
 
 module.exports = createNullStorage;
 
-},{}],37:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 function createDataUtils(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1800,7 +1980,7 @@ function createDataUtils(execlib){
 
 module.exports = createDataUtils;
 
-},{}],38:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 module.exports = {
   create: [{
     title: 'Data hash',
@@ -1822,11 +2002,11 @@ module.exports = {
   }]
 };
 
-},{}],39:[function(require,module,exports){
-arguments[4][38][0].apply(exports,arguments)
-},{"dup":38}],40:[function(require,module,exports){
-arguments[4][38][0].apply(exports,arguments)
-},{"dup":38}],41:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
+arguments[4][40][0].apply(exports,arguments)
+},{"dup":40}],42:[function(require,module,exports){
+arguments[4][40][0].apply(exports,arguments)
+},{"dup":40}],43:[function(require,module,exports){
 function sinkMapCreator(execlib){
   'use strict';
   var sinkmap = new (execlib.lib.Map);
@@ -1839,7 +2019,7 @@ function sinkMapCreator(execlib){
 
 module.exports = sinkMapCreator;
 
-},{"./sinks/servicesinkcreator":42,"./sinks/usersinkcreator":43,"./sinks/writersinkcreator":44}],42:[function(require,module,exports){
+},{"./sinks/servicesinkcreator":44,"./sinks/usersinkcreator":45,"./sinks/writersinkcreator":46}],44:[function(require,module,exports){
 function createServiceSink(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1858,7 +2038,7 @@ function createServiceSink(execlib){
 
 module.exports = createServiceSink;
 
-},{"../methoddescriptors/serviceuser":38}],43:[function(require,module,exports){
+},{"../methoddescriptors/serviceuser":40}],45:[function(require,module,exports){
 function createUserSink(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1877,7 +2057,7 @@ function createUserSink(execlib){
 
 module.exports = createUserSink;
 
-},{"../methoddescriptors/user":39}],44:[function(require,module,exports){
+},{"../methoddescriptors/user":41}],46:[function(require,module,exports){
 function createWriterSink(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1896,7 +2076,7 @@ function createWriterSink(execlib){
 
 module.exports = createWriterSink;
 
-},{"../methoddescriptors/writeruser":40}],45:[function(require,module,exports){
+},{"../methoddescriptors/writeruser":42}],47:[function(require,module,exports){
 function createFollowDataTask(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1946,7 +2126,7 @@ function createFollowDataTask(execlib){
 
 module.exports = createFollowDataTask;
 
-},{}],46:[function(require,module,exports){
+},{}],48:[function(require,module,exports){
 function createJoinFromDataSinksTask(execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -2397,7 +2577,7 @@ function createJoinFromDataSinksTask(execlib) {
 
 module.exports = createJoinFromDataSinksTask;
 
-},{}],47:[function(require,module,exports){
+},{}],49:[function(require,module,exports){
 function createMaterializeDataTask(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -2507,7 +2687,7 @@ function createMaterializeDataTask(execlib){
 
 module.exports = createMaterializeDataTask;
 
-},{}],48:[function(require,module,exports){
+},{}],50:[function(require,module,exports){
 function createReadFromSinkProc (execlib, prophash) {
   'use strict';
   var data = [],
@@ -2571,7 +2751,7 @@ function createReadFromSinkProc (execlib, prophash) {
 
 module.exports = createReadFromSinkProc;
 
-},{}],49:[function(require,module,exports){
+},{}],51:[function(require,module,exports){
 function createReadFromDataSink(execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -2630,4 +2810,4 @@ function createReadFromDataSink(execlib) {
 
 module.exports = createReadFromDataSink;
 
-},{"./proc/readFromSink":48}]},{},[1]);
+},{"./proc/readFromSink":50}]},{},[1]);

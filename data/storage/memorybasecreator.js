@@ -37,7 +37,7 @@ function createMemoryStorageBase (execlib) {
       }
     }
     this.data.push(record);
-    defer.resolve(record.clone());
+    defer.resolve(record/*.clone()*/);
     }
     catch(e){
       console.error(e.stack);
@@ -72,7 +72,6 @@ function createMemoryStorageBase (execlib) {
     if(record.hasFieldNamed(updateitemname)){
       if(countobj.count<1){
         countobj.original = record.clone();
-        //console.log('Original set',countobj.original);
       }
       countobj.count++;
       record.set(updateitemname,updateitem);
@@ -98,9 +97,9 @@ function createMemoryStorageBase (execlib) {
           throw "No original";
         }
         if(this.events){
-          this.events.recordUpdated.fire(record.clone(),updatecountobj.original);
+          this.events.recordUpdated.fire(record/*.clone()*/,updatecountobj.original);
         }
-        defer.notify({o:updatecountobj.original,n:record.clone()});
+        defer.notify([record, updatecountobj.original]);
         countobj.count++;
       }
     }
@@ -119,11 +118,10 @@ function createMemoryStorageBase (execlib) {
   };
   MemoryStorageBase.prototype.processDelete = function(todelete,defer,filter,record,recordindex,records){
     if(filter.isOK(record)){
-      var rc = record.clone();
       if(this.events){
-        this.events.recordDeleted.fire(rc);
+        this.events.recordDeleted.fire(record);
       }
-      defer.notify(rc);
+      defer.notify(record);
       record.destroy();
       todelete.unshift(recordindex);
     }/*else{
@@ -137,7 +135,7 @@ function createMemoryStorageBase (execlib) {
     }
     var todelete = [], data = this.data;
     this._traverseData(this.processDelete.bind(this,todelete,defer,filter));
-    todelete.forEach(this._removeDataAtIndex.bind(null, this.data));//function(di){data.splice(di,1);});
+    todelete.forEach(this._removeDataAtIndex.bind(null, this.data));
     defer.resolve(todelete.length);
   };
   MemoryStorageBase.prototype.recordViolatesSimplePrimaryKey = function (rec) {

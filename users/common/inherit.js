@@ -10,8 +10,9 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
       DataStreamDistributor = dataSuite.StreamDistributor,
       _User = execSuite.User;
 
-  function EventQ(){
+  function EventQ(target){
     lib.Destroyable.call(this);
+    this.target = target;
     this.q = new lib.Fifo();
   }
   lib.inherit(EventQ,lib.Destroyable);
@@ -26,12 +27,21 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
     return true; 
   };
   EventQ.prototype.onStream = function(item){
+    if (!this.target) {
+      return;
+    }
+    if (!this.target.destroyed) {
+      this.destroy();
+      return;
+    }
     this.q.push(item);
   };
-  EventQ.prototype.dumpTo = function(sink){
+  EventQ.prototype.dump = function(){
     if (!this.q) {
       return;
     }
+    var sink = this.target;
+    //console.log('EventQ dumping', this.q.length, 'items');
     while(this.q.length){
       var item = this.q.pop();
       if(sink.isOK(item)){
@@ -69,16 +79,17 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
   };
   ChildClass.prototype.limit = lib.dummyFunc;
   ChildClass.prototype.offset = lib.dummyFunc;
-  ChildClass.prototype.attachChannel = function(channel,eventq){
-    if (!channel.destroyed) { //he's dead, Jim...
+  ChildClass.prototype.attachChannel = function(eventq){
+    if (!eventq.destroyed) { //he's dead, Jim...
       return;
     }
-    if (!this.distributor) {
-      return;
+    if (this.distributor) {
+      eventq.dump();
+      if (eventq.target) {
+        this.distributor.attach(eventq.target);
+      }
     }
-    eventq.dumpTo(channel);
     eventq.destroy();
-    this.distributor.attach(channel);
   };
   ChildClass.prototype.attachSession = function(session){
     if (!session.channels) {
@@ -87,10 +98,10 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
     ParentClass.prototype.attachSession.call(this,session);
     var c = session.channels.get('d'),
       d = lib.q.defer(),
-      q = new EventQ;
+      q = new EventQ(c);
     this.distributor.attach(q);
     d.promise.done(
-      this.attachChannel.bind(this,c,q),
+      this.attachChannel.bind(this,q),
       null,
       c.onStream.bind(c)
     );
