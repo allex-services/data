@@ -11,6 +11,7 @@ function createMaterializeDataTask(execlib){
   function MaterializeDataTask(prophash){
     SinkTask.call(this,prophash);
     this.storage = null;
+    this.decoder = null;
     this.sink = prophash.sink;
     this.data = prophash.data;
     this.onInitiated = prophash.onInitiated;
@@ -70,6 +71,7 @@ function createMaterializeDataTask(execlib){
     if(this.storage){
       this.storage.destroy();
     }
+    this.decoder = null;
     this.storage = null;
     SinkTask.prototype.__cleanUp.call(this);
   };
@@ -78,6 +80,7 @@ function createMaterializeDataTask(execlib){
       events: this.onInitiated || this.onRecordCreation || this.onNewRecord || this.onUpdate || this.onRecordUpdate || this.onDelete || this.onRecordDeletion,
       record: this.sink.recordDescriptor
     },this.data);
+    this.decoder = new DataDecoder(this.storage);
     if(this.onInitiated){
       this.initiatedListener = this.storage.events.initiated.attach(this.onInitiated);
     }
@@ -99,7 +102,7 @@ function createMaterializeDataTask(execlib){
     if(this.onRecordDeletion){
       this.recordDeletedListener = this.storage.events.recordDeleted.attach(this.onRecordDeletion);
     }
-    this.sink.consumeChannel('d',new DataDecoder(this.storage));
+    this.sink.consumeChannel('d',this.decoder);
   };
   MaterializeDataTask.prototype.compulsoryConstructionProperties = ['data','sink'];
   return MaterializeDataTask;

@@ -146,7 +146,7 @@ function createDataDecoder(execlib){
         return m.call(decoder, a);
       }
     });
-    console.log('grouping', promises.length, 'promises');
+    //console.log('grouping', promises.length, 'promises');
     return lib.q.allSettled(promises);
   };
 
@@ -162,7 +162,10 @@ function createDataDecoder(execlib){
     this.storable = null;
   };
   Decoder.prototype.enq = function(command, arg_s) {
-    if(this.working){
+    if (!this.q) {
+      return;
+    }
+    if (this.working) {
       //console.log('saving',Array.prototype.slice.call(arguments));
       var done = false,
         last = this.q.last(),
@@ -199,11 +202,14 @@ function createDataDecoder(execlib){
         }
       } else {
         command.apply(this).then(this.deq.bind(this));
-        console.log('group apply done');
+        //console.log('group apply done');
       }
     }
   };
   Decoder.prototype.deq = function(){
+    if (!this.q) {
+      return;
+    }
     this.working = false;
     if(this.q.length){
       var p = this.q.pop();
@@ -258,7 +264,7 @@ function createDataDecoder(execlib){
   Decoder.prototype.delete = function(itemdata){
     var f = filterFactory.createFromDescriptor(itemdata);
     if(!f){
-      console.log('NO FILTER FOR',itemdata);
+      console.error('NO FILTER FOR',itemdata);
       return lib.q(true);
     }else{
       //console.log(this.storable,this.storable.delete.toString(),'will delete');
@@ -2616,6 +2622,7 @@ function createMaterializeDataTask(execlib){
   function MaterializeDataTask(prophash){
     SinkTask.call(this,prophash);
     this.storage = null;
+    this.decoder = null;
     this.sink = prophash.sink;
     this.data = prophash.data;
     this.onInitiated = prophash.onInitiated;
@@ -2675,6 +2682,7 @@ function createMaterializeDataTask(execlib){
     if(this.storage){
       this.storage.destroy();
     }
+    this.decoder = null;
     this.storage = null;
     SinkTask.prototype.__cleanUp.call(this);
   };
@@ -2683,6 +2691,7 @@ function createMaterializeDataTask(execlib){
       events: this.onInitiated || this.onRecordCreation || this.onNewRecord || this.onUpdate || this.onRecordUpdate || this.onDelete || this.onRecordDeletion,
       record: this.sink.recordDescriptor
     },this.data);
+    this.decoder = new DataDecoder(this.storage);
     if(this.onInitiated){
       this.initiatedListener = this.storage.events.initiated.attach(this.onInitiated);
     }
@@ -2704,7 +2713,7 @@ function createMaterializeDataTask(execlib){
     if(this.onRecordDeletion){
       this.recordDeletedListener = this.storage.events.recordDeleted.attach(this.onRecordDeletion);
     }
-    this.sink.consumeChannel('d',new DataDecoder(this.storage));
+    this.sink.consumeChannel('d',this.decoder);
   };
   MaterializeDataTask.prototype.compulsoryConstructionProperties = ['data','sink'];
   return MaterializeDataTask;

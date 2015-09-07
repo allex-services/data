@@ -43,7 +43,10 @@ function createDataDecoder(execlib){
     this.storable = null;
   };
   Decoder.prototype.enq = function(command, arg_s) {
-    if(this.working){
+    if (!this.q) {
+      return;
+    }
+    if (this.working) {
       //console.log('saving',Array.prototype.slice.call(arguments));
       var done = false,
         last = this.q.last(),
@@ -85,6 +88,9 @@ function createDataDecoder(execlib){
     }
   };
   Decoder.prototype.deq = function(){
+    if (!this.q) {
+      return;
+    }
     this.working = false;
     if(this.q.length){
       var p = this.q.pop();
