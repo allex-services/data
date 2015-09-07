@@ -123,6 +123,33 @@ function createDataDecoder(execlib){
       dataSuite = execlib.dataSuite,
       filterFactory = dataSuite.filterFactory;
 
+  function CommandGroup(name, arg_s) {
+    this.name = name;
+    this.arg_s_group = [arg_s];
+  }
+  CommandGroup.prototype.destroy = function () {
+    this.arg_s_group = null;
+    this.name = null;
+  };
+  CommandGroup.prototype.add = function (arg_s) {
+    this.arg_s_group.push(arg_s);
+  };
+  CommandGroup.prototype.apply = function (decoder) {
+    var m = decoder[this.name];
+    if (!lib.isFunction(m)) {
+      return lib.q(false);
+    }
+    var promises = this.arg_s_group.map(function(a) {
+      if (lib.isArray(a)) {
+        return m.apply(decoder, a);
+      } else {
+        return m.call(decoder, a);
+      }
+    });
+    console.log('grouping', promises.length, 'promises');
+    return lib.q.allSettled(promises);
+  };
+
   function Decoder(storable){
     this.storable = storable;
     this.working = false;
@@ -134,20 +161,45 @@ function createDataDecoder(execlib){
     this.working = null;
     this.storable = null;
   };
-  Decoder.prototype.enq = function() {
+  Decoder.prototype.enq = function(command, arg_s) {
     if(this.working){
       //console.log('saving',Array.prototype.slice.call(arguments));
-      this.q.push(Array.prototype.slice.call(arguments));
+      var done = false,
+        last = this.q.last(),
+        lastc;
+      if (last) {
+        lastc = last.content;
+      }
+      if (lastc) { 
+        if (lib.isArray(lastc)) {
+          if (lastc[0] === command) {
+            last.content = new CommandGroup(lastc[0], lastc[1]);
+            last.content.add(arg_s);
+            done = true;
+          }
+        } else {
+          if (lastc.name === command) {
+            lastc.add(arg_s);
+            done = true;
+          }
+        }
+      }
+      if (!done) {
+        this.q.push([command, arg_s]);
+      }
     }else{
-      var command = arguments[0], args = Array.prototype.slice.call(arguments,1);
       this.working = true;
       //console.log('Decoder doing',command,'on',this.storable.__id,this.storable.data);
       //console.log('doing',command, args);
-      try {
-      (this[command]).apply(this,args);
-      } catch (e) {
-        console.error(e.stack);
-        console.error(e);
+      if (lib.isString(command)) {
+        if (lib.isArray(arg_s)) {
+          this[command].apply(this, arg_s).then(this.deq.bind(this));
+        } else {
+          this[command].call(this, arg_s).then(this.deq.bind(this));
+        }
+      } else {
+        command.apply(this).then(this.deq.bind(this));
+        console.log('group apply done');
       }
     }
   };
@@ -155,7 +207,11 @@ function createDataDecoder(execlib){
     this.working = false;
     if(this.q.length){
       var p = this.q.pop();
-      this.enq.apply(this, p);
+      if (lib.isArray(p)) {
+        this.enq(p[0], p[1]);
+      } else {
+        this.enq(p);
+      }
     }
   };
   Decoder.prototype.onStream = function(item){
@@ -163,59 +219,59 @@ function createDataDecoder(execlib){
     //console.log('Decoder got',require('util').inspect(item,{depth:null}));
     switch(item[0]){
       case 'rb':
-        this.enq('beginRead',item[1]);
+        this.enq('beginRead', item[1]);
         break;
       case 're':
-        this.enq('endRead',item[1]);
+        this.enq('endRead', item[1]);
         break;
       case 'r1':
-        this.enq('readOne',item[2]);
+        this.enq('readOne', item[2]);
         break;
       case 'c':
-        this.enq('create',item[1]);
+        this.enq('create', item[1]);
         break;
       case 'ue':
-        this.enq('updateExact',item[1], item[2]);
+        this.enq('updateExact', [item[1], item[2]]);
         break;
       case 'u':
-        this.enq('update',item[1], item[2]);
+        this.enq('update', [item[1], item[2]]);
         break;
       case 'd':
-        this.enq('delete',item[1]);
+        this.enq('delete', item[1]);
         break;
     }
   };
   Decoder.prototype.beginRead = function(itemdata){
     this.storable.beginInit(itemdata);
-    this.deq();
+    return lib.q(true);
   };
   Decoder.prototype.endRead = function(itemdata){
     this.storable.endInit(itemdata);
-    this.deq();
+    return lib.q(true);
   };
   Decoder.prototype.readOne = function(itemdata){
-    this.storable.create(itemdata).then(this.deq.bind(this),console.error.bind(console, 'readOne error'));
+    return this.storable.create(itemdata);
   };
   Decoder.prototype.create = function(itemdata){
-    this.storable.create(itemdata).then(this.deq.bind(this));
+    return this.storable.create(itemdata);
   };
   Decoder.prototype.delete = function(itemdata){
     var f = filterFactory.createFromDescriptor(itemdata);
     if(!f){
       console.log('NO FILTER FOR',itemdata);
-      this.deq();
+      return lib.q(true);
     }else{
       //console.log(this.storable,this.storable.delete.toString(),'will delete');
-      this.storable.delete(f).then(this.deq.bind(this));
+      return this.storable.delete(f);
     }
   };
   Decoder.prototype.updateExact = function(newitem, olditem){
     var f = filterFactory.createFromDescriptor({op:'hash',d:olditem});
-    this.storable.update(f,newitem).then(this.deq.bind(this));
+    return this.storable.update(f,newitem);
   };
   Decoder.prototype.update = function(filter, datahash){
     var f = filterFactory.createFromDescriptor(filter);
-    this.storable.update(f,datahash).then(this.deq.bind(this));
+    return this.storable.update(f,datahash);
   };
   return Decoder;
 }
@@ -1035,35 +1091,14 @@ function createQueryBase(execlib){
       uf = this.record.updatingFilterDescriptorFor(original);
       if(_nok){
         //update
-        /*
-        return {
-          o: 'u',
-          d: {
-            f: uf,
-            d: _new
-          }
-        };
-        */
         return ['u', uf, _new];
       }else{
         //deletion
-        /*
-        return {
-          o: 'd',
-          d: uf
-        };
-        */
         return ['d', uf];
       }
     }else{
       if(_nok){
         //create
-        /*
-        return {
-          o: 'c',
-          d: _new
-        };
-        */
         return ['c', _new];
       }else{
         //nothing
@@ -1078,17 +1113,10 @@ function createQueryBase(execlib){
     switch(item[0]){
       case 'c':
         if(this.isOK(item[1])){
-          /*
-          return {
-            o: 'c',
-            d: this.record.filterHash(item.d)
-          }
-          */
           return ['c', this.record.filterHash(item[1])];
         }
         break;
       case 'ue':
-        //return this.processUpdateExact(item.d.o,item.d.n);
         return this.processUpdateExact(item[2],item[1]);
       default:
         return item;
@@ -1729,7 +1757,6 @@ function createMemoryStorageBase (execlib) {
     if(record.hasFieldNamed(updateitemname)){
       if(countobj.count<1){
         countobj.original = record.clone();
-        //console.log('Original set',countobj.original);
       }
       countobj.count++;
       record.set(updateitemname,updateitem);
@@ -1757,7 +1784,6 @@ function createMemoryStorageBase (execlib) {
         if(this.events){
           this.events.recordUpdated.fire(record/*.clone()*/,updatecountobj.original);
         }
-        //defer.notify({o:updatecountobj.original,n:record/*.clone()*/});
         defer.notify([record, updatecountobj.original]);
         countobj.count++;
       }
@@ -1777,11 +1803,10 @@ function createMemoryStorageBase (execlib) {
   };
   MemoryStorageBase.prototype.processDelete = function(todelete,defer,filter,record,recordindex,records){
     if(filter.isOK(record)){
-      //var rc = record.clone();
       if(this.events){
-        this.events.recordDeleted.fire(record/*rc*/);
+        this.events.recordDeleted.fire(record);
       }
-      defer.notify(record/*rc*/);
+      defer.notify(record);
       record.destroy();
       todelete.unshift(recordindex);
     }/*else{
@@ -1795,7 +1820,7 @@ function createMemoryStorageBase (execlib) {
     }
     var todelete = [], data = this.data;
     this._traverseData(this.processDelete.bind(this,todelete,defer,filter));
-    todelete.forEach(this._removeDataAtIndex.bind(null, this.data));//function(di){data.splice(di,1);});
+    todelete.forEach(this._removeDataAtIndex.bind(null, this.data));
     defer.resolve(todelete.length);
   };
   MemoryStorageBase.prototype.recordViolatesSimplePrimaryKey = function (rec) {
