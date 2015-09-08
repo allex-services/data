@@ -73,7 +73,9 @@ function createStorageBase(execlib){
     }
   };
 
+  var __id = 0;
   function StorageBase(storagedescriptor){
+    //this.__id = process.pid+':'+(++__id);
     if(!(storagedescriptor && storagedescriptor.record)){
       console.trace();
       console.log("No storagedescriptor.record!");
@@ -95,10 +97,10 @@ function createStorageBase(execlib){
       d.resolve(null);
       return d.promise;
     }
-    lib.runNext(this.doCreate.bind(this,this.__record.filterObject(datahash),d));
     if(this.events){
       d.promise.then(this.events.fireNewRecord.bind(this.events));
     }
+    this.doCreate(this.__record.filterObject(datahash),d);
     return d.promise;
   };
   StorageBase.prototype.read = function(query){
@@ -123,10 +125,10 @@ function createStorageBase(execlib){
     return d.promise;
   };
   StorageBase.prototype.beginInit = function(txnid){
+    //this.delete(dataSuite.filterFactory.createFromDescriptor()); //delete all
     if(this.events){
       this.events.beginInit(txnid);
     }
-    this.delete(dataSuite.filterFactory.createFromDescriptor()); //delete all
   };
   StorageBase.prototype.endInit = function(txnid){
     if(this.events){

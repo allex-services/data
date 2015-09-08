@@ -53,7 +53,7 @@ function createDataCoder(execlib){
     */
   };
   DataCoder.prototype.readOne = function(startreadrecord,datahash){
-    return ['r1', startreadrecord.d, datahash];
+    return ['r1', startreadrecord[1], datahash];
     /*
     return {
       o: 'r1',
@@ -135,19 +135,22 @@ function createDataDecoder(execlib){
     this.arg_s_group.push(arg_s);
   };
   CommandGroup.prototype.apply = function (decoder) {
-    var m = decoder[this.name];
+    var m = decoder[this.name], as, ret;
     if (!lib.isFunction(m)) {
       return lib.q(false);
     }
-    var promises = this.arg_s_group.map(function(a) {
+    this.arg_s_group.forEach(function(a, aind, as) {
       if (lib.isArray(a)) {
-        return m.apply(decoder, a);
+        as[aind] = m.apply(decoder, a);
       } else {
-        return m.call(decoder, a);
+        as[aind] = m.call(decoder, a);
       }
     });
-    //console.log('grouping', promises.length, 'promises');
-    return lib.q.allSettled(promises);
+    as = this.arg_s_group;
+    this.arg_s_group = [];
+    ret = lib.q.allSettled(as);
+    ret.then(this.destroy.bind(this));
+    return ret;
   };
 
   function Decoder(storable){
@@ -156,7 +159,16 @@ function createDataDecoder(execlib){
     this.q = new lib.Fifo();
   }
   Decoder.prototype.destroy = function(){
-    this.q.destroy();
+    var qi;
+    if (this.q) {
+      while (this.q.length) {
+        qi = this.q.pop();
+        if (qi.destroy) {
+          qi.destroy();
+        }
+      }
+      this.q.destroy();
+    }
     this.q = null;
     this.working = null;
     this.storable = null;
@@ -196,17 +208,18 @@ function createDataDecoder(execlib){
       //console.log('doing',command, args);
       if (lib.isString(command)) {
         if (lib.isArray(arg_s)) {
-          this[command].apply(this, arg_s).then(this.deq.bind(this));
+          this[command].apply(this, arg_s).then(this.deq.bind(this), console.error.bind(console, 'apply error'));
         } else {
-          this[command].call(this, arg_s).then(this.deq.bind(this));
+          this[command].call(this, arg_s).then(this.deq.bind(this), console.error.bind(console, 'apply error'));
         }
       } else {
-        command.apply(this).then(this.deq.bind(this));
+        command.apply(this).then(this.deq.bind(this), console.error.bind(console, 'apply error'));
         //console.log('group apply done');
       }
     }
   };
   Decoder.prototype.deq = function(){
+    try {
     if (!this.q) {
       return;
     }
@@ -219,9 +232,13 @@ function createDataDecoder(execlib){
         this.enq(p);
       }
     }
+    } catch (e) {
+      console.error(e.stack);
+      console.error(e);
+    }
   };
   Decoder.prototype.onStream = function(item){
-    //console.log('Decoder got',item);
+    //console.log('Decoder', this.storable.__id,'got',item);
     //console.log('Decoder got',require('util').inspect(item,{depth:null}));
     switch(item[0]){
       case 'rb':
@@ -1505,6 +1522,7 @@ function createRecordUtils(execlib,suite){
 module.exports = createRecordUtils;
 
 },{}],33:[function(require,module,exports){
+(function (process){
 function createStorageBase(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1580,7 +1598,9 @@ function createStorageBase(execlib){
     }
   };
 
+  var __id = 0;
   function StorageBase(storagedescriptor){
+    this.__id = process.pid+':'+(++__id);
     if(!(storagedescriptor && storagedescriptor.record)){
       console.trace();
       console.log("No storagedescriptor.record!");
@@ -1602,10 +1622,11 @@ function createStorageBase(execlib){
       d.resolve(null);
       return d.promise;
     }
-    lib.runNext(this.doCreate.bind(this,this.__record.filterObject(datahash),d));
     if(this.events){
       d.promise.then(this.events.fireNewRecord.bind(this.events));
     }
+    //lib.runNext(this.doCreate.bind(this,this.__record.filterObject(datahash),d));
+    this.doCreate(this.__record.filterObject(datahash),d);
     return d.promise;
   };
   StorageBase.prototype.read = function(query){
@@ -1633,7 +1654,7 @@ function createStorageBase(execlib){
     if(this.events){
       this.events.beginInit(txnid);
     }
-    this.delete(dataSuite.filterFactory.createFromDescriptor()); //delete all
+    //this.delete(dataSuite.filterFactory.createFromDescriptor()); //delete all
   };
   StorageBase.prototype.endInit = function(txnid){
     if(this.events){
@@ -1658,7 +1679,8 @@ function createStorageBase(execlib){
 
 module.exports = createStorageBase;
 
-},{}],34:[function(require,module,exports){
+}).call(this,require('_process'))
+},{"_process":52}],34:[function(require,module,exports){
 function createCloneStorage(execlib){
   'use strict';
   var dataSuite = execlib.dataSuite,
@@ -1706,7 +1728,7 @@ function createMemoryStorageBase (execlib) {
     StorageBase.prototype.destroy.call(this);
   };
   MemoryStorageBase.prototype.doCreate = function(record,defer){
-    try{
+    try {
     if (!this.__record) {
       defer.resolve(null);
       return;
@@ -1729,13 +1751,12 @@ function createMemoryStorageBase (execlib) {
     }
     this.data.push(record);
     defer.resolve(record/*.clone()*/);
-    }
-    catch(e){
+    } catch (e) {
       console.error(e.stack);
       console.error(e);
     }
   };
-  function processRead(query,defer,item){
+  function processRead(__id,query,defer,item){
     if(query.isOK(item)){
       //defer.notify(item.toHash(query.fields()));
       defer.notify(item);
@@ -1747,10 +1768,10 @@ function createMemoryStorageBase (execlib) {
       return;
     }
     if(!(query.isLimited()||query.isOffset())){
-      this._traverseData(processRead.bind(null,query,defer));
+      this._traverseData(processRead.bind(null,this.__id,query,defer));
     }else{
       var start = query.offset, end=Math.min(start+query.limit,this.data.length);
-      this._traverseDataRange(processRead.bind(null, query, defer), start, end);
+      this._traverseDataRange(processRead.bind(null, this.__id,query, defer), start, end);
       /*
       for(var i=start; i<end; i++){
         processRead(query,defer,this.__record.filterHash(this.data[i]));
@@ -1903,7 +1924,7 @@ function createMemoryStorage(execlib, MemoryStorageBase){
   };
   MemoryStorage.prototype._traverseDataRange = function (cb, start, endexclusive) {
     for(var i=start; i<end; i++){
-      processRead(query,defer,this.__record.filterHash(this.data[i]));
+      cb(query,defer,this.__record.filterHash(this.data[i]));
     }
   };
   MemoryStorage.prototype._removeDataAtIndex = function (data, index) {
@@ -2844,4 +2865,96 @@ function createReadFromDataSink(execlib) {
 
 module.exports = createReadFromDataSink;
 
-},{"./proc/readFromSink":50}]},{},[1]);
+},{"./proc/readFromSink":50}],52:[function(require,module,exports){
+// shim for using process in browser
+
+var process = module.exports = {};
+var queue = [];
+var draining = false;
+var currentQueue;
+var queueIndex = -1;
+
+function cleanUpNextTick() {
+    draining = false;
+    if (currentQueue.length) {
+        queue = currentQueue.concat(queue);
+    } else {
+        queueIndex = -1;
+    }
+    if (queue.length) {
+        drainQueue();
+    }
+}
+
+function drainQueue() {
+    if (draining) {
+        return;
+    }
+    var timeout = setTimeout(cleanUpNextTick);
+    draining = true;
+
+    var len = queue.length;
+    while(len) {
+        currentQueue = queue;
+        queue = [];
+        while (++queueIndex < len) {
+            currentQueue[queueIndex].run();
+        }
+        queueIndex = -1;
+        len = queue.length;
+    }
+    currentQueue = null;
+    draining = false;
+    clearTimeout(timeout);
+}
+
+process.nextTick = function (fun) {
+    var args = new Array(arguments.length - 1);
+    if (arguments.length > 1) {
+        for (var i = 1; i < arguments.length; i++) {
+            args[i - 1] = arguments[i];
+        }
+    }
+    queue.push(new Item(fun, args));
+    if (queue.length === 1 && !draining) {
+        setTimeout(drainQueue, 0);
+    }
+};
+
+// v8 likes predictible objects
+function Item(fun, array) {
+    this.fun = fun;
+    this.array = array;
+}
+Item.prototype.run = function () {
+    this.fun.apply(null, this.array);
+};
+process.title = 'browser';
+process.browser = true;
+process.env = {};
+process.argv = [];
+process.version = ''; // empty string to avoid regexp issues
+process.versions = {};
+
+function noop() {}
+
+process.on = noop;
+process.addListener = noop;
+process.once = noop;
+process.off = noop;
+process.removeListener = noop;
+process.removeAllListeners = noop;
+process.emit = noop;
+
+process.binding = function (name) {
+    throw new Error('process.binding is not supported');
+};
+
+// TODO(shtylman)
+process.cwd = function () { return '/' };
+process.chdir = function (dir) {
+    throw new Error('process.chdir is not supported');
+};
+process.umask = function() { return 0; };
+
+},{}]},{},[1]);

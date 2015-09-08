@@ -15,7 +15,6 @@ function createMemoryStorageBase (execlib) {
     StorageBase.prototype.destroy.call(this);
   };
   MemoryStorageBase.prototype.doCreate = function(record,defer){
-    try{
     if (!this.__record) {
       defer.resolve(null);
       return;
@@ -38,13 +37,8 @@ function createMemoryStorageBase (execlib) {
     }
     this.data.push(record);
     defer.resolve(record/*.clone()*/);
-    }
-    catch(e){
-      console.error(e.stack);
-      console.error(e);
-    }
   };
-  function processRead(query,defer,item){
+  function processRead(__id,query,defer,item){
     if(query.isOK(item)){
       //defer.notify(item.toHash(query.fields()));
       defer.notify(item);
@@ -56,10 +50,10 @@ function createMemoryStorageBase (execlib) {
       return;
     }
     if(!(query.isLimited()||query.isOffset())){
-      this._traverseData(processRead.bind(null,query,defer));
+      this._traverseData(processRead.bind(null,this.__id,query,defer));
     }else{
       var start = query.offset, end=Math.min(start+query.limit,this.data.length);
-      this._traverseDataRange(processRead.bind(null, query, defer), start, end);
+      this._traverseDataRange(processRead.bind(null, this.__id,query, defer), start, end);
       /*
       for(var i=start; i<end; i++){
         processRead(query,defer,this.__record.filterHash(this.data[i]));

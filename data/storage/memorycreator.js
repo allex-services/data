@@ -17,7 +17,7 @@ function createMemoryStorage(execlib, MemoryStorageBase){
   };
   MemoryStorage.prototype._traverseDataRange = function (cb, start, endexclusive) {
     for(var i=start; i<end; i++){
-      processRead(query,defer,this.__record.filterHash(this.data[i]));
+      cb(query,defer,this.__record.filterHash(this.data[i]));
     }
   };
   MemoryStorage.prototype._removeDataAtIndex = function (data, index) {

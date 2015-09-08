@@ -16,19 +16,22 @@ function createDataDecoder(execlib){
     this.arg_s_group.push(arg_s);
   };
   CommandGroup.prototype.apply = function (decoder) {
-    var m = decoder[this.name];
+    var m = decoder[this.name], as, ret;
     if (!lib.isFunction(m)) {
       return lib.q(false);
     }
-    var promises = this.arg_s_group.map(function(a) {
+    this.arg_s_group.forEach(function(a, aind, as) {
       if (lib.isArray(a)) {
-        return m.apply(decoder, a);
+        as[aind] = m.apply(decoder, a);
       } else {
-        return m.call(decoder, a);
+        as[aind] = m.call(decoder, a);
       }
     });
-    //console.log('grouping', promises.length, 'promises');
-    return lib.q.allSettled(promises);
+    as = this.arg_s_group;
+    this.arg_s_group = [];
+    ret = lib.q.allSettled(as);
+    ret.then(this.destroy.bind(this));
+    return ret;
   };
 
   function Decoder(storable){
@@ -37,7 +40,16 @@ function createDataDecoder(execlib){
     this.q = new lib.Fifo();
   }
   Decoder.prototype.destroy = function(){
-    this.q.destroy();
+    var qi;
+    if (this.q) {
+      while (this.q.length) {
+        qi = this.q.pop();
+        if (qi.destroy) {
+          qi.destroy();
+        }
+      }
+      this.q.destroy();
+    }
     this.q = null;
     this.working = null;
     this.storable = null;
@@ -77,12 +89,12 @@ function createDataDecoder(execlib){
       //console.log('doing',command, args);
       if (lib.isString(command)) {
         if (lib.isArray(arg_s)) {
-          this[command].apply(this, arg_s).then(this.deq.bind(this));
+          this[command].apply(this, arg_s).then(this.deq.bind(this), console.error.bind(console, 'apply error'));
         } else {
-          this[command].call(this, arg_s).then(this.deq.bind(this));
+          this[command].call(this, arg_s).then(this.deq.bind(this), console.error.bind(console, 'apply error'));
         }
       } else {
-        command.apply(this).then(this.deq.bind(this));
+        command.apply(this).then(this.deq.bind(this), console.error.bind(console, 'apply error'));
         //console.log('group apply done');
       }
     }
@@ -102,7 +114,7 @@ function createDataDecoder(execlib){
     }
   };
   Decoder.prototype.onStream = function(item){
-    //console.log('Decoder got',item);
+    //console.log('Decoder', this.storable.__id,'got',item);
     //console.log('Decoder got',require('util').inspect(item,{depth:null}));
     switch(item[0]){
       case 'rb':

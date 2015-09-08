@@ -25,7 +25,7 @@ function createDataCoder(execlib){
     */
   };
   DataCoder.prototype.readOne = function(startreadrecord,datahash){
-    return ['r1', startreadrecord.d, datahash];
+    return ['r1', startreadrecord[1], datahash];
     /*
     return {
       o: 'r1',
