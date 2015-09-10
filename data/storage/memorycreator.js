@@ -21,7 +21,13 @@ function createMemoryStorage(execlib, MemoryStorageBase){
     }
   };
   MemoryStorage.prototype._removeDataAtIndex = function (data, index) {
-    data.splice(index, 1);
+    if (index === data.length-1) {
+      data.pop();
+    } else if (index === 0){
+      data.shift();
+    } else {
+      data.splice(index, 1);
+    }
   };
   MemoryStorage.prototype._traverseConditionally = function (cb) {
     return this.data.some(cb);

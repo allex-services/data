@@ -6,11 +6,15 @@ function createMemoryStorageBase (execlib) {
 
   function MemoryStorageBase(storagedescriptor,data){
     StorageBase.call(this,storagedescriptor);
+    this.mydata = !data;
     this.data = data || this._createData();
   }
   execlib.lib.inherit(MemoryStorageBase,StorageBase);
   MemoryStorageBase.prototype.destroy = function(){
-    this._destroyDataWithElements();
+    if (this.mydata) {
+      this._destroyDataWithElements();
+    }
+    this.mydata = null;
     this.data = null;
     StorageBase.prototype.destroy.call(this);
   };

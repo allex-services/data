@@ -141,8 +141,7 @@ function createDataDecoder(execlib){
     }
   };
   Decoder.prototype.beginRead = function(itemdata){
-    this.storable.beginInit(itemdata);
-    return lib.q(true);
+    return this.storable.beginInit(itemdata);
   };
   Decoder.prototype.endRead = function(itemdata){
     this.storable.endInit(itemdata);

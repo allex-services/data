@@ -125,10 +125,23 @@ function createStorageBase(execlib){
     return d.promise;
   };
   StorageBase.prototype.beginInit = function(txnid){
-    //this.delete(dataSuite.filterFactory.createFromDescriptor()); //delete all
+    var d = q.defer();
+    this.delete(dataSuite.filterFactory.createFromDescriptor(null)).then(
+      this.onAllDeletedForBegin.bind(this, txnid, d),
+      d.reject.bind(d)
+    );
+    return d.promise;
+  };
+  StorageBase.prototype.onAllDeletedForBegin = function (txnid, defer) {
+    if (this.data) {
+      if (this.data.length) {
+        throw new lib.Error('DATA_NOT_EMPTY');
+      }
+    }
     if(this.events){
       this.events.beginInit(txnid);
     }
+    defer.resolve(true);
   };
   StorageBase.prototype.endInit = function(txnid){
     if(this.events){

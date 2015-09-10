@@ -10,7 +10,9 @@ function createFollowDataTask(execlib){
   function ChildSinkStorage(sink){
     this.sink = sink;
   }
-  ChildSinkStorage.prototype.beginInit = lib.dummyFunc;
+  ChildSinkStorage.prototype.beginInit = function () {
+    return this.sink.call('delete', null);
+  };
   ChildSinkStorage.prototype.endInit = lib.dummyFunc;
   ChildSinkStorage.prototype.create = function(datahash){
     return this.sink.call('create',datahash);

@@ -219,7 +219,6 @@ function createDataDecoder(execlib){
     }
   };
   Decoder.prototype.deq = function(){
-    try {
     if (!this.q) {
       return;
     }
@@ -231,10 +230,6 @@ function createDataDecoder(execlib){
       } else {
         this.enq(p);
       }
-    }
-    } catch (e) {
-      console.error(e.stack);
-      console.error(e);
     }
   };
   Decoder.prototype.onStream = function(item){
@@ -265,8 +260,7 @@ function createDataDecoder(execlib){
     }
   };
   Decoder.prototype.beginRead = function(itemdata){
-    this.storable.beginInit(itemdata);
-    return lib.q(true);
+    return this.storable.beginInit(itemdata);
   };
   Decoder.prototype.endRead = function(itemdata){
     this.storable.endInit(itemdata);
@@ -1522,7 +1516,6 @@ function createRecordUtils(execlib,suite){
 module.exports = createRecordUtils;
 
 },{}],33:[function(require,module,exports){
-(function (process){
 function createStorageBase(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1600,7 +1593,7 @@ function createStorageBase(execlib){
 
   var __id = 0;
   function StorageBase(storagedescriptor){
-    this.__id = process.pid+':'+(++__id);
+    //this.__id = process.pid+':'+(++__id);
     if(!(storagedescriptor && storagedescriptor.record)){
       console.trace();
       console.log("No storagedescriptor.record!");
@@ -1625,7 +1618,6 @@ function createStorageBase(execlib){
     if(this.events){
       d.promise.then(this.events.fireNewRecord.bind(this.events));
     }
-    //lib.runNext(this.doCreate.bind(this,this.__record.filterObject(datahash),d));
     this.doCreate(this.__record.filterObject(datahash),d);
     return d.promise;
   };
@@ -1651,10 +1643,23 @@ function createStorageBase(execlib){
     return d.promise;
   };
   StorageBase.prototype.beginInit = function(txnid){
+    var d = q.defer();
+    this.delete(dataSuite.filterFactory.createFromDescriptor(null)).then(
+      this.onAllDeletedForBegin.bind(this, txnid, d),
+      d.reject.bind(d)
+    );
+    return d.promise;
+  };
+  StorageBase.prototype.onAllDeletedForBegin = function (txnid, defer) {
+    if (this.data) {
+      if (this.data.length) {
+        throw new lib.Error('DATA_NOT_EMPTY');
+      }
+    }
     if(this.events){
       this.events.beginInit(txnid);
     }
-    //this.delete(dataSuite.filterFactory.createFromDescriptor()); //delete all
+    defer.resolve(true);
   };
   StorageBase.prototype.endInit = function(txnid){
     if(this.events){
@@ -1679,8 +1684,7 @@ function createStorageBase(execlib){
 
 module.exports = createStorageBase;
 
-}).call(this,require('_process'))
-},{"_process":52}],34:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 function createCloneStorage(execlib){
   'use strict';
   var dataSuite = execlib.dataSuite,
@@ -1719,16 +1723,19 @@ function createMemoryStorageBase (execlib) {
 
   function MemoryStorageBase(storagedescriptor,data){
     StorageBase.call(this,storagedescriptor);
+    this.mydata = !data;
     this.data = data || this._createData();
   }
   execlib.lib.inherit(MemoryStorageBase,StorageBase);
   MemoryStorageBase.prototype.destroy = function(){
-    this._destroyDataWithElements();
+    if (this.mydata) {
+      this._destroyDataWithElements();
+    }
+    this.mydata = null;
     this.data = null;
     StorageBase.prototype.destroy.call(this);
   };
   MemoryStorageBase.prototype.doCreate = function(record,defer){
-    try {
     if (!this.__record) {
       defer.resolve(null);
       return;
@@ -1751,10 +1758,6 @@ function createMemoryStorageBase (execlib) {
     }
     this.data.push(record);
     defer.resolve(record/*.clone()*/);
-    } catch (e) {
-      console.error(e.stack);
-      console.error(e);
-    }
   };
   function processRead(__id,query,defer,item){
     if(query.isOK(item)){
@@ -1928,7 +1931,13 @@ function createMemoryStorage(execlib, MemoryStorageBase){
     }
   };
   MemoryStorage.prototype._removeDataAtIndex = function (data, index) {
-    data.splice(index, 1);
+    if (index === data.length-1) {
+      data.pop();
+    } else if (index === 0){
+      data.shift();
+    } else {
+      data.splice(index, 1);
+    }
   };
   MemoryStorage.prototype._traverseConditionally = function (cb) {
     return this.data.some(cb);
@@ -2141,7 +2150,9 @@ function createFollowDataTask(execlib){
   function ChildSinkStorage(sink){
     this.sink = sink;
   }
-  ChildSinkStorage.prototype.beginInit = lib.dummyFunc;
+  ChildSinkStorage.prototype.beginInit = function () {
+    return this.sink.call('delete', null);
+  };
   ChildSinkStorage.prototype.endInit = lib.dummyFunc;
   ChildSinkStorage.prototype.create = function(datahash){
     return this.sink.call('create',datahash);
@@ -2865,96 +2876,4 @@ function createReadFromDataSink(execlib) {
 
 module.exports = createReadFromDataSink;
 
-},{"./proc/readFromSink":50}],52:[function(require,module,exports){
-// shim for using process in browser
-
-var process = module.exports = {};
-var queue = [];
-var draining = false;
-var currentQueue;
-var queueIndex = -1;
-
-function cleanUpNextTick() {
-    draining = false;
-    if (currentQueue.length) {
-        queue = currentQueue.concat(queue);
-    } else {
-        queueIndex = -1;
-    }
-    if (queue.length) {
-        drainQueue();
-    }
-}
-
-function drainQueue() {
-    if (draining) {
-        return;
-    }
-    var timeout = setTimeout(cleanUpNextTick);
-    draining = true;
-
-    var len = queue.length;
-    while(len) {
-        currentQueue = queue;
-        queue = [];
-        while (++queueIndex < len) {
-            currentQueue[queueIndex].run();
-        }
-        queueIndex = -1;
-        len = queue.length;
-    }
-    currentQueue = null;
-    draining = false;
-    clearTimeout(timeout);
-}
-
-process.nextTick = function (fun) {
-    var args = new Array(arguments.length - 1);
-    if (arguments.length > 1) {
-        for (var i = 1; i < arguments.length; i++) {
-            args[i - 1] = arguments[i];
-        }
-    }
-    queue.push(new Item(fun, args));
-    if (queue.length === 1 && !draining) {
-        setTimeout(drainQueue, 0);
-    }
-};
-
-// v8 likes predictible objects
-function Item(fun, array) {
-    this.fun = fun;
-    this.array = array;
-}
-Item.prototype.run = function () {
-    this.fun.apply(null, this.array);
-};
-process.title = 'browser';
-process.browser = true;
-process.env = {};
-process.argv = [];
-process.version = ''; // empty string to avoid regexp issues
-process.versions = {};
-
-function noop() {}
-
-process.on = noop;
-process.addListener = noop;
-process.once = noop;
-process.off = noop;
-process.removeListener = noop;
-process.removeAllListeners = noop;
-process.emit = noop;
-
-process.binding = function (name) {
-    throw new Error('process.binding is not supported');
-};
-
-// TODO(shtylman)
-process.cwd = function () { return '/' };
-process.chdir = function (dir) {
-    throw new Error('process.chdir is not supported');
-};
-process.umask = function() { return 0; };
-
-},{}]},{},[1]);
+},{"./proc/readFromSink":50}]},{},[1]);
