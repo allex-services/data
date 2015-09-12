@@ -13,6 +13,9 @@ function createClientSide(execlib) {
       name: 'readFromDataSink',
       klass: require('./tasks/readFromDataSink')(execlib)
     },{
+      name: 'streamFromDataSink',
+      klass: require('./tasks/streamFromDataSink')(execlib)
+    },{
       name: 'joinFromDataSinks',
       klass: require('./tasks/joinFromDataSinks')(execlib)
     }]

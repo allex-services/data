@@ -17,6 +17,9 @@ function createClientSide(execlib) {
       name: 'readFromDataSink',
       klass: require('./tasks/readFromDataSink')(execlib)
     },{
+      name: 'streamFromDataSink',
+      klass: require('./tasks/streamFromDataSink')(execlib)
+    },{
       name: 'joinFromDataSinks',
       klass: require('./tasks/joinFromDataSinks')(execlib)
     }]
@@ -25,7 +28,7 @@ function createClientSide(execlib) {
 
 module.exports = createClientSide;
 
-},{"./data":25,"./sinkmapcreator":43,"./tasks/forwardData":47,"./tasks/joinFromDataSinks":48,"./tasks/materializeData":49,"./tasks/readFromDataSink":51}],3:[function(require,module,exports){
+},{"./data":25,"./sinkmapcreator":43,"./tasks/forwardData":47,"./tasks/joinFromDataSinks":48,"./tasks/materializeData":49,"./tasks/readFromDataSink":51,"./tasks/streamFromDataSink":52}],3:[function(require,module,exports){
 function createDataCoder(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -2798,7 +2801,7 @@ function createReadFromSinkProc (execlib, prophash) {
   }
 
   function onRecord (datahash) {
-    console.log('onRecord', datahash, 'currently data:', data);
+    //console.log('onRecord', datahash, 'currently data:', data);
     if (prophash.singleshot) {
       if (data.length) {
         data.destroy();
@@ -2876,4 +2879,80 @@ function createReadFromDataSink(execlib) {
 
 module.exports = createReadFromDataSink;
 
-},{"./proc/readFromSink":50}]},{},[1]);
+},{"./proc/readFromSink":50}],52:[function(require,module,exports){
+function createStreamFromDataSink(execlib) {
+  'use strict';
+  var lib = execlib.lib,
+    q = lib.q,
+    execSuite = execlib.execSuite,
+    SinkTask = execSuite.SinkTask,
+    dataSuite = execlib.dataSuite,
+    DataDecoder = dataSuite.DataDecoder;
+
+  function StreamFromDataSink(prophash) {
+    SinkTask.call(this,prophash);
+    this.sink = prophash.sink;
+    this.filter = prophash.filter;
+    this.defer = prophash.defer;
+    this.subsink = null;
+    this.subSinkDestroyedListener = null;
+  }
+  lib.inherit(StreamFromDataSink, SinkTask);
+  StreamFromDataSink.prototype.__cleanUp = function () {
+    if (this.subSinkDestroyedListener) {
+      this.subSinkDestroyedListener.destroy();
+    }
+    this.subSinkDestroyedListener = null;
+    if (this.subsink) {
+      this.subsink.destroy();
+    }
+    this.subsink = null;
+    this.defer = null;
+    this.filter = null;
+    this.sink = null;
+    SinkTask.prototype.__cleanUp.call(this);
+  };
+  StreamFromDataSink.prototype.go = function () {
+    this.sink.subConnect('.', {name:'-', role: 'user', filter: this.filter}).done(
+      this.onSuccess.bind(this),
+      this.onFail.bind(this)
+    );
+  };
+  StreamFromDataSink.prototype.onSuccess = function (sink) {
+    if(!sink){
+      this.defer.reject(new lib.Error('NO_SINK'));
+      lib.runNext(this.destroy.bind(this));
+      return;
+    }
+    if(!sink.recordDescriptor){
+      console.error('no recordDescriptor on Sink', sink.modulename, sink.role);
+      return;
+    }
+    this.subsink = sink;
+    this.subSinkDestroyedListener = sink.destroyed.attach(this.destroy.bind(this));
+    sink.consumeChannel('d', new DataDecoder(this));
+  };
+  StreamFromDataSink.prototype.onFail = function (reason) {
+    this.defer.reject(reason);
+    lib.runNext(this.destroy.bind(this));
+  };
+  StreamFromDataSink.prototype.beginInit = function () {
+    return q(true);
+  };
+  StreamFromDataSink.prototype.endInit = function () {
+    this.defer.resolve(true);
+    lib.runNext(this.destroy.bind(this));
+    return q(true);
+  };
+  StreamFromDataSink.prototype.create = function (datahash) {
+    this.defer.notify(datahash);
+    return q(true);
+  };
+  StreamFromDataSink.prototype.compulsoryConstructionProperties = ['sink','defer'];
+
+  return StreamFromDataSink;
+}
+
+module.exports = createStreamFromDataSink;
+
+},{}]},{},[1]);

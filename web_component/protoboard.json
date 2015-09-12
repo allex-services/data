@@ -3,6 +3,7 @@
     "all":[
       "src/index.js",
       "src/allexview.js",
+      "src/dbreader.js",
       "src/directives.js",
       "src/grid.js",
       "src/list.js",
