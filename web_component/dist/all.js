@@ -620,6 +620,8 @@
       var config = this._parent.get('config');
       if (config) {
         if (config.autoresize) $grid.attr('ui-grid-auto-resize', '');
+        if (config.movablecolumns) $grid.attr('ui-grid-move-columns', '');
+        if (config.resizablecolumns) $grid.attr('ui-grid-resize-columns', '');
         if (config.container_class) el.addClass(config.container_class);
         if (config.grid_class) $grid.addClass(config.grid_class);
       }
