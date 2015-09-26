@@ -28,8 +28,8 @@ function createReadFromDataSink(execlib) {
     );
   };
   ReadFromDataSink.prototype.onSuccess = function (sink) {
+    lib.destroyASAP(this);
     if(!sink){
-      lib.runNext(this.destroy.bind(this));
       return;
     }
     if(!sink.recordDescriptor){
