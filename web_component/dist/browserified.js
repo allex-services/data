@@ -809,6 +809,7 @@ function createDataSuite(execlib){
     dataSuite.NullStorage = require('./storage/nullcreator')(execlib);
     dataSuite.CloneStorage = require('./storage/clonecreator')(execlib);
     var MemoryStorageBase = require('./storage/memorybasecreator')(execlib);
+    dataSuite.MemoryStorageBase = MemoryStorageBase;
     dataSuite.MemoryStorage = require('./storage/memorycreator')(execlib, MemoryStorageBase);
     dataSuite.MemoryListStorage = require('./storage/memorylistcreator')(execlib, MemoryStorageBase);
 
@@ -1304,12 +1305,22 @@ function createRecord(execlib){
     return new(this.objCtor)(this.filterHash(obj));
   };
   Record.prototype.filterStateStream = function(item){
-    if(item.o==='u' && item.p && item.p.length===1){
-      var f = this.fieldsByName.get(item.p[0]);
-      if(f){
-        var ret = {};
-        ret[f.name] = f.valueFor(item.d[0]);
-        return ret;
+    if(item.p && item.p.length===1){
+      if(item.o==='u'){
+        var f = this.fieldsByName.get(item.p[0]);
+        if(f){
+          var ret = {};
+          ret[f.name] = f.valueFor(item.d[0]);
+          return ret;
+        }
+      }
+      if(item.o==='s'){
+        var f = this.fieldsByName.get(item.p[0]);
+        if(f){
+          var ret = {};
+          ret[f.name] = f.valueFor(item.d);
+          return ret;
+        }
       }
     }
   };
@@ -1328,7 +1339,7 @@ function createRecord(execlib){
         return {op:'eq',field:this.primaryKey,value:datahash[this.primaryKey]};
       }
     }else{
-      return {op:'hash',d:this.filterObject(record)};
+      return {op:'hash',d:this.filterObject(datahash)};
     }
   };
   Record.prototype.defaultFor = function(fieldname){
@@ -1743,7 +1754,7 @@ function createMemoryStorageBase (execlib) {
       defer.resolve(null);
       return;
     }
-    var mpk = this.__record.primaryKey;
+    var mpk = this.__record.primaryKey, pr;
     if (mpk) {
       if (lib.isArray(mpk)) {
         var violation = this.recordViolatesComplexPrimaryKey(record);
@@ -1759,8 +1770,15 @@ function createMemoryStorageBase (execlib) {
         }
       }
     }
-    this.data.push(record);
-    defer.resolve(record/*.clone()*/);
+    pr = this.data.push(record);
+    if (pr && 'function' === typeof pr.done) {
+      pr.done(
+        defer.resolve.bind(defer, record),
+        defer.reject.bind(defer)
+      );
+    } else {
+      defer.resolve(record/*.clone()*/);
+    }
   };
   function processRead(__id,query,defer,item){
     if(query.isOK(item)){
@@ -1774,17 +1792,16 @@ function createMemoryStorageBase (execlib) {
       return;
     }
     if(!(query.isLimited()||query.isOffset())){
-      this._traverseData(processRead.bind(null,this.__id,query,defer));
+      this._traverseData(processRead.bind(null,this.__id,query,defer)).then(defer.resolve.bind(defer, null));
     }else{
       var start = query.offset, end=Math.min(start+query.limit,this.data.length);
-      this._traverseDataRange(processRead.bind(null, this.__id,query, defer), start, end);
+      this._traverseDataRange(processRead.bind(null, this.__id,query, defer), start, end).then(defer.resolve.bind(defer, null));
       /*
       for(var i=start; i<end; i++){
         processRead(query,defer,this.__record.filterHash(this.data[i]));
       }
       */
     }
-    defer.resolve(null);
   };
   MemoryStorageBase.prototype.updateFrom = function(countobj,record,updateitem,updateitemname){
     if(record.hasFieldNamed(updateitemname)){
@@ -1913,7 +1930,8 @@ module.exports = createMemoryStorageBase;
 },{}],36:[function(require,module,exports){
 function createMemoryStorage(execlib, MemoryStorageBase){
   'use strict';
-  var lib = execlib.lib;
+  var lib = execlib.lib,
+    q = lib.q;
 
   function MemoryStorage (storagedescriptor, data) {
     MemoryStorageBase.call(this, storagedescriptor, data);
@@ -1927,11 +1945,13 @@ function createMemoryStorage(execlib, MemoryStorageBase){
   };
   MemoryStorage.prototype._traverseData = function (cb) {
     this.data.forEach(cb);
+    return q(true);
   };
   MemoryStorage.prototype._traverseDataRange = function (cb, start, endexclusive) {
     for(var i=start; i<end; i++){
       cb(query,defer,this.__record.filterHash(this.data[i]));
     }
+    return q(true);
   };
   MemoryStorage.prototype._removeDataAtIndex = function (data, index) {
     if (index === data.length-1) {
@@ -1954,7 +1974,8 @@ module.exports = createMemoryStorage;
 },{}],37:[function(require,module,exports){
 function createMemoryStorage(execlib, MemoryStorageBase){
   'use strict';
-  var lib = execlib.lib;
+  var lib = execlib.lib,
+    q = lib.q;
 
   function MemoryListStorage (storagedescriptor, data) {
     MemoryStorageBase.call(this, storagedescriptor, data);
@@ -1975,10 +1996,12 @@ function createMemoryStorage(execlib, MemoryStorageBase){
       cb(item);
     }
     cntobj.cnt++;
+    return q(true);
   };
   MemoryListStorage.prototype._traverseDataRange = function (cb, start, endexclusive) {
     var cntobj = {cnt:0};
     this.data.traverse(rangeTraverser.bind(null, start, endexclusive, cb, cntobj));
+    return q(true);
   };
   MemoryListStorage.prototype._removeDataAtIndex = function (data, index) {
     data.removeOne(index);
@@ -2851,8 +2874,8 @@ function createReadFromDataSink(execlib) {
     );
   };
   ReadFromDataSink.prototype.onSuccess = function (sink) {
+    lib.destroyASAP(this);
     if(!sink){
-      lib.runNext(this.destroy.bind(this));
       return;
     }
     if(!sink.recordDescriptor){

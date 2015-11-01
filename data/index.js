@@ -24,6 +24,7 @@ function createDataSuite(execlib){
     dataSuite.CloneStorage = require('./storage/clonecreator')(execlib);
     var MemoryStorageBase = require('./storage/memorybasecreator')(execlib);
     dataSuite.MemoryStorageBase = MemoryStorageBase;
+    dataSuite.AsyncMemoryStorageBase = require('./storage/asyncmemorystoragebasecreator')(execlib);
     dataSuite.MemoryStorage = require('./storage/memorycreator')(execlib, MemoryStorageBase);
     dataSuite.MemoryListStorage = require('./storage/memorylistcreator')(execlib, MemoryStorageBase);
 

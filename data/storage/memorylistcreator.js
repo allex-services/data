@@ -1,6 +1,7 @@
 function createMemoryStorage(execlib, MemoryStorageBase){
   'use strict';
-  var lib = execlib.lib;
+  var lib = execlib.lib,
+    q = lib.q;
 
   function MemoryListStorage (storagedescriptor, data) {
     MemoryStorageBase.call(this, storagedescriptor, data);
@@ -21,10 +22,12 @@ function createMemoryStorage(execlib, MemoryStorageBase){
       cb(item);
     }
     cntobj.cnt++;
+    return q(true);
   };
   MemoryListStorage.prototype._traverseDataRange = function (cb, start, endexclusive) {
     var cntobj = {cnt:0};
     this.data.traverse(rangeTraverser.bind(null, start, endexclusive, cb, cntobj));
+    return q(true);
   };
   MemoryListStorage.prototype._removeDataAtIndex = function (data, index) {
     data.removeOne(index);

@@ -13,6 +13,7 @@ function createDataManager(execlib){
   DataManager.prototype.destroy = function(){
     this.filter.destroy();
     this.filter = null;
+    console.log('destroying storage');
     this.storage.destroy();
     this.storage = null;
   };

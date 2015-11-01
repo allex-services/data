@@ -1,0 +1,64 @@
+function createAsyncMemoryStorageBase (execlib) {
+  'use strict';
+  var lib = execlib.lib,
+    q = lib.q,
+    dataSuite = execlib.dataSuite,
+    MemoryStorageBase = dataSuite.MemoryStorageBase;
+
+  function AsyncMemoryStorageBase(storagedescriptor, data) {
+    MemoryStorageBase.call(this, storagedescriptor, data);
+    this.q = new lib.Fifo();
+    this.ready = false;
+  }
+  lib.inherit(AsyncMemoryStorageBase, MemoryStorageBase);
+  AsyncMemoryStorageBase.prototype.destroy = function () {
+    this.ready = null;
+    if (this.q) {
+      this.q.destroy();
+    }
+    this.q = null;
+    MemoryStorageBase.prototype.destroy.call(this);
+  };
+  AsyncMemoryStorageBase.prototype.setReady = function (ready) {
+    var job;
+    this.ready = ready;
+    if (this.ready) {
+      while (this.q) {
+        job = this.q.pop();
+        this[job[0]].apply(this, job[1]);
+      }
+    }
+  };
+  AsyncMemoryStorageBase.prototype.doCreate = function (record, defer) {
+    if (!this.ready) {
+      this.q.push(['doCreate', [record, defer]]);
+      return;
+    }
+    return MemoryStorageBase.prototype.doCreate.call(this, record, defer);
+  };
+  AsyncMemoryStorageBase.prototype.doRead = function (query, defer) {
+    if (!this.ready) {
+      this.q.push(['doRead', [query, defer]]);
+      return;
+    }
+    return MemoryStorageBase.prototype.doRead.call(this, query, defer);
+  };
+  AsyncMemoryStorageBase.prototype.doUpdate = function (filter, datahash, options, defer) {
+    if (!this.ready) {
+      this.q.push(['doUpdate', [filter, datahash, options, defer]]);
+      return;
+    }
+    return MemoryStorageBase.prototype.doUpdate.call(this, filter, datahash, options, defer);
+  };
+  AsyncMemoryStorageBase.prototype.doDelete = function (filter, defer) {
+    if (!this.ready) {
+      this.q.push(['doDelete', [filter, defer]]);
+      return;
+    }
+    return MemoryStorageBase.prototype.doDelete.call(this, filter, defer);
+  };
+
+  return AsyncMemoryStorageBase;
+}
+
+module.exports = createAsyncMemoryStorageBase;

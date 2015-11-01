@@ -23,7 +23,7 @@ function createMemoryStorageBase (execlib) {
       defer.resolve(null);
       return;
     }
-    var mpk = this.__record.primaryKey;
+    var mpk = this.__record.primaryKey, pr;
     if (mpk) {
       if (lib.isArray(mpk)) {
         var violation = this.recordViolatesComplexPrimaryKey(record);
@@ -39,8 +39,15 @@ function createMemoryStorageBase (execlib) {
         }
       }
     }
-    this.data.push(record);
-    defer.resolve(record/*.clone()*/);
+    pr = this.data.push(record);
+    if (pr && 'function' === typeof pr.done) {
+      pr.done(
+        defer.resolve.bind(defer, record),
+        defer.reject.bind(defer)
+      );
+    } else {
+      defer.resolve(record/*.clone()*/);
+    }
   };
   function processRead(__id,query,defer,item){
     if(query.isOK(item)){
@@ -54,17 +61,16 @@ function createMemoryStorageBase (execlib) {
       return;
     }
     if(!(query.isLimited()||query.isOffset())){
-      this._traverseData(processRead.bind(null,this.__id,query,defer));
+      this._traverseData(processRead.bind(null,this.__id,query,defer)).then(defer.resolve.bind(defer, null));
     }else{
       var start = query.offset, end=Math.min(start+query.limit,this.data.length);
-      this._traverseDataRange(processRead.bind(null, this.__id,query, defer), start, end);
+      this._traverseDataRange(processRead.bind(null, this.__id,query, defer), start, end).then(defer.resolve.bind(defer, null));
       /*
       for(var i=start; i<end; i++){
         processRead(query,defer,this.__record.filterHash(this.data[i]));
       }
       */
     }
-    defer.resolve(null);
   };
   MemoryStorageBase.prototype.updateFrom = function(countobj,record,updateitem,updateitemname){
     if(record.hasFieldNamed(updateitemname)){
