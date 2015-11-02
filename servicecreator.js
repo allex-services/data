@@ -23,6 +23,7 @@ function createDataService(execlib){
 
   function DataService(prophash){
     ParentService.call(this,prophash);
+    this.intermediateStorage = null;
     this.data = null;
     this.createStorageAsync(prophash).done(
       this.createData.bind(this, prophash)
@@ -40,12 +41,28 @@ function createDataService(execlib){
       this.data.destroy();
     }
     this.data = null;
+    if (this.intermediateStorage) {
+      this.intermediateStorage.destroy();
+    }
+    this.intermediateStorage = null;
     ParentService.prototype.__cleanUp.call(this);
   };
   DataService.prototype.isInitiallyReady = function (prophash) {
     return !(prophash && prophash.storage && prophash.storage.modulename);
   };
   DataService.prototype.createData = function (prophash,storageinstance) {
+    if (!this.destroyed) {
+      return;
+    }
+    if (storageinstance && storageinstance.readyDefer && !storageinstance.readyDefer.promise.isFulfilled()) {
+      if (this.intermediateStorage) {
+        this.intermediateStorage.destroy();
+      }
+      this.intermediateStorage = storageinstance;
+      storageinstance.readyDefer.promise.then(this.createData.bind(this, prophash, storageinstance));
+      return;
+    }
+    this.intermediateStorage = null;
     this.data = new DistributedDataManager(storageinstance,{});
     if (this.readyToAcceptUsersDefer) {
       this.readyToAcceptUsersDefer.resolve(true);
