@@ -1540,21 +1540,22 @@ function createAsyncMemoryStorageBase (execlib) {
     MemoryStorageBase = dataSuite.MemoryStorageBase;
 
   function AsyncMemoryStorageBase(storagedescriptor, data) {
-    MemoryStorageBase.call(this, storagedescriptor, data);
     this.q = new lib.Fifo();
     this.readyDefer = q.defer();
-    this.readyDefer.then(this.setReady.bind(this));
+    this.readyDefer.promise.then(this.setReady.bind(this));
+    MemoryStorageBase.call(this, storagedescriptor, data);
   }
   lib.inherit(AsyncMemoryStorageBase, MemoryStorageBase);
   AsyncMemoryStorageBase.prototype.destroy = function () {
+    MemoryStorageBase.prototype.destroy.call(this);
     this.readyDefer = null;
     if (this.q) {
       this.q.destroy();
     }
     this.q = null;
-    MemoryStorageBase.prototype.destroy.call(this);
   };
   AsyncMemoryStorageBase.prototype.setReady = function () {
+    //console.log('setReady', this.q.length, 'jobs on q');
     var job;
     while (this.q) {
       job = this.q.pop();

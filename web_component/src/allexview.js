@@ -128,12 +128,6 @@
       console.log(this.sink_name, sinkRepresentation);
 
       if (sinkRepresentation) {
-        //at this point, we should check if this is a remote sink ... if is send askForRemote as well
-        this._is_remote = user.isSinkRemote(this.sink_name);
-        if (this._is_remote) {
-          user.execute('askForRemote', this.sink_name)
-            .done(this._got_sinkReady.bind(this, sinkRepresentation), this._failed.bind(this));
-        }
         this._got_sinkReady(sinkRepresentation);
       }else{
         this.set('data', null);
