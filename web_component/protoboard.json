@@ -21,5 +21,8 @@
     "requires": {
       "angular-ui-grid": "~3.0.1"
     }
+  },
+  "partials" : {
+    "partials": ["crudview.html","dataview.html"]
   }
 }
