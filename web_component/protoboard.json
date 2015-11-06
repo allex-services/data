@@ -2,7 +2,10 @@
   "js" : {
     "all":[
       "src/index.js",
-      "src/allexview.js",
+      "src/helpers.js",
+      "src/AllexDataViewController.js",
+      "src/CreateNewItemController.js",
+      "src/EditItemController.js",
       "src/dbreader.js",
       "src/directives.js",
       "src/grid.js",

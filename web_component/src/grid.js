@@ -1,18 +1,23 @@
-(function (module, lib, allex) {
-  module.directive('allexDataGrid', ['allex.lib.interfaces', '$compile', 'allex.CRUDAHelpers', function (Interfaces, $compile, CRUDAHelpers) {
+(function (module, lib, allex, wcomponent) {
+  var acomponent = allex.WEB_COMPONENT,
+    Element = acomponent.interfaces.Element,
+    CRUDAHelpers = wcomponent.CRUDAHelpers;
+
+
+  module.factory('allexDataGridController', ['$compile', function ($compile) {
     function AllexDataGrid($scope) {
       lib.BasicController.call(this, $scope);
-      Interfaces.Element.call(this);
+      Element.call(this);
       this._parent = $scope.$parent._ctrl;
       this._record_descriptor_l = null;
     }
     lib.inherit(AllexDataGrid, lib.BasicController);
-    Interfaces.Element.addMethods(AllexDataGrid);
+    Element.addMethods(AllexDataGrid);
     AllexDataGrid.prototype.__cleanUp = function () {
       this._record_descriptor_l.destroy();
       this._record_descriptor_l = null;
       this._parent = null;
-      Interfaces.Element.prototype.__cleanUp.call(this);
+      Element.prototype.__cleanUp.call(this);
       lib.BasicController.prototype.__cleanUp.call(this);
     };
 
@@ -95,16 +100,24 @@
       return angular.extend( (cfgd && cfgd[rditem.name]) || {}, {displayName: rditem.title, 'field': rditem.name});
     };
 
+    return AllexDataGrid;
+  }]);
+
+  module.controller ('allexdatagridController', ['$scope', 'allexDataGridController', function ($scope, allexDataGridController) {
+    new allexDataGridController($scope);
+  }]);
+
+  module.directive('allexDataGrid', [function () {
     return {
       restrict: 'E',
       replace: true,
       scope: true,
       transclude: true,
-      controller: AllexDataGrid,
+      controller: 'allexdatagridController',
       template: '<div class="allex_grid_container"></div>',
       link: function (scope, el, attrs) {
         scope._ctrl.set('el', el);
       }
     };
   }]);
-})(angular.module('allex.data'), ALLEX.lib, ALLEX);
+})(angular.module('allex.data'), ALLEX.lib, ALLEX, ALLEX.web_components.data);
