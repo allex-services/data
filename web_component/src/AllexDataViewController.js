@@ -187,7 +187,7 @@
     new AllexDataViewController($scope);
   }]);
 
-  module.directive('allexDataView', [function () {
+  module.directive('allexDataView', ['$parse',function ($parse) {
     return {
       restrict: 'E',
       replace: true,

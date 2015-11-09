@@ -2,7 +2,7 @@
   var allexcomponent = allex.WEB_COMPONENT,
     UserDependentMixIn = allexcomponent.user.UserDependentMixIn,
     WaitingModalUserTwoButtonForm = allexcomponent.forms.WaitingModalUserTwoButtonForm,
-    CRUDAHelpers = wcomponent.helpers;
+    helpers = wcomponent.helpers;
 
 
   function EditController($scope, $modalInstance, settings) {
@@ -14,7 +14,7 @@
     }
     this.primaryKey = rd.primaryKey;
     var config = this.view.get('config');
-    var form = CRUDAHelpers.buildFormDescriptor(settings.view.get('recordDescriptor'), settings.data, config ? angular.extend({}, config['#fields'], config.edit) : null);
+    var form = helpers.buildFormDescriptor(settings.view.get('recordDescriptor'), settings.data, config ? angular.extend({}, config['#fields'], config.edit) : null);
 
     form.fields[this.get('primaryKey')].attribs = {
       'ng-disabled':'1'

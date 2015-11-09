@@ -2,15 +2,15 @@
   allex.web_components.data = {};
 
   module.run (['allex.dialog.Router', 'allex.dialog', function (Router, Dialog) {
-    Router.register('dialog.CRUDCreateNotAllowed', function (sink_name) {
+    Router.register('CRUDCreateNotAllowed', function (sink_name) {
       return Dialog.error({'content': "You are not allowed to do create on sink <strong>{{_ctrl.getData().sink_name}}</strong>", data: {sink_name: sink_name}});
     });
 
-    Router.register('dialog.CRUDNoConfig', function (sink_name, action) {
+    Router.register('CRUDNoConfig', function (sink_name, action) {
       return Dialog.error({'content': 'Unable to find configuration for action <strong>{{_ctrl.getData().action}}</strong> for sink <strong>{{_ctrl.getData().sink_name}}', data: {sink_name: sink_name, action: action}});
     });
 
-    Router.register('dialog.data.action.edit', function (action, data, view) {
+    Router.register('data.action.edit', function (action, data, view) {
       return Dialog.open({controller: 'allex.data.EditItemController'}, {action:action, data: data, view: view});
     });
   }]);
@@ -279,7 +279,7 @@
     new AllexDataViewController($scope);
   }]);
 
-  module.directive('allexDataView', [function () {
+  module.directive('allexDataView', ['$parse',function ($parse) {
     return {
       restrict: 'E',
       replace: true,
@@ -342,16 +342,18 @@
     label: 'Add new',
     klass:'btn-default'
   };
-  function CreateNewBtnController ($scope) {
+  function CreateNewBtnController ($scope,dialog) {
     lib.BasicController.call(this, $scope);
     this._parent = $scope.$parent._ctrl;
     this._ready = false;
     this._config = null;
+    this._dialog = dialog;
     this._rdl = this._parent.attachListener('recordDescriptor', this._onRecordDescriptor.bind(this));
     this.label = 'Add new';
   }
   lib.inherit(CreateNewBtnController, lib.BasicController);
   CreateNewBtnController.prototype.__cleanUp = function () {
+    this._dialog = null;
     this._parent = null;
     this._ready = false;
     this._config = null;
@@ -373,7 +375,7 @@
       return Router.go('dialog.CRUDNoConfig', [this.get('sink_name'), 'create']);
     }
     if (lib.isBoolean(crudc) || !crudc.dialogs) {
-      Dialog.open({controller:'allex.data.CreateNewItemController'}, {
+      this._dialog.open({controller:'allex.data.CreateNewItemController'}, {
         sink_name: this.get('sink_name'),
         recordDescriptor : this.get('recordDescriptor'),
         config: this._parent.get('config')
@@ -414,14 +416,15 @@
     new CreateNewItemController($scope, $modalInstance, settings);
   }]);
 
-  module.controller('allex.data.CreateNewBtnController', ['$scope', function ($scope) {
-    new CreateNewBtnController($scope);
+  module.controller('allex.data.CreateNewBtnController', ['$scope','allex.dialog', function ($scope, Dialog) {
+    new CreateNewBtnController($scope, Dialog);
   }]);
-  module.directive('allexDataNew', ['$compile', 'allex.Router', 'allex.dialog', function ($compile, Router, Dialog) {
+
+  module.directive('allexDataNew', [function () {
     return {
       restrict: 'E',
       replace: true,
-      controller: AllexDataCrud,
+      controller: 'allex.data.CreateNewBtnController',
       scope: true,
       template: '<button class="btn" data-ng-class="_ctrl._config.klass" data-ng-show="_ctrl._ready && _ctrl._config" data-ng-click="_ctrl.onClick()">{{_ctrl._config.label}}</button>'
     };
@@ -434,7 +437,7 @@
   var allexcomponent = allex.WEB_COMPONENT,
     UserDependentMixIn = allexcomponent.user.UserDependentMixIn,
     WaitingModalUserTwoButtonForm = allexcomponent.forms.WaitingModalUserTwoButtonForm,
-    CRUDAHelpers = wcomponent.helpers;
+    helpers = wcomponent.helpers;
 
 
   function EditController($scope, $modalInstance, settings) {
@@ -446,7 +449,7 @@
     }
     this.primaryKey = rd.primaryKey;
     var config = this.view.get('config');
-    var form = CRUDAHelpers.buildFormDescriptor(settings.view.get('recordDescriptor'), settings.data, config ? angular.extend({}, config['#fields'], config.edit) : null);
+    var form = helpers.buildFormDescriptor(settings.view.get('recordDescriptor'), settings.data, config ? angular.extend({}, config['#fields'], config.edit) : null);
 
     form.fields[this.get('primaryKey')].attribs = {
       'ng-disabled':'1'
@@ -584,7 +587,7 @@
 (function (module, lib, allex, wcomponent) {
   var acomponent = allex.WEB_COMPONENT,
     Element = acomponent.interfaces.Element,
-    CRUDAHelpers = wcomponent.CRUDAHelpers;
+    helpers = wcomponent.helpers;
 
 
   module.factory('allexDataGridController', ['$compile', function ($compile) {
@@ -669,7 +672,7 @@
     };
 
     AllexDataGrid.prototype._appendCrudAndActions = function (defs, gc, viewc) {
-      var item_actions = CRUDAHelpers.buildActionsWidget(this._parent);
+      var item_actions = helpers.buildActionsWidget(this._parent);
       if (!item_actions || !item_actions.length) return;
 
       var desc = angular.extend({name: 'Action'}, gc.action_cell_config, viewc.action_cell_config, {
@@ -750,112 +753,126 @@
 })(angular.module('allex.data'), ALLEX.lib, ALLEX);
 //samo da te vidim
 (function (module, lib, allex) {
-  module.directive('allexDataCrudNew', ['$compile', 'allex.lib.UserDependentMixIn', 'allex.Router', function ($compile, UserDependentMixIn, AllexRouter) {
-    function DataCrudNew ($scope) {
-      lib.BasicController.call(this, $scope);
-      this.roles = null;
-      this.allowed = false;
-      this.sink = null;
-      UserDependentMixIn.call(this, $scope);
-    }
-    lib.inherit(DataCrudNew, lib.BasicController);
-    DataCrudNew.prototype.__cleanUp = function () {
-      this.sink = null;
-      this.allowed = null;
-      this.roles = null;
-      UserDependentMixIn.prototype.__cleanUp.call(this);
-      lib.BasicController.prototype.__cleanUp.call(this);
-    };
+  var allexcomponent = allex.WEB_COMPONENT,
+    AllexViewChild = allexcomponent.routers.AllexViewChild,
+    Router = allexcomponent.routers.RouterSet,
+    UserDependentMixIn = allexcomponent.user.UserDependentMixIn;
 
-    DataCrudNew.prototype.set_userState = function (state) {
-      UserDependentMixIn.prototype.set_userState.call(this, state);
-      if ('loggedin' !== state) return;
-      if (!this.roles) {
-        this.set('allowed', true);
-        return;
-      }else{
-        this.set('allowed', this._isAllowed());
-      }
-    };
+  function DataCrudNew ($scope) {
+    lib.BasicController.call(this, $scope);
+    this.roles = null;
+    this.allowed = false;
+    this.sink = null;
+    UserDependentMixIn.call(this, $scope);
+  }
+  lib.inherit(DataCrudNew, lib.BasicController);
+  DataCrudNew.prototype.__cleanUp = function () {
+    this.sink = null;
+    this.allowed = null;
+    this.roles = null;
+    UserDependentMixIn.prototype.__cleanUp.call(this);
+    lib.BasicController.prototype.__cleanUp.call(this);
+  };
 
-    DataCrudNew.prototype._isAllowed = function () {
-      return this.roles.split(',').indexOf(this.get('user').get('role')) > -1; 
-    };
-
-    DataCrudNew.prototype.set_roles = function(roles) {
-      this.roles = roles;
+  DataCrudNew.prototype.set_userState = function (state) {
+    UserDependentMixIn.prototype.set_userState.call(this, state);
+    if ('loggedin' !== state) return;
+    if (!this.roles) {
+      this.set('allowed', true);
+      return;
+    }else{
       this.set('allowed', this._isAllowed());
-      this.$apply();
-    };
+    }
+  };
 
-    DataCrudNew.prototype.set_allowed = function (allowed) {
-      this.allowed = allowed;
-      this.$apply();
-    };
+  DataCrudNew.prototype._isAllowed = function () {
+    return this.roles.split(',').indexOf(this.get('user').get('role')) > -1; 
+  };
 
-    DataCrudNew.prototype.go = function () {
-      if (!this.sink) {
-        //aj shibni neki errror
-        return;
-      }
-      if (!this._isAllowed()) {
-        //tresni mu nesto po sred nosa ...
-        return;
-      }
-      //E SAD IDE ONAJ ZAGULJENI DEO KAD TREBA DA SAZNAS DESKRIPTORE ...
-      console.log('==============>', this.get('user').getSubSink(this.sink));
+  DataCrudNew.prototype.set_roles = function(roles) {
+    this.roles = roles;
+    this.set('allowed', this._isAllowed());
+    this.$apply();
+  };
 
-    };
+  DataCrudNew.prototype.set_allowed = function (allowed) {
+    this.allowed = allowed;
+    this.$apply();
+  };
+
+  DataCrudNew.prototype.go = function () {
+    if (!this.sink) {
+      //aj shibni neki errror
+      return;
+    }
+    if (!this._isAllowed()) {
+      //tresni mu nesto po sred nosa ...
+      return;
+    }
+    //E SAD IDE ONAJ ZAGULJENI DEO KAD TREBA DA SAZNAS DESKRIPTORE ...
+    //console.log('==============>', this.get('user').getSubSink(this.sink));
+  };
+
+  module.controller ('allexDataCrudNewController', ['$scope', function ($scope) {
+    new DataCrudNew($scope);
+  }]);
+
+  module.directive('allexDataCrudNew', ['$compile', function ($compile) {
+    function link (scope, el, attrs) {
+      scope._ctrl.set('sink', attrs.sink);
+      if (attrs.roles && attrs.roles.length) scope._ctrl.set('roles', attrs.roles);
+      el.html(attrs.label);
+    }
 
     return {
       restrict: 'E',
-      controller: DataCrudNew,
+      controller: 'allexDataCrudNewController',
       replace: true,
       template: '<button class="btn" data-ng-show="_ctrl.allowed" data-ng-click="_ctrl.go()"></button>',
-      link: function (scope, el, attrs) {
-        scope._ctrl.set('sink', attrs.sink);
-        if (attrs.roles && attrs.roles.length) scope._ctrl.set('roles', attrs.roles);
-        el.html(attrs.label);
-      }
+      link: link
     };
   }]);
 
-  module.directive ('allexDataCrudView', ['$compile', 'allex.AllexViewChild', function ($compile, AllexViewChild) {
-    var ADD_NEW_DEFAULTS = {
-      klass: 'btn-default',
-      label: 'Add new'
-    };
+  var ADD_NEW_DEFAULTS = {
+    klass: 'btn-default',
+    label: 'Add new'
+  };
 
+  function CrudView ($scope) {
+    lib.BasicController.call(this, $scope);
+    AllexViewChild.call(this, $scope);
+    this.config = this.get('data');
+  }
 
-    function CrudView ($scope) {
-      lib.BasicController.call(this, $scope);
-      AllexViewChild.call(this, $scope);
-      this.config = this.get('data');
+  lib.inherit(CrudView, lib.BasicController);
+  AllexViewChild.addMethods(CrudView);
+
+  CrudView.prototype.__cleanUp = function () {
+    this.config = null;
+    AllexViewChild.prototype.__cleanUp.call(this);
+    lib.BasicController.prototype.__cleanUp.call(this);
+  };
+
+  module.controller ('allexDataCrudViewController', ['$scope', function ($scope) {
+    new CrudView($scope);
+  }]);
+
+  module.directive ('allexDataCrudView', ['$compile', function ($compile) {
+    function link (scope, el) {
+      var $view = $('<allex-data-view>');
+      var config = scope._ctrl.get('config');
+      var c = {sink: config.sink, name: config.name};
+      $view.attr('data-config', JSON.stringify(c));
+      if (config.klass)  el.addClass(config.klass);
+      el.append($view);
+      $compile(el.contents())(scope);
     }
-
-    lib.inherit(CrudView, lib.BasicController);
-    AllexViewChild.addMethods(CrudView);
-
-    CrudView.prototype.__cleanUp = function () {
-      this.config = null;
-      AllexViewChild.prototype.__cleanUp.call(this);
-      lib.BasicController.prototype.__cleanUp.call(this);
-    };
-
     return {
       restrict: 'E',
-      controller: CrudView,
+      controller: 'allexDataCrudViewController',
       replace: true,
       template: '<div class="crudview"></div>',
-      link:function (scope, el) {
-        var $view = $('<allex-data-view>');
-        var config = scope._ctrl.get('config');
-        var c = {sink: config.sink, name: config.name};
-        $view.attr('data-config', JSON.stringify(c));
-        if (config.klass)  el.addClass(config.klass);
-        el.append($view);
-        $compile(el.contents())(scope);
-      }
+      link:link
     };
   }]);
 

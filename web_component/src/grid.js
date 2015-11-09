@@ -1,7 +1,7 @@
 (function (module, lib, allex, wcomponent) {
   var acomponent = allex.WEB_COMPONENT,
     Element = acomponent.interfaces.Element,
-    CRUDAHelpers = wcomponent.CRUDAHelpers;
+    helpers = wcomponent.helpers;
 
 
   module.factory('allexDataGridController', ['$compile', function ($compile) {
@@ -86,7 +86,7 @@
     };
 
     AllexDataGrid.prototype._appendCrudAndActions = function (defs, gc, viewc) {
-      var item_actions = CRUDAHelpers.buildActionsWidget(this._parent);
+      var item_actions = helpers.buildActionsWidget(this._parent);
       if (!item_actions || !item_actions.length) return;
 
       var desc = angular.extend({name: 'Action'}, gc.action_cell_config, viewc.action_cell_config, {

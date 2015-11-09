@@ -46,16 +46,18 @@
     label: 'Add new',
     klass:'btn-default'
   };
-  function CreateNewBtnController ($scope) {
+  function CreateNewBtnController ($scope,dialog) {
     lib.BasicController.call(this, $scope);
     this._parent = $scope.$parent._ctrl;
     this._ready = false;
     this._config = null;
+    this._dialog = dialog;
     this._rdl = this._parent.attachListener('recordDescriptor', this._onRecordDescriptor.bind(this));
     this.label = 'Add new';
   }
   lib.inherit(CreateNewBtnController, lib.BasicController);
   CreateNewBtnController.prototype.__cleanUp = function () {
+    this._dialog = null;
     this._parent = null;
     this._ready = false;
     this._config = null;
@@ -77,7 +79,7 @@
       return Router.go('dialog.CRUDNoConfig', [this.get('sink_name'), 'create']);
     }
     if (lib.isBoolean(crudc) || !crudc.dialogs) {
-      Dialog.open({controller:'allex.data.CreateNewItemController'}, {
+      this._dialog.open({controller:'allex.data.CreateNewItemController'}, {
         sink_name: this.get('sink_name'),
         recordDescriptor : this.get('recordDescriptor'),
         config: this._parent.get('config')
@@ -118,14 +120,15 @@
     new CreateNewItemController($scope, $modalInstance, settings);
   }]);
 
-  module.controller('allex.data.CreateNewBtnController', ['$scope', function ($scope) {
-    new CreateNewBtnController($scope);
+  module.controller('allex.data.CreateNewBtnController', ['$scope','allex.dialog', function ($scope, Dialog) {
+    new CreateNewBtnController($scope, Dialog);
   }]);
-  module.directive('allexDataNew', ['$compile', 'allex.Router', 'allex.dialog', function ($compile, Router, Dialog) {
+
+  module.directive('allexDataNew', [function () {
     return {
       restrict: 'E',
       replace: true,
-      controller: AllexDataCrud,
+      controller: 'allex.data.CreateNewBtnController',
       scope: true,
       template: '<button class="btn" data-ng-class="_ctrl._config.klass" data-ng-show="_ctrl._ready && _ctrl._config" data-ng-click="_ctrl.onClick()">{{_ctrl._config.label}}</button>'
     };
