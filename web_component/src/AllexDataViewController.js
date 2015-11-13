@@ -75,12 +75,16 @@
     AllexDataViewController.prototype._got_sinkReady = function (sinkRepresentation) {
       this.set('data', sinkRepresentation.data);
       this._monitorForGui = sinkRepresentation.monitorDataForGui(this._updateCB.bind(this));
+      sinkRepresentation.state.listenFor('name', this._readRd.bind(this, sinkRepresentation), true, false);
+    };
+
+    AllexDataViewController.prototype._readRd = function (sinkRepresentation) {
+      console.log('OK, OVO SE DESILO, ali', sinkRepresentation.sink.modulename);
       this.set('recordDescriptor', sinkRepresentation.sink.recordDescriptor);
     };
 
     AllexDataViewController.prototype.set_recordDescriptor = function (recordDescriptor) {
-      //console.log('AND RECORD DESCRIPTOR IS ', JSON.stringify(recordDescriptor, null, 2));
-      this.recordDescriptor = recordDescriptor;
+      this.recordDescriptor = recordDescriptor || null;
     };
 
     AllexDataViewController.prototype._updateCB = function () {
