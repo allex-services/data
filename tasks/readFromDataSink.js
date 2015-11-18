@@ -28,7 +28,6 @@ function createReadFromDataSink(execlib) {
     );
   };
   ReadFromDataSink.prototype.onSuccess = function (sink) {
-    lib.destroyASAP(this);
     if(!sink){
       return;
     }
@@ -42,6 +41,8 @@ function createReadFromDataSink(execlib) {
       errorcb: this.errorcb,
       singleshot: this.singleshot
     });
+    //lib.destroyASAP(this);
+    this.destroy();
   };
   ReadFromDataSink.prototype.onFail = function (reason) {
     if (this.errorcb) {
