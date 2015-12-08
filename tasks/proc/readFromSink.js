@@ -55,7 +55,9 @@ function createReadFromSinkProc (execlib, prophash) {
     //console.log('onRecord', datahash, 'currently data:', data);
     if (prophash.singleshot) {
       if (data.length) {
-        data.destroy();
+        if ('function' === typeof data.destroy) {
+          data.destroy();
+        }
       }
       return;
     }
