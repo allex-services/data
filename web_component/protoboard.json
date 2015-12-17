@@ -18,7 +18,7 @@
   },
   "protoboard": {
     "role":"web_component",
-    "public_dirs": ["dist", "partials"]
+    "public_dirs": ["partials"]
   },
   "bower": {
     "requires": {
