@@ -32,29 +32,35 @@
   }
 
   function itemActions (view) {
-    var sc = view.get('sinkConfiguration'), user = view.get('user'), primaryKey = view.get('recordDescriptor').primaryKey;
+    ///TODO: uvedi koncept deklarisanja widget-a u konfiguraciji ....
+    if (!view.actionable) return null;
+
+    var sc = view.get('sinkConfiguration'), 
+      user = view.get('user'), 
+      primaryKey = view.get('recordDescriptor').primaryKey,
+      viewc = sc[view.get('name')];
     if (!primaryKey) return null;
-    if (!sc || !sc.crud) return null;
-    if (!(sc.crud.edit || sc.crud.delete)) return null;
-    ///AJ SAMO PROVERI OVAJ ILI ... ako imas sc.crud.edit ili 
-    return (sc.item_action_order ? sc.item_action_order : ['edit', 'delete']).filter(hasPermission.bind(null, sc.crud, sc.actions, user.get('role')));
+
+    var items = null, 
+      order = 'item_action_order' in viewc ? viewc.item_action_order : sc.item_action_order;
+
+    if (!order) return null; ///you do not want actions on this view, right?
+    return order ? order.filter(hasPermission.bind(null, sc.crud, sc.actions, user.get('role'))) : null;
   }
 
-  function buildWidget (DEFAULTS, type, sc, name) {
+  function buildWidget (DEFAULTS, sc, name) {
     var c = name in sc.crud ? sc.crud[name] : sc.actions[name];
     if (!c) return '';
     return (c.widget ? c.widget : DEFAULTS[name]) || '';
   }
 
-  function buildActionsWidget (view) {
+  function buildActionsWidget (view, wdefaults) {
     var actions = itemActions(view);
     if (!actions || !actions.length) return;
     var type = view.get('viewType');
-    var DEFAULTS = ALLEX_CONFIGURATION.DEFAULT_VIEW_ACTION_WIDGETS[type];
-    if (!DEFAULTS) {
-      console.warn('NO DEFAULTS FOR VIEW ACTIONS for type ',type);
-    }
-    return actions.map(buildWidget.bind(null, DEFAULTS, type, view.get('sinkConfiguration'))).join('');
+    var widgets = angular.extend({}, wdefaults, ALLEX_CONFIGURATION.VIEW_ACTION_WIDGETS ? ALLEX_CONFIGURATION.VIEW_ACTION_WIDGETS[type] : null, view.get('sinkConfiguration')[view.get('name')].actions);
+    if (!widgets) return;
+    return actions.map(buildWidget.bind(null, widgets, view.get('sinkConfiguration'))).join('');
   }
 
   function tofd (defaults, item) {
@@ -110,7 +116,7 @@
       this.recordDescriptor = null;
       this.crudable = null;
       this.actionable = null;
-      UserDependentMixIn.call(this, $scope);
+      UserDependentMixIn.call(this, $scope, null, null, $scope.userid);
     }
     lib.inherit(AllexDataViewController, lib.BasicController);
     UserDependentMixIn.addMethods(AllexDataViewController);
@@ -166,12 +172,13 @@
 
     AllexDataViewController.prototype._got_sinkReady = function (sinkRepresentation) {
       this.set('data', sinkRepresentation.data);
+      console.log('registered sink, data set to', sinkRepresentation.data);
       this._monitorForGui = sinkRepresentation.monitorDataForGui(this._updateCB.bind(this));
       sinkRepresentation.state.listenFor('name', this._readRd.bind(this, sinkRepresentation), true, false);
     };
 
     AllexDataViewController.prototype._readRd = function (sinkRepresentation) {
-      console.log('OK, OVO SE DESILO, ali', sinkRepresentation.sink.modulename);
+      //console.log('OK, OVO SE DESILO, ali', sinkRepresentation.sink.modulename);
       this.set('recordDescriptor', sinkRepresentation.sink.recordDescriptor);
     };
 
@@ -180,7 +187,7 @@
     };
 
     AllexDataViewController.prototype._updateCB = function () {
-      //console.log('SAMO DA VIDIM DATU ... ', this.data);
+      console.log('SAMO DA VIDIM DATU ... ', this.data);
       this.$apply();
     };
 
@@ -214,7 +221,7 @@
 
 
       this.set('crudable', (!!SINK.crud) && VIEW.crud);
-      this.set('actionable', (!!SINK.actions) && VIEW.actions);
+      this.set('actionable', !!SINK.actions || !!VIEW.actions);
 
       this._fetchSink();
     };
@@ -232,8 +239,8 @@
       return lib.isBoolean(csc[action]) ? null : csc[action];
     };
 
-    AllexDataViewController.prototype._doAction = function (dialog, action, data) {
-      Router.go(dialog, [action, data, this]);
+    AllexDataViewController.prototype._doAction = function (route, action, data) {
+      Router.go(route, [action, data, this]);
     };
 
     AllexDataViewController.prototype._doEdit = function (dialog, data) {
@@ -287,7 +294,9 @@
     return {
       restrict: 'E',
       replace: true,
-      scope: true,
+      scope: {
+        userid: '@'
+      },
       templateUrl: 'partials/allex_dataservice/partials/dataview.html',
       controller: 'allexdataviewController',
       link: function (scope, el, attrs) {
@@ -590,29 +599,36 @@
 //samo da te vidim
 (function (module, lib, allex, wcomponent) {
   var acomponent = allex.WEB_COMPONENT,
-    Element = acomponent.interfaces.Element,
+    BasicViewTypeController = acomponent,
     helpers = wcomponent.helpers;
 
 
+  var DEFAULT_ACTION_WIDGETS = {
+    'edit': '<a href="#" data-ng-click="grid.appScope._ctrl._doEdit(\'dialog.data.action.edit\', row.entity)"><i class="fa fa-pencil-square-o"></i></a>',
+    'delete':'<a href="#" data-ng-click="grid.appScope._ctrl._doRemove(row.entity)"><i class="fa fa-trash-o"></i></a>'
+  };
+
+
   module.factory('allexDataGridController', ['$compile', function ($compile) {
+    var IElement = acomponent.interfaces.Element;
     function AllexDataGrid($scope) {
       lib.BasicController.call(this, $scope);
-      Element.call(this);
+      IElement.call(this);
       this._parent = $scope.$parent._ctrl;
       this._record_descriptor_l = null;
     }
     lib.inherit(AllexDataGrid, lib.BasicController);
-    Element.addMethods(AllexDataGrid);
+    IElement.addMethods(AllexDataGrid);
     AllexDataGrid.prototype.__cleanUp = function () {
       this._record_descriptor_l.destroy();
       this._record_descriptor_l = null;
       this._parent = null;
-      Element.prototype.__cleanUp.call(this);
+      IElement.prototype.__cleanUp.call(this);
       lib.BasicController.prototype.__cleanUp.call(this);
     };
 
-    AllexDataGrid.prototype._doAction = function (form, action, data) {
-      this._parent._doAction.call(this._parent, form, action, data.toHash(data.fieldNames()));
+    AllexDataGrid.prototype._doAction = function (route, action, data) {
+      this._parent._doAction.call(this._parent, route, action, data.toHash(data.fieldNames()));
     };
 
     AllexDataGrid.prototype._doEdit = function (form, data) {
@@ -668,7 +684,7 @@
       var grid = this._parent.get('config') ? this._parent.get('config').grid: null;
       var config = angular.extend({}, grid);
       var cfgd = config.columnDefs;
-      config.columnDefs = recordDescriptor.fields.map (this._buildColumnDef.bind(this, cfgd));
+      config.columnDefs = cfgd ? cfgd : recordDescriptor.fields.map (this._buildColumnDef.bind(this));
       var sf = this._parent.get('sinkConfiguration');
       var global_config = sf.action_cell_config && sf.action_cell_config.grid ? sf.action_cell_config.grid : {};
       this._appendCrudAndActions(config.columnDefs, global_config, this._parent.get('config'));
@@ -676,18 +692,19 @@
     };
 
     AllexDataGrid.prototype._appendCrudAndActions = function (defs, gc, viewc) {
-      var item_actions = helpers.buildActionsWidget(this._parent);
+      //var item_actions = angular.extend({}, DEFAULT_ACTION_WIDGETS, helpers.buildActionsWidget(this._parent));
+      var item_actions = helpers.buildActionsWidget(this._parent, DEFAULT_ACTION_WIDGETS);
       if (!item_actions || !item_actions.length) return;
 
       var desc = angular.extend({name: 'Action'}, gc.action_cell_config, viewc.action_cell_config, {
         cellTemplate: item_actions
       });
       defs.unshift(desc);
-      console.log('====DESC', desc, gc, viewc);
+      //console.log('====DESC', desc, gc, viewc);
     };
 
-    AllexDataGrid.prototype._buildColumnDef = function (cfgd, rditem) {
-      return angular.extend( (cfgd && cfgd[rditem.name]) || {}, {displayName: rditem.title, 'field': rditem.name});
+    AllexDataGrid.prototype._buildColumnDef = function (rditem) {
+      return {displayName: rditem.title, 'field': rditem.name};
     };
 
     return AllexDataGrid;

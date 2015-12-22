@@ -1,28 +1,35 @@
 (function (module, lib, allex, wcomponent) {
   var acomponent = allex.WEB_COMPONENT,
-    Element = acomponent.interfaces.Element,
+    BasicViewTypeController = acomponent,
     helpers = wcomponent.helpers;
 
 
+  var DEFAULT_ACTION_WIDGETS = {
+    'edit': '<a href="#" data-ng-click="grid.appScope._ctrl._doEdit(\'dialog.data.action.edit\', row.entity)"><i class="fa fa-pencil-square-o"></i></a>',
+    'delete':'<a href="#" data-ng-click="grid.appScope._ctrl._doRemove(row.entity)"><i class="fa fa-trash-o"></i></a>'
+  };
+
+
   module.factory('allexDataGridController', ['$compile', function ($compile) {
+    var IElement = acomponent.interfaces.Element;
     function AllexDataGrid($scope) {
       lib.BasicController.call(this, $scope);
-      Element.call(this);
+      IElement.call(this);
       this._parent = $scope.$parent._ctrl;
       this._record_descriptor_l = null;
     }
     lib.inherit(AllexDataGrid, lib.BasicController);
-    Element.addMethods(AllexDataGrid);
+    IElement.addMethods(AllexDataGrid);
     AllexDataGrid.prototype.__cleanUp = function () {
       this._record_descriptor_l.destroy();
       this._record_descriptor_l = null;
       this._parent = null;
-      Element.prototype.__cleanUp.call(this);
+      IElement.prototype.__cleanUp.call(this);
       lib.BasicController.prototype.__cleanUp.call(this);
     };
 
-    AllexDataGrid.prototype._doAction = function (form, action, data) {
-      this._parent._doAction.call(this._parent, form, action, data.toHash(data.fieldNames()));
+    AllexDataGrid.prototype._doAction = function (route, action, data) {
+      this._parent._doAction.call(this._parent, route, action, data.toHash(data.fieldNames()));
     };
 
     AllexDataGrid.prototype._doEdit = function (form, data) {
@@ -78,7 +85,7 @@
       var grid = this._parent.get('config') ? this._parent.get('config').grid: null;
       var config = angular.extend({}, grid);
       var cfgd = config.columnDefs;
-      config.columnDefs = recordDescriptor.fields.map (this._buildColumnDef.bind(this, cfgd));
+      config.columnDefs = cfgd ? cfgd : recordDescriptor.fields.map (this._buildColumnDef.bind(this));
       var sf = this._parent.get('sinkConfiguration');
       var global_config = sf.action_cell_config && sf.action_cell_config.grid ? sf.action_cell_config.grid : {};
       this._appendCrudAndActions(config.columnDefs, global_config, this._parent.get('config'));
@@ -86,18 +93,19 @@
     };
 
     AllexDataGrid.prototype._appendCrudAndActions = function (defs, gc, viewc) {
-      var item_actions = helpers.buildActionsWidget(this._parent);
+      //var item_actions = angular.extend({}, DEFAULT_ACTION_WIDGETS, helpers.buildActionsWidget(this._parent));
+      var item_actions = helpers.buildActionsWidget(this._parent, DEFAULT_ACTION_WIDGETS);
       if (!item_actions || !item_actions.length) return;
 
       var desc = angular.extend({name: 'Action'}, gc.action_cell_config, viewc.action_cell_config, {
         cellTemplate: item_actions
       });
       defs.unshift(desc);
-      console.log('====DESC', desc, gc, viewc);
+      //console.log('====DESC', desc, gc, viewc);
     };
 
-    AllexDataGrid.prototype._buildColumnDef = function (cfgd, rditem) {
-      return angular.extend( (cfgd && cfgd[rditem.name]) || {}, {displayName: rditem.title, 'field': rditem.name});
+    AllexDataGrid.prototype._buildColumnDef = function (rditem) {
+      return {displayName: rditem.title, 'field': rditem.name};
     };
 
     return AllexDataGrid;

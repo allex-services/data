@@ -11,29 +11,35 @@
   }
 
   function itemActions (view) {
-    var sc = view.get('sinkConfiguration'), user = view.get('user'), primaryKey = view.get('recordDescriptor').primaryKey;
+    ///TODO: uvedi koncept deklarisanja widget-a u konfiguraciji ....
+    if (!view.actionable) return null;
+
+    var sc = view.get('sinkConfiguration'), 
+      user = view.get('user'), 
+      primaryKey = view.get('recordDescriptor').primaryKey,
+      viewc = sc[view.get('name')];
     if (!primaryKey) return null;
-    if (!sc || !sc.crud) return null;
-    if (!(sc.crud.edit || sc.crud.delete)) return null;
-    ///AJ SAMO PROVERI OVAJ ILI ... ako imas sc.crud.edit ili 
-    return (sc.item_action_order ? sc.item_action_order : ['edit', 'delete']).filter(hasPermission.bind(null, sc.crud, sc.actions, user.get('role')));
+
+    var items = null, 
+      order = 'item_action_order' in viewc ? viewc.item_action_order : sc.item_action_order;
+
+    if (!order) return null; ///you do not want actions on this view, right?
+    return order ? order.filter(hasPermission.bind(null, sc.crud, sc.actions, user.get('role'))) : null;
   }
 
-  function buildWidget (DEFAULTS, type, sc, name) {
+  function buildWidget (DEFAULTS, sc, name) {
     var c = name in sc.crud ? sc.crud[name] : sc.actions[name];
     if (!c) return '';
     return (c.widget ? c.widget : DEFAULTS[name]) || '';
   }
 
-  function buildActionsWidget (view) {
+  function buildActionsWidget (view, wdefaults) {
     var actions = itemActions(view);
     if (!actions || !actions.length) return;
     var type = view.get('viewType');
-    var DEFAULTS = ALLEX_CONFIGURATION.DEFAULT_VIEW_ACTION_WIDGETS[type];
-    if (!DEFAULTS) {
-      console.warn('NO DEFAULTS FOR VIEW ACTIONS for type ',type);
-    }
-    return actions.map(buildWidget.bind(null, DEFAULTS, type, view.get('sinkConfiguration'))).join('');
+    var widgets = angular.extend({}, wdefaults, ALLEX_CONFIGURATION.VIEW_ACTION_WIDGETS ? ALLEX_CONFIGURATION.VIEW_ACTION_WIDGETS[type] : null, view.get('sinkConfiguration')[view.get('name')].actions);
+    if (!widgets) return;
+    return actions.map(buildWidget.bind(null, widgets, view.get('sinkConfiguration'))).join('');
   }
 
   function tofd (defaults, item) {

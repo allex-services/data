@@ -18,7 +18,7 @@
       this.recordDescriptor = null;
       this.crudable = null;
       this.actionable = null;
-      UserDependentMixIn.call(this, $scope);
+      UserDependentMixIn.call(this, $scope, null, null, $scope.userid);
     }
     lib.inherit(AllexDataViewController, lib.BasicController);
     UserDependentMixIn.addMethods(AllexDataViewController);
@@ -74,12 +74,13 @@
 
     AllexDataViewController.prototype._got_sinkReady = function (sinkRepresentation) {
       this.set('data', sinkRepresentation.data);
+      console.log('registered sink, data set to', sinkRepresentation.data);
       this._monitorForGui = sinkRepresentation.monitorDataForGui(this._updateCB.bind(this));
       sinkRepresentation.state.listenFor('name', this._readRd.bind(this, sinkRepresentation), true, false);
     };
 
     AllexDataViewController.prototype._readRd = function (sinkRepresentation) {
-      console.log('OK, OVO SE DESILO, ali', sinkRepresentation.sink.modulename);
+      //console.log('OK, OVO SE DESILO, ali', sinkRepresentation.sink.modulename);
       this.set('recordDescriptor', sinkRepresentation.sink.recordDescriptor);
     };
 
@@ -88,7 +89,7 @@
     };
 
     AllexDataViewController.prototype._updateCB = function () {
-      //console.log('SAMO DA VIDIM DATU ... ', this.data);
+      console.log('SAMO DA VIDIM DATU ... ', this.data);
       this.$apply();
     };
 
@@ -122,7 +123,7 @@
 
 
       this.set('crudable', (!!SINK.crud) && VIEW.crud);
-      this.set('actionable', (!!SINK.actions) && VIEW.actions);
+      this.set('actionable', !!SINK.actions || !!VIEW.actions);
 
       this._fetchSink();
     };
@@ -140,8 +141,8 @@
       return lib.isBoolean(csc[action]) ? null : csc[action];
     };
 
-    AllexDataViewController.prototype._doAction = function (dialog, action, data) {
-      Router.go(dialog, [action, data, this]);
+    AllexDataViewController.prototype._doAction = function (route, action, data) {
+      Router.go(route, [action, data, this]);
     };
 
     AllexDataViewController.prototype._doEdit = function (dialog, data) {
@@ -195,7 +196,9 @@
     return {
       restrict: 'E',
       replace: true,
-      scope: true,
+      scope: {
+        userid: '@'
+      },
       templateUrl: 'partials/allex_dataservice/partials/dataview.html',
       controller: 'allexdataviewController',
       link: function (scope, el, attrs) {
