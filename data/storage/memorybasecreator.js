@@ -110,6 +110,7 @@ function createMemoryStorageBase (execlib) {
   }
   MemoryStorageBase.prototype.doUpdate = function(filter,datahash,options,defer){
     if(!this.data){
+      defer.reject(new lib.Error('NO_DATA_IN_STORAGE'));
       return;
     }
     var countobj = {count:0};
