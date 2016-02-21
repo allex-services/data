@@ -37,6 +37,8 @@ function createDataDecoder(execlib){
   function Decoder(storable){
     this.storable = storable;
     this.working = false;
+    this.deqer = this.deq.bind(this);
+    this.errdeqer = this.deqFromError.bind(this);
     this.q = new lib.Fifo();
   }
   Decoder.prototype.destroy = function(){
@@ -51,10 +53,13 @@ function createDataDecoder(execlib){
       this.q.destroy();
     }
     this.q = null;
+    this.errdeqer = null;
+    this.deqer = null;
     this.working = null;
     this.storable = null;
   };
   Decoder.prototype.enq = function(command, arg_s) {
+    var ce;
     if (!this.q) {
       return;
     }
@@ -89,12 +94,12 @@ function createDataDecoder(execlib){
       //console.log('doing',command, args);
       if (lib.isString(command)) {
         if (lib.isArray(arg_s)) {
-          this[command].apply(this, arg_s).then(this.deq.bind(this), console.error.bind(console, 'apply error'));
+          this[command].apply(this, arg_s).then(this.deqer, this.errdeqer);
         } else {
-          this[command].call(this, arg_s).then(this.deq.bind(this), console.error.bind(console, 'apply error'));
+          this[command].call(this, arg_s).then(this.deqer, this.errdeqer);
         }
       } else {
-        command.apply(this).then(this.deq.bind(this), console.error.bind(console, 'apply error'));
+        command.apply(this).then(this.deqer, this.errdeqer);
         //console.log('group apply done');
       }
     }
@@ -112,6 +117,10 @@ function createDataDecoder(execlib){
         this.enq(p);
       }
     }
+  };
+  Decoder.prototype.deqFromError = function (err) {
+    console.error(process.pid, 'Data Decoeder error', err);
+    this.deq();
   };
   Decoder.prototype.onStream = function(item){
     //console.log('Decoder', this.storable.__id,'got',item);
