@@ -44,8 +44,13 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
     //console.log('EventQ dumping', this.q.length, 'items');
     while(this.q.length){
       var item = this.q.pop();
-      if(sink.isOK(item)){
-        sink.onStream(item);
+      switch (item[0]) {
+        case 'c':
+          if(sink.isOK(item[1])){
+            sink.onStream(item);
+          }
+        default:
+          sink.onStream(item);
       }
     }
   };
