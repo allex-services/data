@@ -4,8 +4,8 @@ function createClientSide(execlib) {
   return {
     SinkMap: require('./sinkmapcreator')(execlib),
     Tasks: [{
-      name: 'materializeData',
-      klass: require('./tasks/materializeData')(execlib)
+      name: 'materializeQuery',
+      klass: require('./tasks/materializeQuery')(execlib)
     },{
       name: 'forwardData',
       klass: require('./tasks/forwardData')(execlib)

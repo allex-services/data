@@ -10,6 +10,7 @@ function createReadFromDataSink(execlib) {
     SinkTask.call(this,prophash);
     this.sink = prophash.sink;
     this.filter = prophash.filter;
+    this.visiblefields = prophash.visiblefields;
     this.cb = prophash.cb;
     this.errorcb = prophash.errorcb;
     this.singleshot = prophash.singleshot;
@@ -22,10 +23,21 @@ function createReadFromDataSink(execlib) {
     SinkTask.prototype.__cleanUp.call(this);
   };
   ReadFromDataSink.prototype.go = function () {
+    readFromSinkProc({
+      sink: this.sink,
+      singleshot: this.singleshot,
+      continuous: this.continuous,
+      filter: this.filter,
+      visiblefields: this.visiblefields,
+      cb: this.cb,
+      errorcb: this.onFail.bind(this)
+    });
+    /*
     this.sink.subConnect('.', {name:'-', role: 'user', filter: this.filter}).done(
       this.onSuccess.bind(this),
       this.onFail.bind(this)
     );
+    */
   };
   ReadFromDataSink.prototype.onSuccess = function (sink) {
     if(!sink){
@@ -48,7 +60,7 @@ function createReadFromDataSink(execlib) {
     if (this.errorcb) {
       this.errorcb(reason);
     }
-    lib.runNext(this.destroy.bind(this,reason));
+    this.destroy();
   };
   ReadFromDataSink.prototype.compulsoryConstructionProperties = ['sink','cb'];
 

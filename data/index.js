@@ -19,6 +19,7 @@ function createDataSuite(execlib){
     dataSuite.StreamDistributor = require('./distributorcreator')(execlib);
     dataSuite.DataManager = require('./managercreator')(execlib);
     dataSuite.DistributedDataManager = require('./distributedmanagercreator')(execlib);
+    dataSuite.SpawningDataManager = require('./spawningmanagercreator')(execlib);
     dataSuite.StorageBase = require('./storage/basecreator')(execlib);
     dataSuite.NullStorage = require('./storage/nullcreator')(execlib);
     dataSuite.CloneStorage = require('./storage/clonecreator')(execlib);

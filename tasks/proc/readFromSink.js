@@ -1,7 +1,6 @@
 function createReadFromSinkProc (execlib, prophash) {
   'use strict';
   var data = [],
-    skipdestroy = false,
     error = null,
     initialized = false,
     sinkDestroyedListener = prophash.sink.destroyed.attach(onSinkDestroyed),
@@ -30,11 +29,6 @@ function createReadFromSinkProc (execlib, prophash) {
     }
     initialized = null;
     error = null;
-    if (!skipdestroy) {
-      console.log('calling', prophash.sink.destroy.toString());
-      prophash.sink.destroy();
-    }
-    skipdestroy = null;
     data = null;
     prophash = null;
     } catch(e) {
@@ -44,7 +38,6 @@ function createReadFromSinkProc (execlib, prophash) {
   }
 
   function onSinkDestroyed (allok) {
-    skipdestroy = true;
     if (!initialized) {
       error = new lib.Error('DATA_CORRUPTION_ON_CONNECTION_BREAKDOWN', 'Data connection broke during data read');
     }
@@ -63,16 +56,20 @@ function createReadFromSinkProc (execlib, prophash) {
     }
   }
 
-  function killSink() {
+  function onInitiated() {
     initialized = true;
-    prophash.sink.destroy();
+    if (!prophash.continuous) {
+      finish();
+    }
   }
 
-  taskRegistry.run('materializeData', {
+  taskRegistry.run('materializeQuery', {
     sink: prophash.sink,
+    continuous: true,
     data: data,
+    filter: prophash.filter,
     onRecordCreation: onRecord,
-    onInitiated: killSink
+    onInitiated: onInitiated
   });
 }
 

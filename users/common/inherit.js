@@ -1,14 +1,14 @@
 function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSessionFactory){
   'use strict';
   var lib = execlib.lib,
-      q = lib.q,
-      dataSuite = execlib.dataSuite,
-      filterFactory = dataSuite.filterFactory,
-      QueryBase = dataSuite.QueryBase,
-      recordSuite = dataSuite.recordSuite,
-      execSuite = execlib.execSuite,
-      DataStreamDistributor = dataSuite.StreamDistributor,
-      _User = execSuite.User;
+    q = lib.q,
+    dataSuite = execlib.dataSuite,
+    filterFactory = dataSuite.filterFactory,
+    QueryBase = dataSuite.QueryBase,
+    recordSuite = dataSuite.recordSuite,
+    execSuite = execlib.execSuite,
+    DataStreamDistributor = dataSuite.StreamDistributor,
+    _User = execSuite.User;
 
   function EventQ(target){
     lib.Destroyable.call(this);
@@ -57,7 +57,7 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
 
 
   ParentClass.inherit(ChildClass,methoddescriptors);
-  lib.inheritMethods(ChildClass,QueryBase,/*'fields','limit','offset',*/'isEmpty','isLimited','isOffset','isOK','processUpdateExact');
+  lib.inheritMethods(ChildClass,QueryBase,/*'limit','offset',*/'isEmpty','isLimited','isOffset','isOK','processUpdateExact');
   ChildClass.inherit = recordSuite.userInheritProc;
   ChildClass.prototype.visibleFields = [];
   ChildClass.prototype.__cleanUp = function(){
@@ -132,6 +132,7 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
     this.__service.data.delete(filterdescriptor, defer);
   };
   ChildClass.prototype.query = function(queryprophash, defer){
+    this.__service.data.addQuery(queryprophash, defer);
   };
   ChildClass.prototype.getSessionCtor = userSessionFactory;
 

@@ -8,8 +8,8 @@ function createClientSide(execlib) {
   return {
     SinkMap: require('./sinkmapcreator')(execlib),
     Tasks: [{
-      name: 'materializeData',
-      klass: require('./tasks/materializeData')(execlib)
+      name: 'materializeQuery',
+      klass: require('./tasks/materializeQuery')(execlib)
     },{
       name: 'forwardData',
       klass: require('./tasks/forwardData')(execlib)
@@ -28,7 +28,7 @@ function createClientSide(execlib) {
 
 module.exports = createClientSide;
 
-},{"./data":25,"./sinkmapcreator":44,"./tasks/forwardData":48,"./tasks/joinFromDataSinks":49,"./tasks/materializeData":50,"./tasks/readFromDataSink":52,"./tasks/streamFromDataSink":53}],3:[function(require,module,exports){
+},{"./data":25,"./sinkmapcreator":45,"./tasks/forwardData":49,"./tasks/joinFromDataSinks":50,"./tasks/materializeQuery":51,"./tasks/readFromDataSink":53,"./tasks/streamFromDataSink":54}],3:[function(require,module,exports){
 function createDataCoder(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -309,13 +309,21 @@ function createDataDecoder(execlib){
 module.exports = createDataDecoder;
 
 }).call(this,require('_process'))
-},{"_process":54}],5:[function(require,module,exports){
+},{"_process":55}],5:[function(require,module,exports){
 function createDistributedDataManager(execlib){
   'use strict';
   var lib = execlib.lib,
-      dataSuite = execlib.dataSuite,
-      StreamDistributor = dataSuite.StreamDistributor,
-      DataManager = dataSuite.DataManager;
+    q = lib.q,
+    qlib = lib.qlib,
+    Destroyable = lib.Destroyable,
+    ComplexDestroyable = lib.ComplexDestroyable,
+    dataSuite = execlib.dataSuite,
+    filterFactory = dataSuite.filterFactory,
+    QueryBase = dataSuite.QueryBase,
+    QueryClone = dataSuite.QueryClone,
+    StreamDistributor = dataSuite.StreamDistributor,
+    DataManager = dataSuite.DataManager,
+    JobBase = qlib.JobBase;
 
   function DistributedDataManager(storageinstance,filterdescriptor){
     DataManager.call(this,storageinstance,filterdescriptor);
@@ -324,7 +332,9 @@ function createDistributedDataManager(execlib){
   }
   lib.inherit(DistributedDataManager,DataManager);
   DistributedDataManager.prototype.destroy = function(){
-    this.distributor.destroy();
+    if (this.distributor) {
+      this.distributor.destroy();
+    }
     this.distributor = null;
     DataManager.prototype.destroy.call(this);
   };
@@ -816,6 +826,7 @@ function createDataSuite(execlib){
     dataSuite.StreamDistributor = require('./distributorcreator')(execlib);
     dataSuite.DataManager = require('./managercreator')(execlib);
     dataSuite.DistributedDataManager = require('./distributedmanagercreator')(execlib);
+    dataSuite.SpawningDataManager = require('./spawningmanagercreator')(execlib);
     dataSuite.StorageBase = require('./storage/basecreator')(execlib);
     dataSuite.NullStorage = require('./storage/nullcreator')(execlib);
     dataSuite.CloneStorage = require('./storage/clonecreator')(execlib);
@@ -831,7 +842,7 @@ function createDataSuite(execlib){
 
 module.exports = createDataSuite;
 
-},{"./codercreator":3,"./decodercreator":4,"./distributedmanagercreator":5,"./distributorcreator":6,"./filters/factorycreator":15,"./managercreator":26,"./objectcreator":27,"./query/basecreator":28,"./query/clonecreator":29,"./record":31,"./storage/asyncmemorystoragebasecreator":33,"./storage/basecreator":34,"./storage/clonecreator":35,"./storage/memorybasecreator":36,"./storage/memorycreator":37,"./storage/memorylistcreator":38,"./storage/nullcreator":39,"./utils":40}],26:[function(require,module,exports){
+},{"./codercreator":3,"./decodercreator":4,"./distributedmanagercreator":5,"./distributorcreator":6,"./filters/factorycreator":15,"./managercreator":26,"./objectcreator":27,"./query/basecreator":28,"./query/clonecreator":29,"./record":31,"./spawningmanagercreator":33,"./storage/asyncmemorystoragebasecreator":34,"./storage/basecreator":35,"./storage/clonecreator":36,"./storage/memorybasecreator":37,"./storage/memorycreator":38,"./storage/memorylistcreator":39,"./storage/nullcreator":40,"./utils":41}],26:[function(require,module,exports){
 function createDataManager(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1543,6 +1554,219 @@ function createRecordUtils(execlib,suite){
 module.exports = createRecordUtils;
 
 },{}],33:[function(require,module,exports){
+function createSpawningDataManager(execlib) {
+  'use strict';
+  'use strict';
+  var lib = execlib.lib,
+    q = lib.q,
+    qlib = lib.qlib,
+    Destroyable = lib.Destroyable,
+    ComplexDestroyable = lib.ComplexDestroyable,
+    dataSuite = execlib.dataSuite,
+    filterFactory = dataSuite.filterFactory,
+    QueryBase = dataSuite.QueryBase,
+    QueryClone = dataSuite.QueryClone,
+    StreamDistributor = dataSuite.StreamDistributor,
+    DistributedDataManager = dataSuite.DistributedDataManager,
+    JobBase = qlib.JobBase;
+
+  function EventQ(target){
+    lib.Destroyable.call(this);
+    this.target = target;
+    this.q = new lib.Fifo();
+  }
+  lib.inherit(EventQ,lib.Destroyable);
+  EventQ.prototype.__cleanUp = function(){
+    this.q.destroy();
+    this.q = null;
+    lib.Destroyable.prototype.__cleanUp.call(this);
+  };
+  EventQ.prototype.isOK = function(item){
+    //let's accept all until the channel reads out initial data
+    //and then let the channel decide upon these events
+    return true; 
+  };
+  EventQ.prototype.onStream = function(item){
+    if (!this.target) {
+      return;
+    }
+    if (!this.target.destroyed) {
+      this.destroy();
+      return;
+    }
+    this.q.push(item);
+  };
+  EventQ.prototype.dump = function(){
+    if (!this.q) {
+      return;
+    }
+    var sink = this.target;
+    //console.log('EventQ dumping', this.q.length, 'items');
+    while(this.q.length){
+      var item = this.q.pop();
+      switch (item[0]) {
+        case 'c':
+          if(sink.isOK(item[1])){
+            sink.onStream(item);
+          }
+        default:
+          sink.onStream(item);
+      }
+    }
+  };
+
+  function QueryRunner(runningquery, prophash, defer) {
+    Destroyable.call(this);
+    JobBase.call(this, defer);
+    QueryClone.call(this, runningquery);
+    this.pagesize = prophash.pagesize;
+    this.page = 0;
+  }
+  lib.inherit(QueryRunner, Destroyable);
+  lib.inheritMethods(QueryRunner, JobBase, 'resolve', 'reject', 'notify');
+  lib.inheritMethods(QueryRunner, QueryClone, 'filter',/*'limit','offset',*/'isEmpty','isLimited','isOffset','isOK');
+  QueryRunner.prototype.__cleanUp = function () {
+    this.page = null;
+    this.pagesize = null;
+    QueryClone.prototype.destroy.call(this);
+    JobBase.prototype.destroy.call(this);
+  };
+  QueryRunner.prototype.onStream = function (item) {
+    this.notify(item);
+  };
+  QueryRunner.prototype.limit = function () {
+    return this.pagesize;
+  };
+  QueryRunner.prototype.offset = function () {
+    if (this.pagesize) {
+      return this.pagesize*this.page;
+    }
+  };
+
+  function RunningQuery(recorddescriptor, filterdescriptor, visiblefields) {
+    ComplexDestroyable.call(this);
+    QueryBase.call(this, recorddescriptor, visiblefields);
+    this.distributor = new StreamDistributor();
+    this._filter = filterFactory.createFromDescriptor(filterdescriptor);
+  }
+  lib.inherit(RunningQuery, ComplexDestroyable);
+  lib.inheritMethods(RunningQuery, QueryBase, /*'limit','offset',*/'isEmpty','isLimited','isOffset','isOK','processUpdateExact');
+  RunningQuery.prototype.__cleanUp = function () {
+    if (this._filter) {
+      this._filter.destroy();
+    }
+    this._filter = null;
+    if (this.distributor) {
+      this.distributor.destroy();
+    }
+    this.distributor = null;
+    QueryBase.prototype.destroy.call(this);
+  };
+  RunningQuery.prototype.dyingCondition = function () {
+    if (!this.distributor) {
+      return true;
+    }
+    if (!this.distributor.sinks) {
+      return true;
+    }
+    return this.distributor.sinks.length < 1;
+  };
+  RunningQuery.prototype.startTheDyingProcedure = function () {
+    if (this.distributor) {
+      this.distributor.destroy();
+    }
+    this.distributor = null;
+  };
+  RunningQuery.prototype.filter = function(){
+    return this._filter;
+  };
+  RunningQuery.prototype.limit = lib.dummyFunc;
+  RunningQuery.prototype.offset = lib.dummyFunc;
+  RunningQuery.prototype.addRunner = function (manager, runner) {
+    if (!runner) {
+      return;
+    }
+    if (!runner.destroyed) {
+      return;
+    }
+    var d = lib.q.defer(),
+      eventq = new EventQ(runner);
+    this.distributor.attach(eventq);
+    d.promise.done(
+      this.onRunnerInitiated.bind(this,eventq),
+      runner.reject.bind(runner),
+      runner.notify.bind(runner)
+    );
+    manager.read(this, d);
+  };
+  RunningQuery.prototype.onRunnerInitiated = function (eventq) {
+    var runner = eventq.target;
+    eventq.dump();
+    eventq.destroy();
+    if (!runner) {
+      return;
+    }
+    if (runner.singleshot || !runner.continuous) {
+      runner.resolve(true);
+      return;
+    }
+    if (!this.distributor) {
+      return;
+    }
+    runner.destroyed.attachForSingleShot(this.maybeDie.bind(this)); //make a this.maybedier = this.maybeDie.bind(this); in the ctor
+    this.distributor.attach(runner);
+  };
+  RunningQuery.prototype.onStream = function (item) {
+    if (this.distributor) {
+      this.distributor.onStream(item);
+    }
+  };
+
+  function SpawningDataManager(storageinstance, filterdescriptor, recorddescriptor) {
+    DistributedDataManager.call(this, storageinstance, filterdescriptor);
+    this.recorddescriptor = recorddescriptor;
+    this.runningQueries = new lib.Map();
+  }
+  lib.inherit(SpawningDataManager, DistributedDataManager);
+  SpawningDataManager.prototype.destroy = function () {
+    this.recorddescriptor = null;
+    if (this.runningQueries) {
+      lib.containerDestroyAll(this.runningQueries);
+      this.runningQueries.destroy();
+    }
+    this.runningQueries = null;
+    DistributedDataManager.prototype.destroy.call(this);
+  };
+  /*
+  * queryprophash keys: filter, singleshot, continuous
+  */
+  SpawningDataManager.prototype.addQuery = function (queryprophash, defer) {
+    if (!queryprophash) {
+      defer.reject(new lib.Error('NO_QUERY_PROPERTY_HASH'));
+      return;
+    }
+    var filterstring = JSON.stringify(queryprophash.filter ? queryprophash.filter : '*'),
+      rq = this.runningQueries.get(filterstring);
+    if (!rq) {
+      rq = new RunningQuery(this.recorddescriptor, queryprophash.filter, queryprophash.visiblefields);
+      this.runningQueries.add(filterstring, rq);
+      rq.destroyed.attachForSingleShot(this.onRunningQueryDown.bind(this, filterstring));
+    }
+    rq.addRunner(this, new QueryRunner(rq, queryprophash, defer));
+  };
+  SpawningDataManager.prototype.onRunningQueryDown = function (filterstring) {
+    if (!this.runningQueries) {
+      return;
+    }
+    this.runningQueries.remove(filterstring);
+  };
+
+  return SpawningDataManager;
+}
+
+module.exports = createSpawningDataManager;
+
+},{}],34:[function(require,module,exports){
 function createAsyncMemoryStorageBase (execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -1619,7 +1843,7 @@ function createAsyncMemoryStorageBase (execlib) {
 
 module.exports = createAsyncMemoryStorageBase;
 
-},{}],34:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 function createStorageBase(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1788,7 +2012,7 @@ function createStorageBase(execlib){
 
 module.exports = createStorageBase;
 
-},{}],35:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 function createCloneStorage(execlib){
   'use strict';
   var dataSuite = execlib.dataSuite,
@@ -1818,7 +2042,7 @@ function createCloneStorage(execlib){
 
 module.exports = createCloneStorage;
 
-},{}],36:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 function createMemoryStorageBase (execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -2018,7 +2242,7 @@ function createMemoryStorageBase (execlib) {
 
 module.exports = createMemoryStorageBase;
 
-},{}],37:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 function createMemoryStorage(execlib, MemoryStorageBase){
   'use strict';
   var lib = execlib.lib,
@@ -2062,7 +2286,7 @@ function createMemoryStorage(execlib, MemoryStorageBase){
 
 module.exports = createMemoryStorage;
 
-},{}],38:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 function createMemoryStorage(execlib, MemoryStorageBase){
   'use strict';
   var lib = execlib.lib,
@@ -2107,7 +2331,7 @@ function createMemoryStorage(execlib, MemoryStorageBase){
 module.exports = createMemoryStorage;
 
 
-},{}],39:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 function createNullStorage(execlib){
   'use strict';
   var dataSuite = execlib.dataSuite,
@@ -2133,7 +2357,7 @@ function createNullStorage(execlib){
 
 module.exports = createNullStorage;
 
-},{}],40:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 function createDataUtils(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -2158,7 +2382,7 @@ function createDataUtils(execlib){
 
 module.exports = createDataUtils;
 
-},{}],41:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 module.exports = {
   create: [{
     title: 'Data hash',
@@ -2177,14 +2401,18 @@ module.exports = {
   delete: [{
     title: 'Filter descriptor',
     type: 'object'
+  }],
+  query: [{
+    title: 'Query Property hash',
+    type: 'object'
   }]
 };
 
-},{}],42:[function(require,module,exports){
-arguments[4][41][0].apply(exports,arguments)
-},{"dup":41}],43:[function(require,module,exports){
-arguments[4][41][0].apply(exports,arguments)
-},{"dup":41}],44:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
+arguments[4][42][0].apply(exports,arguments)
+},{"dup":42}],44:[function(require,module,exports){
+arguments[4][42][0].apply(exports,arguments)
+},{"dup":42}],45:[function(require,module,exports){
 function sinkMapCreator(execlib){
   'use strict';
   var sinkmap = new (execlib.lib.Map);
@@ -2197,7 +2425,7 @@ function sinkMapCreator(execlib){
 
 module.exports = sinkMapCreator;
 
-},{"./sinks/servicesinkcreator":45,"./sinks/usersinkcreator":46,"./sinks/writersinkcreator":47}],45:[function(require,module,exports){
+},{"./sinks/servicesinkcreator":46,"./sinks/usersinkcreator":47,"./sinks/writersinkcreator":48}],46:[function(require,module,exports){
 function createServiceSink(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -2216,7 +2444,7 @@ function createServiceSink(execlib){
 
 module.exports = createServiceSink;
 
-},{"../methoddescriptors/serviceuser":41}],46:[function(require,module,exports){
+},{"../methoddescriptors/serviceuser":42}],47:[function(require,module,exports){
 function createUserSink(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -2235,7 +2463,7 @@ function createUserSink(execlib){
 
 module.exports = createUserSink;
 
-},{"../methoddescriptors/user":42}],47:[function(require,module,exports){
+},{"../methoddescriptors/user":43}],48:[function(require,module,exports){
 function createWriterSink(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -2254,7 +2482,7 @@ function createWriterSink(execlib){
 
 module.exports = createWriterSink;
 
-},{"../methoddescriptors/writeruser":43}],48:[function(require,module,exports){
+},{"../methoddescriptors/writeruser":44}],49:[function(require,module,exports){
 function createFollowDataTask(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -2306,7 +2534,7 @@ function createFollowDataTask(execlib){
 
 module.exports = createFollowDataTask;
 
-},{}],49:[function(require,module,exports){
+},{}],50:[function(require,module,exports){
 function createJoinFromDataSinksTask(execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -2757,22 +2985,25 @@ function createJoinFromDataSinksTask(execlib) {
 
 module.exports = createJoinFromDataSinksTask;
 
-},{}],50:[function(require,module,exports){
-function createMaterializeDataTask(execlib){
+},{}],51:[function(require,module,exports){
+function createMaterializeQueryTask(execlib){
   'use strict';
   var lib = execlib.lib,
-      q = lib.q,
-      execSuite = execlib.execSuite,
-      SinkTask = execSuite.SinkTask,
-      dataSuite = execlib.dataSuite,
-      DataDecoder = dataSuite.DataDecoder,
-      MemoryStorage = dataSuite.MemoryStorage;
+    q = lib.q,
+    qlib = lib.qlib,
+    execSuite = execlib.execSuite,
+    SinkTask = execSuite.SinkTask,
+    dataSuite = execlib.dataSuite,
+    DataDecoder = dataSuite.DataDecoder,
+    MemoryStorage = dataSuite.MemoryStorage;
 
-  function MaterializeDataTask(prophash){
+  function MaterializeQueryTask(prophash){
     SinkTask.call(this,prophash);
     this.storage = null;
     this.decoder = null;
     this.sink = prophash.sink;
+    this.singleshot = prophash.singleshot;
+    this.continuous = prophash.continuous;
     this.data = prophash.data;
     this.onInitiated = prophash.onInitiated;
     this.onRecordCreation = prophash.onRecordCreation;
@@ -2789,8 +3020,11 @@ function createMaterializeDataTask(execlib){
     this.deletedListener = null;
     this.recordDeletedListener = null;
   }
-  lib.inherit(MaterializeDataTask,SinkTask);
-  MaterializeDataTask.prototype.__cleanUp = function(){
+  lib.inherit(MaterializeQueryTask,SinkTask);
+  MaterializeQueryTask.prototype.__cleanUp = function(){
+    if (this.sink && this.decoder && this.decoder.queryID) {
+      this.sink.call('closeQuery', this.decoder.queryID);
+    }
     if(this.recordDeletedListener){
       this.recordDeletedListener.destroy();
     }
@@ -2827,6 +3061,8 @@ function createMaterializeDataTask(execlib){
     this.onRecordCreation = null;
     this.onInitiated = null;
     this.data = null;
+    this.continuous = null;
+    this.singleshot = null;
     this.sink = null;
     if(this.storage){
       this.storage.destroy();
@@ -2835,7 +3071,7 @@ function createMaterializeDataTask(execlib){
     this.storage = null;
     SinkTask.prototype.__cleanUp.call(this);
   };
-  MaterializeDataTask.prototype.go = function(){
+  MaterializeQueryTask.prototype.go = function(){
     this.storage = new MemoryStorage({
       events: this.onInitiated || this.onRecordCreation || this.onNewRecord || this.onUpdate || this.onRecordUpdate || this.onDelete || this.onRecordDeletion,
       record: this.sink.recordDescriptor
@@ -2862,15 +3098,22 @@ function createMaterializeDataTask(execlib){
     if(this.onRecordDeletion){
       this.recordDeletedListener = this.storage.events.recordDeleted.attach(this.onRecordDeletion);
     }
-    this.sink.consumeChannel('d',this.decoder);
+    if (!this.continuous) {
+      console.log('materializeQuery is not continuous!');
+    }
+    this.sink.call('query', {singleshot: this.singleshot, continuous: this.continuous, filter: this.filter||'*', visiblefields: this.visiblefields}).then(
+      this.destroy.bind(this),
+      this.destroy.bind(this),
+      this.decoder.onStream.bind(this.decoder)
+    );
   };
-  MaterializeDataTask.prototype.compulsoryConstructionProperties = ['data','sink'];
-  return MaterializeDataTask;
+  MaterializeQueryTask.prototype.compulsoryConstructionProperties = ['data','sink'];
+  return MaterializeQueryTask;
 }
 
-module.exports = createMaterializeDataTask;
+module.exports = createMaterializeQueryTask;
 
-},{}],51:[function(require,module,exports){
+},{}],52:[function(require,module,exports){
 function createReadFromSinkProc (execlib, prophash) {
   'use strict';
   var data = [],
@@ -2941,8 +3184,9 @@ function createReadFromSinkProc (execlib, prophash) {
     prophash.sink.destroy();
   }
 
-  taskRegistry.run('materializeData', {
+  taskRegistry.run('materializeQuery', {
     sink: prophash.sink,
+    continuous: true,
     data: data,
     onRecordCreation: onRecord,
     onInitiated: killSink
@@ -2951,7 +3195,7 @@ function createReadFromSinkProc (execlib, prophash) {
 
 module.exports = createReadFromSinkProc;
 
-},{}],52:[function(require,module,exports){
+},{}],53:[function(require,module,exports){
 function createReadFromDataSink(execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -3011,7 +3255,7 @@ function createReadFromDataSink(execlib) {
 
 module.exports = createReadFromDataSink;
 
-},{"./proc/readFromSink":51}],53:[function(require,module,exports){
+},{"./proc/readFromSink":52}],54:[function(require,module,exports){
 function createStreamFromDataSink(execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -3087,7 +3331,7 @@ function createStreamFromDataSink(execlib) {
 
 module.exports = createStreamFromDataSink;
 
-},{}],54:[function(require,module,exports){
+},{}],55:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};

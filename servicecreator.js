@@ -9,7 +9,7 @@ function createDataService(execlib){
     dataSuite = execlib.dataSuite,
     recordSuite = dataSuite.recordSuite,
     NullStorage = dataSuite.NullStorage,
-    DistributedDataManager = dataSuite.DistributedDataManager,
+    SpawningDataManager = dataSuite.SpawningDataManager,
     DataSession = require('./users/common/datasessioncreator')(execlib),
     userSessionFactory = execSuite.userSessionFactoryCreator(DataSession);
 
@@ -63,7 +63,7 @@ function createDataService(execlib){
       return;
     }
     this.intermediateStorage = null;
-    this.data = new DistributedDataManager(storageinstance,{});
+    this.data = new SpawningDataManager(storageinstance,{},this.storageDescriptor.record);
     if (this.readyToAcceptUsersDefer) {
       this.readyToAcceptUsersDefer.resolve(true);
     }
