@@ -10,9 +10,7 @@ function createUser(execlib,ParentUser,userSessionFactory){
 
   ParentUser = ParentUser||_User;
   function User(prophash){
-    this.distributor = null;
-    this._filter = null;
-    this.constructSelf(prophash);
+    ParentUser.call(this,prophash);
   }
   require('./common/inherit')(execlib,User,ParentUser,require('../methoddescriptors/user'),userSessionFactory);
 

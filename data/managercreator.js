@@ -4,7 +4,10 @@ function createDataManager(execlib){
     dataSuite = execlib.dataSuite,
     DataSource = dataSuite.DataSource,
     filterFactory = dataSuite.filterFactory;
+
+  var __id = 0;
   function DataManager(storageinstance,filterdescriptor){
+    this.id = process.pid + '_' + (++__id);
     DataSource.call(this);
     this.storage = storageinstance;
     this.filter = filterFactory.createFromDescriptor(filterdescriptor);

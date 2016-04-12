@@ -159,6 +159,7 @@ function createDataDecoder(execlib){
 
   function Decoder(storable){
     this.storable = storable;
+    this.queryID = null;
     this.working = false;
     this.deqer = this.deq.bind(this);
     this.errdeqer = this.deqFromError.bind(this);
@@ -179,6 +180,7 @@ function createDataDecoder(execlib){
     this.errdeqer = null;
     this.deqer = null;
     this.working = null;
+    this.queryID = null;
     this.storable = null;
   };
   Decoder.prototype.enq = function(command, arg_s) {
@@ -249,6 +251,9 @@ function createDataDecoder(execlib){
     //console.log('Decoder', this.storable.__id,'got',item);
     //console.log('Decoder got',require('util').inspect(item,{depth:null}));
     switch(item[0]){
+      case 'i':
+        this.enq('setID', item[1]);
+        break;
       case 'rb':
         this.enq('beginRead', item[1]);
         break;
@@ -271,6 +276,10 @@ function createDataDecoder(execlib){
         this.enq('delete', item[1]);
         break;
     }
+  };
+  Decoder.prototype.setID = function (id) {
+    this.queryID = id;
+    return lib.q(true);
   };
   Decoder.prototype.beginRead = function(itemdata){
     return this.storable.beginInit(itemdata);
@@ -843,13 +852,17 @@ function createDataSuite(execlib){
 module.exports = createDataSuite;
 
 },{"./codercreator":3,"./decodercreator":4,"./distributedmanagercreator":5,"./distributorcreator":6,"./filters/factorycreator":15,"./managercreator":26,"./objectcreator":27,"./query/basecreator":28,"./query/clonecreator":29,"./record":31,"./spawningmanagercreator":33,"./storage/asyncmemorystoragebasecreator":34,"./storage/basecreator":35,"./storage/clonecreator":36,"./storage/memorybasecreator":37,"./storage/memorycreator":38,"./storage/memorylistcreator":39,"./storage/nullcreator":40,"./utils":41}],26:[function(require,module,exports){
+(function (process){
 function createDataManager(execlib){
   'use strict';
   var lib = execlib.lib,
     dataSuite = execlib.dataSuite,
     DataSource = dataSuite.DataSource,
     filterFactory = dataSuite.filterFactory;
+
+  var __id = 0;
   function DataManager(storageinstance,filterdescriptor){
+    this.id = process.pid + '_' + (++__id);
     DataSource.call(this);
     this.storage = storageinstance;
     this.filter = filterFactory.createFromDescriptor(filterdescriptor);
@@ -992,7 +1005,8 @@ function createDataManager(execlib){
 
 module.exports = createDataManager;
 
-},{}],27:[function(require,module,exports){
+}).call(this,require('_process'))
+},{"_process":55}],27:[function(require,module,exports){
 function createDataObject(execlib){
   'use strict';
   var lib = execlib.lib;
@@ -1619,6 +1633,9 @@ function createSpawningDataManager(execlib) {
     Destroyable.call(this);
     JobBase.call(this, defer);
     QueryClone.call(this, runningquery);
+    this.result = true;//for the JobBase
+    this.singleshot = prophash.singleshot;
+    this.continuous = prophash.continuous;
     this.pagesize = prophash.pagesize;
     this.page = 0;
   }
@@ -1628,11 +1645,16 @@ function createSpawningDataManager(execlib) {
   QueryRunner.prototype.__cleanUp = function () {
     this.page = null;
     this.pagesize = null;
+    this.continuous = null;
+    this.singleshot = null;
     QueryClone.prototype.destroy.call(this);
     JobBase.prototype.destroy.call(this);
   };
   QueryRunner.prototype.onStream = function (item) {
-    this.notify(item);
+    var i  = QueryClone.prototype.onStream.call(this,item);
+    //console.log(process.pid+'', 'Runner', this.filter(), 'onStream', i);
+    //console.log(item, '=>', i);
+    this.notify(i);
   };
   QueryRunner.prototype.limit = function () {
     return this.pagesize;
@@ -1646,6 +1668,7 @@ function createSpawningDataManager(execlib) {
   function RunningQuery(recorddescriptor, filterdescriptor, visiblefields) {
     ComplexDestroyable.call(this);
     QueryBase.call(this, recorddescriptor, visiblefields);
+    //console.log('new RunningQuery', this.record);
     this.distributor = new StreamDistributor();
     this._filter = filterFactory.createFromDescriptor(filterdescriptor);
   }
@@ -1695,7 +1718,7 @@ function createSpawningDataManager(execlib) {
     d.promise.done(
       this.onRunnerInitiated.bind(this,eventq),
       runner.reject.bind(runner),
-      runner.notify.bind(runner)
+      runner.onStream.bind(runner)
     );
     manager.read(this, d);
   };
@@ -1707,6 +1730,7 @@ function createSpawningDataManager(execlib) {
       return;
     }
     if (runner.singleshot || !runner.continuous) {
+      console.log('will resolve runner', runner);
       runner.resolve(true);
       return;
     }
@@ -1717,8 +1741,10 @@ function createSpawningDataManager(execlib) {
     this.distributor.attach(runner);
   };
   RunningQuery.prototype.onStream = function (item) {
+    var i;
     if (this.distributor) {
-      this.distributor.onStream(item);
+      i = QueryBase.prototype.onStream.call(this,item);
+      this.distributor.onStream(i);
     }
   };
 
@@ -1726,6 +1752,8 @@ function createSpawningDataManager(execlib) {
     DistributedDataManager.call(this, storageinstance, filterdescriptor);
     this.recorddescriptor = recorddescriptor;
     this.runningQueries = new lib.Map();
+    //console.trace();
+    //console.log('new SpawningDataManager', this.id);
   }
   lib.inherit(SpawningDataManager, DistributedDataManager);
   SpawningDataManager.prototype.destroy = function () {
@@ -1740,19 +1768,25 @@ function createSpawningDataManager(execlib) {
   /*
   * queryprophash keys: filter, singleshot, continuous
   */
-  SpawningDataManager.prototype.addQuery = function (queryprophash, defer) {
+  SpawningDataManager.prototype.addQuery = function (id, queryprophash, defer) {
     if (!queryprophash) {
       defer.reject(new lib.Error('NO_QUERY_PROPERTY_HASH'));
       return;
     }
     var filterstring = JSON.stringify(queryprophash.filter ? queryprophash.filter : '*'),
-      rq = this.runningQueries.get(filterstring);
+      rq = this.runningQueries.get(filterstring),
+      qr;
+    //console.log(this.id, 'reading', this.storage.data, 'on', queryprophash.filter);
     if (!rq) {
       rq = new RunningQuery(this.recorddescriptor, queryprophash.filter, queryprophash.visiblefields);
       this.runningQueries.add(filterstring, rq);
+      this.distributor.attach(rq);
       rq.destroyed.attachForSingleShot(this.onRunningQueryDown.bind(this, filterstring));
     }
-    rq.addRunner(this, new QueryRunner(rq, queryprophash, defer));
+    defer.notify(['i', id]);
+    qr = new QueryRunner(rq, queryprophash, defer);
+    rq.addRunner(this, qr);
+    return qr;
   };
   SpawningDataManager.prototype.onRunningQueryDown = function (filterstring) {
     if (!this.runningQueries) {
@@ -2486,11 +2520,13 @@ module.exports = createWriterSink;
 function createFollowDataTask(execlib){
   'use strict';
   var lib = execlib.lib,
-      q = lib.q,
-      execSuite = execlib.execSuite,
-      MultiDestroyableTask = execSuite.MultiDestroyableTask,
-      dataSuite = execlib.dataSuite,
-      DataDecoder = dataSuite.DataDecoder;
+    q = lib.q,
+    qlib = lib.qlib,
+    execSuite = execlib.execSuite,
+    taskRegistry = execSuite.taskRegistry,
+    MultiDestroyableTask = execSuite.MultiDestroyableTask,
+    dataSuite = execlib.dataSuite,
+    DataDecoder = dataSuite.DataDecoder;
 
   function ChildSinkStorage(sink){
     this.sink = sink;
@@ -2511,21 +2547,42 @@ function createFollowDataTask(execlib){
 
   function FollowDataTask(prophash){
     MultiDestroyableTask.call(this,prophash,['sink','childsink']);
-    this.storage = new ChildSinkStorage(prophash.childsink);
     this.sink = prophash.sink;
+    this.storage = new ChildSinkStorage(prophash.childsink);
+    this.decoder = null;
   }
   lib.inherit(FollowDataTask,MultiDestroyableTask);
   FollowDataTask.prototype.__cleanUp = function(){
-    this.storage.destroy();
-    this.storage = null;
+    /*
     if(this.sink.destroyed){ //it's still alive
       this.sink.consumeChannel('d',lib.dummyFunc);
     }
+    */
+    if (this.sink && this.decoder && this.decoder.queryID) {
+      this.sink.sessionCall('closeQuery', this.decoder.queryID);
+    }
+    if (this.decoder) {
+      this.decoder.destroy();
+    }
+    this.decoder = null;
+    if (this.storage) {
+      this.storage.destroy();
+    }
+    this.storage = null;
     this.sink = null;
     MultiDestroyableTask.prototype.__cleanUp.call(this);
   };
   FollowDataTask.prototype.go = function(){
-    this.sink.consumeChannel('d',new DataDecoder(this.storage));
+    if (this.decoder) {
+      return;
+    }
+    this.decoder = new DataDecoder(this.storage); 
+    this.sink.sessionCall('query', {continuous:true}).then(
+      this.destroy.bind(this),
+      this.destroy.bind(this),
+      this.decoder.onStream.bind(this.decoder)
+    );
+    //this.sink.consumeChannel('d',new DataDecoder(this.storage));
   };
   FollowDataTask.prototype.compulsoryConstructionProperties = ['sink','childsink'];
 
@@ -3002,6 +3059,7 @@ function createMaterializeQueryTask(execlib){
     this.storage = null;
     this.decoder = null;
     this.sink = prophash.sink;
+    this.filter = prophash.filter;
     this.singleshot = prophash.singleshot;
     this.continuous = prophash.continuous;
     this.data = prophash.data;
@@ -3023,7 +3081,7 @@ function createMaterializeQueryTask(execlib){
   lib.inherit(MaterializeQueryTask,SinkTask);
   MaterializeQueryTask.prototype.__cleanUp = function(){
     if (this.sink && this.decoder && this.decoder.queryID) {
-      this.sink.call('closeQuery', this.decoder.queryID);
+      this.sink.sessionCall('closeQuery', this.decoder.queryID);
     }
     if(this.recordDeletedListener){
       this.recordDeletedListener.destroy();
@@ -3063,6 +3121,7 @@ function createMaterializeQueryTask(execlib){
     this.data = null;
     this.continuous = null;
     this.singleshot = null;
+    this.filter = null;
     this.sink = null;
     if(this.storage){
       this.storage.destroy();
@@ -3101,7 +3160,7 @@ function createMaterializeQueryTask(execlib){
     if (!this.continuous) {
       console.log('materializeQuery is not continuous!');
     }
-    this.sink.call('query', {singleshot: this.singleshot, continuous: this.continuous, filter: this.filter||'*', visiblefields: this.visiblefields}).then(
+    this.sink.sessionCall('query', {singleshot: this.singleshot, continuous: this.continuous, filter: this.filter||'*', visiblefields: this.visiblefields}).then(
       this.destroy.bind(this),
       this.destroy.bind(this),
       this.decoder.onStream.bind(this.decoder)
@@ -3117,7 +3176,6 @@ module.exports = createMaterializeQueryTask;
 function createReadFromSinkProc (execlib, prophash) {
   'use strict';
   var data = [],
-    skipdestroy = false,
     error = null,
     initialized = false,
     sinkDestroyedListener = prophash.sink.destroyed.attach(onSinkDestroyed),
@@ -3146,11 +3204,6 @@ function createReadFromSinkProc (execlib, prophash) {
     }
     initialized = null;
     error = null;
-    if (!skipdestroy) {
-      console.log('calling', prophash.sink.destroy.toString());
-      prophash.sink.destroy();
-    }
-    skipdestroy = null;
     data = null;
     prophash = null;
     } catch(e) {
@@ -3160,7 +3213,6 @@ function createReadFromSinkProc (execlib, prophash) {
   }
 
   function onSinkDestroyed (allok) {
-    skipdestroy = true;
     if (!initialized) {
       error = new lib.Error('DATA_CORRUPTION_ON_CONNECTION_BREAKDOWN', 'Data connection broke during data read');
     }
@@ -3168,7 +3220,6 @@ function createReadFromSinkProc (execlib, prophash) {
   }
 
   function onRecord (datahash) {
-    //console.log('onRecord', datahash, 'currently data:', data);
     if (prophash.singleshot) {
       if (data.length) {
         if ('function' === typeof data.destroy) {
@@ -3179,17 +3230,20 @@ function createReadFromSinkProc (execlib, prophash) {
     }
   }
 
-  function killSink() {
+  function onInitiated() {
     initialized = true;
-    prophash.sink.destroy();
+    if (!prophash.continuous) {
+      finish();
+    }
   }
 
   taskRegistry.run('materializeQuery', {
     sink: prophash.sink,
     continuous: true,
     data: data,
+    filter: prophash.filter,
     onRecordCreation: onRecord,
-    onInitiated: killSink
+    onInitiated: onInitiated
   });
 }
 
@@ -3208,6 +3262,7 @@ function createReadFromDataSink(execlib) {
     SinkTask.call(this,prophash);
     this.sink = prophash.sink;
     this.filter = prophash.filter;
+    this.visiblefields = prophash.visiblefields;
     this.cb = prophash.cb;
     this.errorcb = prophash.errorcb;
     this.singleshot = prophash.singleshot;
@@ -3220,10 +3275,21 @@ function createReadFromDataSink(execlib) {
     SinkTask.prototype.__cleanUp.call(this);
   };
   ReadFromDataSink.prototype.go = function () {
+    readFromSinkProc({
+      sink: this.sink,
+      singleshot: this.singleshot,
+      continuous: this.continuous,
+      filter: this.filter,
+      visiblefields: this.visiblefields,
+      cb: this.cb,
+      errorcb: this.onFail.bind(this)
+    });
+    /*
     this.sink.subConnect('.', {name:'-', role: 'user', filter: this.filter}).done(
       this.onSuccess.bind(this),
       this.onFail.bind(this)
     );
+    */
   };
   ReadFromDataSink.prototype.onSuccess = function (sink) {
     if(!sink){
@@ -3246,7 +3312,7 @@ function createReadFromDataSink(execlib) {
     if (this.errorcb) {
       this.errorcb(reason);
     }
-    lib.runNext(this.destroy.bind(this,reason));
+    this.destroy();
   };
   ReadFromDataSink.prototype.compulsoryConstructionProperties = ['sink','cb'];
 
@@ -3256,6 +3322,7 @@ function createReadFromDataSink(execlib) {
 module.exports = createReadFromDataSink;
 
 },{"./proc/readFromSink":52}],54:[function(require,module,exports){
+(function (process){
 function createStreamFromDataSink(execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -3266,6 +3333,10 @@ function createStreamFromDataSink(execlib) {
     DataDecoder = dataSuite.DataDecoder;
 
   function StreamFromDataSink(prophash) {
+    console.error('StreamFromDataSink is obsolete!');
+    console.error("Use datasink.call('query', {continuous: true/false, singleshot: true/false, filter: <filterdescriptor>}");
+    process.exit(0);
+    return;
     SinkTask.call(this,prophash);
     this.sink = prophash.sink;
     this.filter = prophash.filter;
@@ -3331,7 +3402,8 @@ function createStreamFromDataSink(execlib) {
 
 module.exports = createStreamFromDataSink;
 
-},{}],55:[function(require,module,exports){
+}).call(this,require('_process'))
+},{"_process":55}],55:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};

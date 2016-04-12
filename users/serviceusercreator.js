@@ -10,9 +10,7 @@ function createServiceUser(execlib,ParentServiceUser,userSessionFactory){
 
   ParentServiceUser = ParentServiceUser||_User;
   function ServiceUser(prophash){
-    this.distributor = null;
-    this._filter = null;
-    this.constructSelf(prophash);
+    ParentServiceUser.call(this, prophash);
   }
   require('./common/inherit')(execlib,ServiceUser,ParentServiceUser,require('../methoddescriptors/serviceuser'),userSessionFactory);
 

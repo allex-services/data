@@ -36,6 +36,7 @@ function createDataDecoder(execlib){
 
   function Decoder(storable){
     this.storable = storable;
+    this.queryID = null;
     this.working = false;
     this.deqer = this.deq.bind(this);
     this.errdeqer = this.deqFromError.bind(this);
@@ -56,6 +57,7 @@ function createDataDecoder(execlib){
     this.errdeqer = null;
     this.deqer = null;
     this.working = null;
+    this.queryID = null;
     this.storable = null;
   };
   Decoder.prototype.enq = function(command, arg_s) {
@@ -126,6 +128,9 @@ function createDataDecoder(execlib){
     //console.log('Decoder', this.storable.__id,'got',item);
     //console.log('Decoder got',require('util').inspect(item,{depth:null}));
     switch(item[0]){
+      case 'i':
+        this.enq('setID', item[1]);
+        break;
       case 'rb':
         this.enq('beginRead', item[1]);
         break;
@@ -148,6 +153,10 @@ function createDataDecoder(execlib){
         this.enq('delete', item[1]);
         break;
     }
+  };
+  Decoder.prototype.setID = function (id) {
+    this.queryID = id;
+    return lib.q(true);
   };
   Decoder.prototype.beginRead = function(itemdata){
     return this.storable.beginInit(itemdata);

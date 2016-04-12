@@ -63,6 +63,7 @@ function createSpawningDataManager(execlib) {
     Destroyable.call(this);
     JobBase.call(this, defer);
     QueryClone.call(this, runningquery);
+    this.result = true;//for the JobBase
     this.singleshot = prophash.singleshot;
     this.continuous = prophash.continuous;
     this.pagesize = prophash.pagesize;
@@ -81,6 +82,8 @@ function createSpawningDataManager(execlib) {
   };
   QueryRunner.prototype.onStream = function (item) {
     var i  = QueryClone.prototype.onStream.call(this,item);
+    //console.log(process.pid+'', 'Runner', this.filter(), 'onStream', i);
+    //console.log(item, '=>', i);
     this.notify(i);
   };
   QueryRunner.prototype.limit = function () {
@@ -95,6 +98,7 @@ function createSpawningDataManager(execlib) {
   function RunningQuery(recorddescriptor, filterdescriptor, visiblefields) {
     ComplexDestroyable.call(this);
     QueryBase.call(this, recorddescriptor, visiblefields);
+    //console.log('new RunningQuery', this.record);
     this.distributor = new StreamDistributor();
     this._filter = filterFactory.createFromDescriptor(filterdescriptor);
   }
@@ -143,9 +147,8 @@ function createSpawningDataManager(execlib) {
     this.distributor.attach(eventq);
     d.promise.done(
       this.onRunnerInitiated.bind(this,eventq),
-      //runner.reject.bind(runner),
-      null,
-      runner.notify.bind(runner)
+      runner.reject.bind(runner),
+      runner.onStream.bind(runner)
     );
     manager.read(this, d);
   };
@@ -168,8 +171,10 @@ function createSpawningDataManager(execlib) {
     this.distributor.attach(runner);
   };
   RunningQuery.prototype.onStream = function (item) {
+    var i;
     if (this.distributor) {
-      this.distributor.onStream(QueryBase.prototype.onStream.call(this,item));
+      i = QueryBase.prototype.onStream.call(this,item);
+      this.distributor.onStream(i);
     }
   };
 
@@ -177,6 +182,8 @@ function createSpawningDataManager(execlib) {
     DistributedDataManager.call(this, storageinstance, filterdescriptor);
     this.recorddescriptor = recorddescriptor;
     this.runningQueries = new lib.Map();
+    //console.trace();
+    //console.log('new SpawningDataManager', this.id);
   }
   lib.inherit(SpawningDataManager, DistributedDataManager);
   SpawningDataManager.prototype.destroy = function () {
@@ -191,20 +198,25 @@ function createSpawningDataManager(execlib) {
   /*
   * queryprophash keys: filter, singleshot, continuous
   */
-  SpawningDataManager.prototype.addQuery = function (queryprophash, defer) {
+  SpawningDataManager.prototype.addQuery = function (id, queryprophash, defer) {
     if (!queryprophash) {
       defer.reject(new lib.Error('NO_QUERY_PROPERTY_HASH'));
       return;
     }
     var filterstring = JSON.stringify(queryprophash.filter ? queryprophash.filter : '*'),
-      rq = this.runningQueries.get(filterstring);
+      rq = this.runningQueries.get(filterstring),
+      qr;
+    //console.log(this.id, 'reading', this.storage.data, 'on', queryprophash.filter);
     if (!rq) {
       rq = new RunningQuery(this.recorddescriptor, queryprophash.filter, queryprophash.visiblefields);
       this.runningQueries.add(filterstring, rq);
       this.distributor.attach(rq);
       rq.destroyed.attachForSingleShot(this.onRunningQueryDown.bind(this, filterstring));
     }
-    rq.addRunner(this, new QueryRunner(rq, queryprophash, defer));
+    defer.notify(['i', id]);
+    qr = new QueryRunner(rq, queryprophash, defer);
+    rq.addRunner(this, qr);
+    return qr;
   };
   SpawningDataManager.prototype.onRunningQueryDown = function (filterstring) {
     if (!this.runningQueries) {

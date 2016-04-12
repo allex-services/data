@@ -8,6 +8,10 @@ function createStreamFromDataSink(execlib) {
     DataDecoder = dataSuite.DataDecoder;
 
   function StreamFromDataSink(prophash) {
+    console.error('StreamFromDataSink is obsolete!');
+    console.error("Use datasink.call('query', {continuous: true/false, singleshot: true/false, filter: <filterdescriptor>}");
+    process.exit(0);
+    return;
     SinkTask.call(this,prophash);
     this.sink = prophash.sink;
     this.filter = prophash.filter;

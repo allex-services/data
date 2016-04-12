@@ -36,7 +36,7 @@ function createMaterializeQueryTask(execlib){
   lib.inherit(MaterializeQueryTask,SinkTask);
   MaterializeQueryTask.prototype.__cleanUp = function(){
     if (this.sink && this.decoder && this.decoder.queryID) {
-      this.sink.call('closeQuery', this.decoder.queryID);
+      this.sink.sessionCall('closeQuery', this.decoder.queryID);
     }
     if(this.recordDeletedListener){
       this.recordDeletedListener.destroy();
@@ -115,7 +115,7 @@ function createMaterializeQueryTask(execlib){
     if (!this.continuous) {
       console.log('materializeQuery is not continuous!');
     }
-    this.sink.call('query', {singleshot: this.singleshot, continuous: this.continuous, filter: this.filter||'*', visiblefields: this.visiblefields}).then(
+    this.sink.sessionCall('query', {singleshot: this.singleshot, continuous: this.continuous, filter: this.filter||'*', visiblefields: this.visiblefields}).then(
       this.destroy.bind(this),
       this.destroy.bind(this),
       this.decoder.onStream.bind(this.decoder)

@@ -16,8 +16,7 @@ function createDataService(execlib){
   function factoryCreator(parentFactory){
     return {
       'service': require('./users/serviceusercreator')(execlib,parentFactory.get('service'),userSessionFactory),
-      'user': require('./users/usercreator')(execlib,parentFactory.get('user'),userSessionFactory),
-      'writer': require('./users/writerusercreator')(execlib,parentFactory.get('user'),userSessionFactory)
+      'user': require('./users/usercreator')(execlib,parentFactory.get('user'),userSessionFactory)
     };
   }
 
