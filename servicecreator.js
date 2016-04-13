@@ -81,16 +81,6 @@ function createDataService(execlib){
   DataService.prototype.createStorage = function(recorddescriptor){
     return new NullStorage(recorddescriptor);
   };
-  DataService.prototype.preProcessUserHash = function(userhash){
-    var filterstring;
-    try{
-      filterstring = JSON.stringify(userhash.filter) || '*';
-    }
-    catch(e){
-      filterstring =  '*';
-    }
-    userhash.name = userhash.role+':'+filterstring; //Crucial!
-  };
   return DataService;
 }
 

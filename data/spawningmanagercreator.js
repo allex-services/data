@@ -84,7 +84,9 @@ function createSpawningDataManager(execlib) {
     var i  = QueryClone.prototype.onStream.call(this,item);
     //console.log(process.pid+'', 'Runner', this.filter(), 'onStream', i);
     //console.log(item, '=>', i);
-    this.notify(i);
+    if (i) {
+      this.notify(i);
+    }
   };
   QueryRunner.prototype.limit = function () {
     return this.pagesize;
@@ -174,7 +176,9 @@ function createSpawningDataManager(execlib) {
     var i;
     if (this.distributor) {
       i = QueryBase.prototype.onStream.call(this,item);
-      this.distributor.onStream(i);
+      if (i) {
+        this.distributor.onStream(i);
+      }
     }
   };
 
