@@ -16,9 +16,5 @@ module.exports = {
   delete: [{
     title: 'Filter descriptor',
     type: 'object'
-  }],
-  query: [{
-    title: 'Query Property hash',
-    type: 'object'
   }]
 };

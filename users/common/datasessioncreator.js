@@ -69,6 +69,13 @@ function createDataSession(execlib){
       defer.reject(new lib.Error('DATA_SERVICE_STORAGE_DESTROYED'));
       return;
     }
+    if (lib.isFunction(this.user.preprocessQueryPropertyHash)) {
+      queryprophash = this.user.preprocessQueryPropertyHash(queryprophash);
+    } else {
+      if (lib.isFunction(this.user.__service.preprocessQueryPropertyHash)) {
+        queryprophash = this.user.__service.preprocessQueryPropertyHash(queryprophash);
+      }
+    }
     var id = lib.uid(),
       query = this.user.__service.data.addQuery(id, queryprophash, defer);
     this.queryDestroyedListeners.add(id, query.destroyed.attach(this.onQueryDown.bind(this, id)));
