@@ -12,6 +12,7 @@ function createCloneStorage(execlib){
   }
   execlib.lib.inherit(CloneStorage,StorageBase);
   CloneStorage.prototype.destroy = function(){
+    this.record = null;
     this.original = null;
     StorageBase.prototype.destroy.call(this);
   };

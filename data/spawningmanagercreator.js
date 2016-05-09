@@ -46,7 +46,7 @@ function createSpawningDataManager(execlib) {
     }
     var sink = this.target;
     //console.log('EventQ dumping', this.q.length, 'items');
-    while(this.q.length){
+    while(this.q.getFifoLength()){
       var item = this.q.pop();
       switch (item[0]) {
         case 'c':

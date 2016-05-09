@@ -45,7 +45,7 @@ function createDataDecoder(execlib){
   Decoder.prototype.destroy = function(){
     var qi;
     if (this.q) {
-      while (this.q.length) {
+      while (this.q.getFifoLength()) {
         qi = this.q.pop();
         if (qi.destroy) {
           qi.destroy();
@@ -111,7 +111,7 @@ function createDataDecoder(execlib){
       return;
     }
     this.working = false;
-    if(this.q.length){
+    if(this.q.getFifoLength()){
       var p = this.q.pop();
       if (lib.isArray(p)) {
         this.enq(p[0], p[1]);
