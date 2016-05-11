@@ -22,7 +22,6 @@ function createMemoryStorage(execlib, MemoryStorageBase){
       cb(item);
     }
     cntobj.cnt++;
-    return q(true);
   };
   MemoryListStorage.prototype._traverseDataRange = function (cb, start, endexclusive) {
     var cntobj = {cnt:0};
