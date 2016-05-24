@@ -57,6 +57,9 @@ function createStorageBase(execlib){
     this.initiated.fire(storage);
   };
   StorageBaseEventing.prototype.fireNewRecord = function(datahash){
+    if (!this.created) {
+      return;
+    }
     this.created.fire(datahash);
     if(!this.initTxnId){
       this.newRecord.fire(datahash);

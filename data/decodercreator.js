@@ -42,15 +42,15 @@ function createDataDecoder(execlib){
     this.errdeqer = this.deqFromError.bind(this);
     this.q = new lib.Fifo();
   }
+  function destroyer (qi) {
+    if (qi.destroy) {
+      qi.destroy();
+    }
+  }
   Decoder.prototype.destroy = function(){
     var qi;
     if (this.q) {
-      while (this.q.getFifoLength()) {
-        qi = this.q.pop();
-        if (qi.destroy) {
-          qi.destroy();
-        }
-      }
+      this.q.drain(destroyer);
       this.q.destroy();
     }
     this.q = null;
@@ -106,19 +106,19 @@ function createDataDecoder(execlib){
       }
     }
   };
+  Decoder.prototype.enqFromQ = function (p) {
+    if (lib.isArray(p)) {
+      this.enq(p[0], p[1]);
+    } else {
+      this.enq(p);
+    }
+  };
   Decoder.prototype.deq = function(){
     if (!this.q) {
       return;
     }
     this.working = false;
-    if(this.q.getFifoLength()){
-      var p = this.q.pop();
-      if (lib.isArray(p)) {
-        this.enq(p[0], p[1]);
-      } else {
-        this.enq(p);
-      }
-    }
+    this.q.pop(this.enqFromQ.bind(this));
   };
   Decoder.prototype.deqFromError = function (err) {
     console.error(process.pid, 'Data Decoeder error', err);
