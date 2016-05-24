@@ -44,18 +44,17 @@ function createSpawningDataManager(execlib) {
     if (!this.q) {
       return;
     }
-    var sink = this.target;
     //console.log('EventQ dumping', this.q.length, 'items');
-    while(this.q.getFifoLength()){
-      var item = this.q.pop();
-      switch (item[0]) {
-        case 'c':
-          if(sink.isOK(item[1])){
-            sink.onStream(item);
-          }
-        default:
-          sink.onStream(item);
-      }
+    this.q.drain(this.drainer.bind(this));
+  };
+  EventQ.prototype.drainer = function (item) {
+    switch (item[0]) {
+      case 'c':
+        if(this.target.isOK(item[1])){
+          this.target.onStream(item);
+        }
+      default:
+        this.target.onStream(item);
     }
   };
 
