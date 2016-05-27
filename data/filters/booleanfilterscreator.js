@@ -21,11 +21,16 @@ function createBooleanFilters(execlib,Filter,filterFactory){
   };
   function isFilterOk(datahash,filter){
     var ret = filter.isOK(datahash);
+    filter = null;
+    datahash = null;
     return ret;
   }
   BooleanFilters.prototype.isOK = function(datahash){
     var ifok = isFilterOk.bind(null,datahash);
-    return this.filters[this.arrayOperation](ifok);
+    var ret = this.filters[this.arrayOperation](ifok);
+    datahash = null;
+    ifok = null;
+    return ret;
   };
   return BooleanFilters;
 }

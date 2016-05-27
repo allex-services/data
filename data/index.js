@@ -6,7 +6,7 @@ function createDataSuite(execlib){
       recordSuite: require('./record')(execlib)
     };
     execlib.dataSuite = dataSuite;
-    dataSuite.DataObject = require('./objectcreator')(execlib);
+    dataSuite.ObjectHive = require('./objectcreator')(execlib);
     require('./utils')(execlib);
     dataSuite.filterFactory = require('./filters/factorycreator')(execlib);
     dataSuite.QueryBase = require('./query/basecreator')(execlib);
@@ -29,7 +29,7 @@ function createDataSuite(execlib){
     dataSuite.MemoryStorage = require('./storage/memorycreator')(execlib, MemoryStorageBase);
     dataSuite.MemoryListStorage = require('./storage/memorylistcreator')(execlib, MemoryStorageBase);
 
-    dataSuite.storageRegistry.add('memory', dataSuite.MemoryStorage);
+    dataSuite.storageRegistry.add('memory', dataSuite.MemoryListStorage);
     dataSuite.storageRegistry.add('memorylist', dataSuite.MemoryListStorage);
 }
 
