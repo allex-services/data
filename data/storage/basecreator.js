@@ -66,12 +66,12 @@ function createStorageBase(execlib){
     }
   };
   StorageBaseEventing.prototype.fireUpdated = function(filter,datahash,updateresult){
-    if(updateresult.updated || updateresult.upserted){
+    if(this.updated && (updateresult.updated || updateresult.upserted)){
       this.updated.fire(filter,datahash,updateresult);
     }
   };
   StorageBaseEventing.prototype.fireDeleted = function(filter,deletecount){
-    if(deletecount){
+    if(this.deleted && deletecount){
       this.deleted.fire(filter,deletecount);
     }
   };
