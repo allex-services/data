@@ -161,7 +161,6 @@ function createSpawningDataManager(execlib) {
       return;
     }
     if (runner.singleshot || !runner.continuous) {
-      console.log('will resolve runner', runner);
       runner.resolve(true);
       return;
     }
