@@ -4,7 +4,6 @@ function sinkMapCreator(execlib, ParentSinkMap){
     require('./data')(execlib);
   }
   var sinkmap = new (execlib.lib.Map);
-  console.log('data sinkmapcreator');
   sinkmap.add('service',require('./sinks/servicesinkcreator')(execlib, ParentSinkMap.get('service')));
   sinkmap.add('user',require('./sinks/usersinkcreator')(execlib, ParentSinkMap.get('user')));
   
