@@ -1,34 +1,7 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-ALLEX.execSuite.registry.add('allex_dataservice',require('./clientside')(ALLEX));
+ALLEX.execSuite.registry.registerClientSide('allex_dataservice',require('./sinkmapcreator')(ALLEX));
 
-},{"./clientside":2}],2:[function(require,module,exports){
-function createClientSide(execlib) {
-  'use strict';
-  require('./data')(execlib); //extend execlib with dataSuite;
-  return {
-    SinkMap: require('./sinkmapcreator')(execlib),
-    Tasks: [{
-      name: 'materializeQuery',
-      klass: require('./tasks/materializeQuery')(execlib)
-    },{
-      name: 'forwardData',
-      klass: require('./tasks/forwardData')(execlib)
-    },{
-      name: 'readFromDataSink',
-      klass: require('./tasks/readFromDataSink')(execlib)
-    },{
-      name: 'streamFromDataSink',
-      klass: require('./tasks/streamFromDataSink')(execlib)
-    },{
-      name: 'joinFromDataSinks',
-      klass: require('./tasks/joinFromDataSinks')(execlib)
-    }]
-  };
-}
-
-module.exports = createClientSide;
-
-},{"./data":25,"./sinkmapcreator":45,"./tasks/forwardData":49,"./tasks/joinFromDataSinks":50,"./tasks/materializeQuery":51,"./tasks/readFromDataSink":53,"./tasks/streamFromDataSink":54}],3:[function(require,module,exports){
+},{"./sinkmapcreator":43}],2:[function(require,module,exports){
 function createDataCoder(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -119,7 +92,7 @@ function createDataCoder(execlib){
 
 module.exports = createDataCoder;
 
-},{}],4:[function(require,module,exports){
+},{}],3:[function(require,module,exports){
 (function (process){
 function createDataDecoder(execlib){
   'use strict';
@@ -165,15 +138,15 @@ function createDataDecoder(execlib){
     this.errdeqer = this.deqFromError.bind(this);
     this.q = new lib.Fifo();
   }
+  function destroyer (qi) {
+    if (qi.destroy) {
+      qi.destroy();
+    }
+  }
   Decoder.prototype.destroy = function(){
     var qi;
     if (this.q) {
-      while (this.q.length) {
-        qi = this.q.pop();
-        if (qi.destroy) {
-          qi.destroy();
-        }
-      }
+      this.q.drain(destroyer);
       this.q.destroy();
     }
     this.q = null;
@@ -229,19 +202,19 @@ function createDataDecoder(execlib){
       }
     }
   };
+  Decoder.prototype.enqFromQ = function (p) {
+    if (lib.isArray(p)) {
+      this.enq(p[0], p[1]);
+    } else {
+      this.enq(p);
+    }
+  };
   Decoder.prototype.deq = function(){
     if (!this.q) {
       return;
     }
     this.working = false;
-    if(this.q.length){
-      var p = this.q.pop();
-      if (lib.isArray(p)) {
-        this.enq(p[0], p[1]);
-      } else {
-        this.enq(p);
-      }
-    }
+    this.q.pop(this.enqFromQ.bind(this));
   };
   Decoder.prototype.deqFromError = function (err) {
     console.error(process.pid, 'Data Decoeder error', err);
@@ -318,7 +291,7 @@ function createDataDecoder(execlib){
 module.exports = createDataDecoder;
 
 }).call(this,require('_process'))
-},{"_process":55}],5:[function(require,module,exports){
+},{"_process":46}],4:[function(require,module,exports){
 function createDistributedDataManager(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -352,7 +325,7 @@ function createDistributedDataManager(execlib){
 
 module.exports = createDistributedDataManager;
 
-},{}],6:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 function createDataDistributor(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -388,7 +361,7 @@ function createDataDistributor(execlib){
 
 module.exports = createDataDistributor;
 
-},{}],7:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 function createAllPassFilter(execlib,Filter){
   'use strict';
   var lib = execlib.lib;
@@ -404,7 +377,7 @@ function createAllPassFilter(execlib,Filter){
 
 module.exports = createAllPassFilter;
 
-},{}],8:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 function createAndFilters(execlib,BooleanFilters){
   'use strict';
   var lib = execlib.lib;
@@ -419,7 +392,7 @@ function createAndFilters(execlib,BooleanFilters){
 
 module.exports = createAndFilters;
 
-},{}],9:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 function createBooleanFilters(execlib,Filter,filterFactory){
   'use strict';
   var lib = execlib.lib;
@@ -443,18 +416,23 @@ function createBooleanFilters(execlib,Filter,filterFactory){
   };
   function isFilterOk(datahash,filter){
     var ret = filter.isOK(datahash);
+    filter = null;
+    datahash = null;
     return ret;
   }
   BooleanFilters.prototype.isOK = function(datahash){
     var ifok = isFilterOk.bind(null,datahash);
-    return this.filters[this.arrayOperation](ifok);
+    var ret = this.filters[this.arrayOperation](ifok);
+    datahash = null;
+    ifok = null;
+    return ret;
   };
   return BooleanFilters;
 }
 
 module.exports = createBooleanFilters;
 
-},{}],10:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 function createContainsFilter(execlib,StringFieldFilter){
   'use strict';
   var lib = execlib.lib;
@@ -472,7 +450,7 @@ function createContainsFilter(execlib,StringFieldFilter){
 
 module.exports = createContainsFilter;
 
-},{}],11:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 function createFilter(execlib){
   'use strict';
   function Filter(filterdescriptor){
@@ -492,7 +470,7 @@ function createFilter(execlib){
 
 module.exports = createFilter;
 
-},{}],12:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 function createEndsWithFilter(execlib,StringFieldFilter){
   'use strict';
   var lib = execlib.lib;
@@ -510,7 +488,7 @@ function createEndsWithFilter(execlib,StringFieldFilter){
 
 module.exports = createEndsWithFilter;
 
-},{}],13:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 function createEQFilter(execlib,FieldFilter){
   'use strict';
   var lib = execlib.lib;
@@ -527,7 +505,7 @@ function createEQFilter(execlib,FieldFilter){
 
 module.exports = createEQFilter;
 
-},{}],14:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 function createExistsFilter(execlib,FieldFilter){
   'use strict';
   var lib = execlib.lib;
@@ -544,7 +522,7 @@ function createExistsFilter(execlib,FieldFilter){
 
 module.exports = createExistsFilter;
 
-},{}],15:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 function createFilterFactory(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -627,7 +605,7 @@ function createFilterFactory(execlib){
 
 module.exports = createFilterFactory;
 
-},{"./allpasscreator":7,"./andfilterscreator":8,"./booleanfilterscreator":9,"./containsfiltercreator":10,"./creator":11,"./endswithfiltercreator":12,"./eqfiltercreator":13,"./existsfiltercreator":14,"./fieldfiltercreator":16,"./gtfiltercreator":17,"./hashfiltercreator":18,"./infiltercreator":19,"./notexistsfiltercreator":20,"./notfiltercreator":21,"./orfilterscreator":22,"./startswithfiltercreator":23,"./stringfieldfiltercreator":24}],16:[function(require,module,exports){
+},{"./allpasscreator":6,"./andfilterscreator":7,"./booleanfilterscreator":8,"./containsfiltercreator":9,"./creator":10,"./endswithfiltercreator":11,"./eqfiltercreator":12,"./existsfiltercreator":13,"./fieldfiltercreator":15,"./gtfiltercreator":16,"./hashfiltercreator":17,"./infiltercreator":18,"./notexistsfiltercreator":19,"./notfiltercreator":20,"./orfilterscreator":21,"./startswithfiltercreator":22,"./stringfieldfiltercreator":23}],15:[function(require,module,exports){
 function createFieldFilter(execlib,Filter){
   'use strict';
   var lib = execlib.lib;
@@ -660,7 +638,7 @@ function createFieldFilter(execlib,Filter){
 
 module.exports = createFieldFilter;
 
-},{}],17:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 function createGTFilter(execlib,FieldFilter){
   'use strict';
   var lib = execlib.lib;
@@ -677,7 +655,7 @@ function createGTFilter(execlib,FieldFilter){
 
 module.exports = createGTFilter;
 
-},{}],18:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 function createHashFilter(execlib,Filter){
   'use strict';
   var lib = execlib.lib;
@@ -699,7 +677,7 @@ function createHashFilter(execlib,Filter){
 module.exports = createHashFilter;
 
 
-},{}],19:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 function createInFilter(execlib,FieldFilter){
   'use strict';
   var lib = execlib.lib;
@@ -719,7 +697,7 @@ function createInFilter(execlib,FieldFilter){
 
 module.exports = createInFilter;
 
-},{}],20:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 function createNotExistsFilter(execlib,FieldFilter){
   'use strict';
   var lib = execlib.lib;
@@ -738,7 +716,7 @@ function createNotExistsFilter(execlib,FieldFilter){
 module.exports = createNotExistsFilter;
 
 
-},{}],21:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 function createNotFilter(execlib,Filter,factory){
   'use strict';
   var lib = execlib.lib;
@@ -763,7 +741,7 @@ function createNotFilter(execlib,Filter,factory){
 
 module.exports = createNotFilter;
 
-},{}],22:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 function createOrFilters(execlib,BooleanFilters){
   'use strict';
   var lib = execlib.lib;
@@ -778,7 +756,7 @@ function createOrFilters(execlib,BooleanFilters){
 
 module.exports = createOrFilters;
 
-},{}],23:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 function createStartsWithFilter(execlib,StringFieldFilter){
   'use strict';
   var lib = execlib.lib;
@@ -796,7 +774,7 @@ function createStartsWithFilter(execlib,StringFieldFilter){
 
 module.exports = createStartsWithFilter;
 
-},{}],24:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 function createStringFieldFilter(execlib,FieldFilter){
   'use strict';
   var lib = execlib.lib;
@@ -813,7 +791,7 @@ function createStringFieldFilter(execlib,FieldFilter){
 
 module.exports = createStringFieldFilter;
 
-},{}],25:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 function createDataSuite(execlib){
   'use strict';
   var execSuite = execlib.execSuite,
@@ -822,7 +800,7 @@ function createDataSuite(execlib){
       recordSuite: require('./record')(execlib)
     };
     execlib.dataSuite = dataSuite;
-    dataSuite.DataObject = require('./objectcreator')(execlib);
+    dataSuite.ObjectHive = require('./objectcreator')(execlib);
     require('./utils')(execlib);
     dataSuite.filterFactory = require('./filters/factorycreator')(execlib);
     dataSuite.QueryBase = require('./query/basecreator')(execlib);
@@ -845,13 +823,13 @@ function createDataSuite(execlib){
     dataSuite.MemoryStorage = require('./storage/memorycreator')(execlib, MemoryStorageBase);
     dataSuite.MemoryListStorage = require('./storage/memorylistcreator')(execlib, MemoryStorageBase);
 
-    dataSuite.storageRegistry.add('memory', dataSuite.MemoryStorage);
-    dataSuite.storageRegistry.add('memorylist', dataSuite.MemoryListStorage);
+    dataSuite.storageRegistry.register('memory', dataSuite.MemoryListStorage);
+    dataSuite.storageRegistry.register('memorylist', dataSuite.MemoryListStorage);
 }
 
 module.exports = createDataSuite;
 
-},{"./codercreator":3,"./decodercreator":4,"./distributedmanagercreator":5,"./distributorcreator":6,"./filters/factorycreator":15,"./managercreator":26,"./objectcreator":27,"./query/basecreator":28,"./query/clonecreator":29,"./record":31,"./spawningmanagercreator":33,"./storage/asyncmemorystoragebasecreator":34,"./storage/basecreator":35,"./storage/clonecreator":36,"./storage/memorybasecreator":37,"./storage/memorycreator":38,"./storage/memorylistcreator":39,"./storage/nullcreator":40,"./utils":41}],26:[function(require,module,exports){
+},{"./codercreator":2,"./decodercreator":3,"./distributedmanagercreator":4,"./distributorcreator":5,"./filters/factorycreator":14,"./managercreator":25,"./objectcreator":26,"./query/basecreator":27,"./query/clonecreator":28,"./record":30,"./spawningmanagercreator":32,"./storage/asyncmemorystoragebasecreator":33,"./storage/basecreator":34,"./storage/clonecreator":35,"./storage/memorybasecreator":36,"./storage/memorycreator":37,"./storage/memorylistcreator":38,"./storage/nullcreator":39,"./utils":40}],25:[function(require,module,exports){
 (function (process){
 function createDataManager(execlib){
   'use strict';
@@ -1006,7 +984,7 @@ function createDataManager(execlib){
 module.exports = createDataManager;
 
 }).call(this,require('_process'))
-},{"_process":55}],27:[function(require,module,exports){
+},{"_process":46}],26:[function(require,module,exports){
 function createDataObject(execlib){
   'use strict';
   var lib = execlib.lib;
@@ -1021,6 +999,7 @@ function createDataObject(execlib){
     if(val!==und){
       hash[fieldname] = val;
     }
+    return hash;
   };
   function undefize(o,name){
     o.set(name,void 0);
@@ -1037,9 +1016,16 @@ function createDataObject(execlib){
     return {};
   };
   DataObject.prototype.toHash = function(fields){
-    var result = this.templateHash();
-    fields.forEach(this._fieldToHash.bind(this,result));
-    return result;
+    //return fields.reduce(this._fieldToHash.bind(this),this.templateHash());
+    var ret = this.templateHash(), l = fields.length, f, val, und;
+    for (var i=0; i<l; i++) {
+      f = fields[i];
+      val = this.get(f);
+      if (val!==und) {
+        ret[f] = val;
+      }
+    }
+    return ret;
   };
   DataObject.prototype.clone = function(){
     return this.toHash(Object.getOwnPropertyNames(this));
@@ -1049,14 +1035,18 @@ function createDataObject(execlib){
   }
   function compareObjects(o1,o2){
     var o1pns = Object.getOwnPropertyNames(o1),
-        o2pns = Object.getOwnPropertyNames(o2);
+        o2pns = Object.getOwnPropertyNames(o2),
+        ret;
     if(o1pns.length!==o2pns.length){
       return false;
     }
     if(o1pns.length<1){
       return true;
     }
-    return o1pns.every(equalator.bind(null,o1,o2));
+    ret = o1pns.every(equalator.bind(null,o1,o2));
+    o1 = null;
+    o2 = null;
+    return ret;
   }
   DataObject.prototype.matchesField = function(datahash,fieldname){
     var d = datahash[fieldname],
@@ -1083,8 +1073,9 @@ function createDataObject(execlib){
     return datahash[fieldname] === this.get(fieldname);
   };
   DataObject.prototype.matches = function(datahash){
-    var fns = this.fieldNames(); //overridable!
-    return fns.every(this.matchesField.bind(this,datahash));
+    var ret = this.fieldNames().every(this.matchesField.bind(this,datahash));
+    datahash = null;
+    return ret;
   };
   //the following methods are for override
   DataObject.prototype.fieldNames = function(){
@@ -1099,12 +1090,78 @@ function createDataObject(execlib){
   DataObject.prototype.get = function(name){
     return this[name];
   };
-  return DataObject;
+  //return DataObject;
+
+  function recordFieldMapper(f) { return "this."+f.name+" = null;"; }
+  function createRecordObjectCtor (fields) {
+    var ret, fs = fields.map(recordFieldMapper).join("\n"),
+      ctorcode = "ret = function DataObject_(prophash) {\n"+fs+"\n DataObject.call(this, prophash);\n};\nlib.inherit(ret, DataObject);",
+      hashtemplate = createHashTemplate(fields);
+    eval(ctorcode);
+    ret.prototype.templateHash = function (){
+      var ret;
+      eval(hashtemplate);
+      return ret;
+    };
+    return ret;
+    //return execlib.dataSuite.DataObject;
+  }
+
+  function RecordHiveElement (fid, fields) {
+    this.id = fid;
+    this.ctor = createRecordObjectCtor(fields);
+    this.template = createHashTemplate(fields);
+  }
+  RecordHiveElement.prototype.destroy = function () {
+    this.template = null;
+    this.ctor = null;
+    this.id = null;
+  };
+
+  function templateFieldMapper (f) {
+    return f.name+": void 0";
+  }
+  function createHashTemplate (fields) {
+    var fs = fields.map(templateFieldMapper);
+    return "ret = {" + fs.join(',')+"}";
+  }
+
+  function hiveFieldConcatenator(res, f) { return res + '_' + f.name; }
+  function fieldsid (fields) {
+    return fields.reduce(hiveFieldConcatenator, '');
+  };
+  function RecordHive () {
+    lib.Map.call(this);
+  }
+  lib.inherit(RecordHive, lib.Map);
+  RecordHive.prototype.give = function (fields) {
+    var fid = fieldsid(fields),
+      ret = this.get(fid);
+    if (!ret) {
+      ret = new RecordHiveElement(fid, fields);
+      this.add(fid, ret);
+    }
+    return ret;
+  };
+  RecordHive.prototype.dec = function (templateobject) {
+    if (!(templateobject && templateobject.fid)) {
+      return;
+    }
+    templateobject = this.remove(templateobject.fid);
+    if (templateobject) {
+      templateobject.destroy();
+      templateobject = null;
+    }
+  };
+  
+  //var _recordHive = new RecordHive();
+  return new RecordHive();
+
 }
 
 module.exports = createDataObject;
 
-},{}],28:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 function createQueryBase(execlib){
   'use strict';
   function QueryBase(recorddescriptor,visiblefields){
@@ -1186,7 +1243,7 @@ function createQueryBase(execlib){
 
 module.exports = createQueryBase;
 
-},{}],29:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 function createQueryClone(execlib,QueryBase){
   'use strict';
   var lib = execlib.lib;
@@ -1226,7 +1283,7 @@ function createQueryClone(execlib,QueryBase){
 
 module.exports = createQueryClone;
 
-},{}],30:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 function createRecord(execlib){
   'use strict';
   var lib = execlib.lib;
@@ -1276,43 +1333,31 @@ function createRecord(execlib){
     return val;
   };
 
-  function createRecordObjectCtor (fields) {
-    var DataObject = execlib.dataSuite.DataObject, ret, fs = fields.map(function(f) { return "this."+f.name+" = null;"; }),
-      ctorcode = "ret = function DataObject_(prophash) {\n"+fs.join("\n")+"\n DataObject.call(this, prophash);\n};\nlib.inherit(ret, DataObject);",
-      hashtemplate = createHashTemplate(fields);
-    eval(ctorcode);
-    ret.prototype.templateHash = function (){
-      var ret;
-      eval(hashtemplate);
-      return ret;
-    };
-    return ret;
-    //return execlib.dataSuite.DataObject;
-  }
-
-  function createHashTemplate (fields) {
-    var fs = fields.map(function (f) {return f.name+": void 0";});
-    return "ret = {" + fs.join(',')+"}";
-  }
-
   function Record(prophash,visiblefields){
     if(!(prophash && prophash.fields)){
       console.trace();
       throw "Record needs the fields array in its property hash";
     }
     this.primaryKey = prophash.primaryKey;
-    this.objCtor = prophash.objCtor || createRecordObjectCtor(prophash.fields);
+    this.templateObj = execlib.dataSuite.ObjectHive.give(prophash.fields);
+    //this.objCtor = prophash.objCtor || createRecordObjectCtor(prophash.fields);
     this.fields = [];
     this.fieldsByName = new lib.Map();
-    this.hashTemplate = createHashTemplate(prophash.fields);
+    //this.hashTemplate = createHashTemplate(prophash.fields);
     prophash.fields.forEach(this.addField.bind(this,visiblefields));
+    visiblefields = null;
   }
   Record.prototype.destroy = function(){
+    if (this.templateObj) {
+      execlib.dataSuite.ObjectHive.dec(this.templateObj);
+    }
+    //this.hashTemplate = null;
     this.fieldsByName.destroy();
     this.fieldsByName = null;
     lib.arryDestroyAll(this.fields);
     this.fields = null;
-    this.objCtor = null;
+    //this.objCtor = null;
+    this.templateObj = null;
     this.primaryKey = null;
   };
   Record.prototype.isEmpty = function(){
@@ -1328,19 +1373,25 @@ function createRecord(execlib){
   };
   Record.prototype.createTemplateHash = function () {
     var ret;
-    eval (this.hashTemplate);
+    eval (this.templateObj.template);
     return ret;
   };
   function hashFiller(prophash, obj, field) {
     prophash[field.name] = field.valueFor(obj[field.name]);
   }
   Record.prototype.filterHash = function(obj){
-    var prophash = this.createTemplateHash();//{};
-    this.fields.forEach(hashFiller.bind(null, prophash, obj));
+    var prophash = this.createTemplateHash(), fs = this.fields, l=fs.length, i, f, fn;//{};
+    //this.fields.forEach(hashFiller.bind(null, prophash, obj));
+    for(i=0; i<l; i++) {
+      f = fs[i];
+      fn = f.name;
+      prophash[fn] = f.valueFor(obj[fn]);
+    }
+    obj = null;
     return prophash;
   };
   Record.prototype.filterObject = function(obj){
-    return new(this.objCtor)(this.filterHash(obj));
+    return new(this.templateObj.ctor)(this.filterHash(obj));
   };
   Record.prototype.filterStateStream = function(item){
     if(item.p && item.p.length===1){
@@ -1410,7 +1461,7 @@ function createRecord(execlib){
 
 module.exports = createRecord;
 
-},{}],31:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 function createSuite(execlib){
   'use strict';
 
@@ -1424,7 +1475,7 @@ function createSuite(execlib){
 
 module.exports = createSuite;
 
-},{"./creator":30,"./utils":32}],32:[function(require,module,exports){
+},{"./creator":29,"./utils":31}],31:[function(require,module,exports){
 function createRecordUtils(execlib,suite){
   'use strict';
   var lib = execlib.lib;
@@ -1545,10 +1596,10 @@ function createRecordUtils(execlib,suite){
       }
     });
   }
-  var sp = execlib.execSuite.registry.get('.');
+  var sm = execlib.execSuite.registry.getClientSide('.');
   suite.duplicateFieldValueInArrayOfHashes = duplicateFieldValueInArrayOfHashes;
   suite.inherit = inherit;
-  var sinkPreInheritProc = sinkInheritProcCreator('DataSink',sp.SinkMap.get('user').inherit); 
+  var sinkPreInheritProc = sinkInheritProcCreator('DataSink',sm.get('user').inherit); 
   function sinkInheritProc(childCtor,methodDescriptors,visiblefieldsarray,classStorageDescriptor){
     sinkPreInheritProc.call(this,childCtor,methodDescriptors,visiblefieldsarray);
     var recordDescriptor = {};
@@ -1567,7 +1618,7 @@ function createRecordUtils(execlib,suite){
 
 module.exports = createRecordUtils;
 
-},{}],33:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 function createSpawningDataManager(execlib) {
   'use strict';
   'use strict';
@@ -1614,18 +1665,17 @@ function createSpawningDataManager(execlib) {
     if (!this.q) {
       return;
     }
-    var sink = this.target;
     //console.log('EventQ dumping', this.q.length, 'items');
-    while(this.q.length){
-      var item = this.q.pop();
-      switch (item[0]) {
-        case 'c':
-          if(sink.isOK(item[1])){
-            sink.onStream(item);
-          }
-        default:
-          sink.onStream(item);
-      }
+    this.q.drain(this.drainer.bind(this));
+  };
+  EventQ.prototype.drainer = function (item) {
+    switch (item[0]) {
+      case 'c':
+        if(this.target.isOK(item[1])){
+          this.target.onStream(item);
+        }
+      default:
+        this.target.onStream(item);
     }
   };
 
@@ -1654,7 +1704,9 @@ function createSpawningDataManager(execlib) {
     var i  = QueryClone.prototype.onStream.call(this,item);
     //console.log(process.pid+'', 'Runner', this.filter(), 'onStream', i);
     //console.log(item, '=>', i);
-    this.notify(i);
+    if (i) {
+      this.notify(i);
+    }
   };
   QueryRunner.prototype.limit = function () {
     return this.pagesize;
@@ -1730,7 +1782,6 @@ function createSpawningDataManager(execlib) {
       return;
     }
     if (runner.singleshot || !runner.continuous) {
-      console.log('will resolve runner', runner);
       runner.resolve(true);
       return;
     }
@@ -1744,7 +1795,9 @@ function createSpawningDataManager(execlib) {
     var i;
     if (this.distributor) {
       i = QueryBase.prototype.onStream.call(this,item);
-      this.distributor.onStream(i);
+      if (i) {
+        this.distributor.onStream(i);
+      }
     }
   };
 
@@ -1800,7 +1853,7 @@ function createSpawningDataManager(execlib) {
 
 module.exports = createSpawningDataManager;
 
-},{}],34:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 function createAsyncMemoryStorageBase (execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -1877,7 +1930,7 @@ function createAsyncMemoryStorageBase (execlib) {
 
 module.exports = createAsyncMemoryStorageBase;
 
-},{}],35:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 function createStorageBase(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1937,18 +1990,21 @@ function createStorageBase(execlib){
     this.initiated.fire(storage);
   };
   StorageBaseEventing.prototype.fireNewRecord = function(datahash){
+    if (!this.created) {
+      return;
+    }
     this.created.fire(datahash);
     if(!this.initTxnId){
       this.newRecord.fire(datahash);
     }
   };
   StorageBaseEventing.prototype.fireUpdated = function(filter,datahash,updateresult){
-    if(updateresult.updated || updateresult.upserted){
+    if(this.updated && (updateresult.updated || updateresult.upserted)){
       this.updated.fire(filter,datahash,updateresult);
     }
   };
   StorageBaseEventing.prototype.fireDeleted = function(filter,deletecount){
-    if(deletecount){
+    if(this.deleted && deletecount){
       this.deleted.fire(filter,deletecount);
     }
   };
@@ -2046,7 +2102,7 @@ function createStorageBase(execlib){
 
 module.exports = createStorageBase;
 
-},{}],36:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 function createCloneStorage(execlib){
   'use strict';
   var dataSuite = execlib.dataSuite,
@@ -2061,6 +2117,7 @@ function createCloneStorage(execlib){
   }
   execlib.lib.inherit(CloneStorage,StorageBase);
   CloneStorage.prototype.destroy = function(){
+    this.record = null;
     this.original = null;
     StorageBase.prototype.destroy.call(this);
   };
@@ -2076,7 +2133,7 @@ function createCloneStorage(execlib){
 
 module.exports = createCloneStorage;
 
-},{}],37:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 function createMemoryStorageBase (execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -2276,7 +2333,7 @@ function createMemoryStorageBase (execlib) {
 
 module.exports = createMemoryStorageBase;
 
-},{}],38:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 function createMemoryStorage(execlib, MemoryStorageBase){
   'use strict';
   var lib = execlib.lib,
@@ -2320,7 +2377,7 @@ function createMemoryStorage(execlib, MemoryStorageBase){
 
 module.exports = createMemoryStorage;
 
-},{}],39:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 function createMemoryStorage(execlib, MemoryStorageBase){
   'use strict';
   var lib = execlib.lib,
@@ -2345,7 +2402,6 @@ function createMemoryStorage(execlib, MemoryStorageBase){
       cb(item);
     }
     cntobj.cnt++;
-    return q(true);
   };
   MemoryListStorage.prototype._traverseDataRange = function (cb, start, endexclusive) {
     var cntobj = {cnt:0};
@@ -2365,7 +2421,7 @@ function createMemoryStorage(execlib, MemoryStorageBase){
 module.exports = createMemoryStorage;
 
 
-},{}],40:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 function createNullStorage(execlib){
   'use strict';
   var dataSuite = execlib.dataSuite,
@@ -2391,7 +2447,7 @@ function createNullStorage(execlib){
 
 module.exports = createNullStorage;
 
-},{}],41:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 function createDataUtils(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -2416,7 +2472,7 @@ function createDataUtils(execlib){
 
 module.exports = createDataUtils;
 
-},{}],42:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 module.exports = {
   create: [{
     title: 'Data hash',
@@ -2435,42 +2491,37 @@ module.exports = {
   delete: [{
     title: 'Filter descriptor',
     type: 'object'
-  }],
-  query: [{
-    title: 'Query Property hash',
-    type: 'object'
   }]
 };
 
-},{}],43:[function(require,module,exports){
-arguments[4][42][0].apply(exports,arguments)
-},{"dup":42}],44:[function(require,module,exports){
-arguments[4][42][0].apply(exports,arguments)
-},{"dup":42}],45:[function(require,module,exports){
-function sinkMapCreator(execlib){
+},{}],42:[function(require,module,exports){
+arguments[4][41][0].apply(exports,arguments)
+},{"dup":41}],43:[function(require,module,exports){
+function sinkMapCreator(execlib, ParentSinkMap){
   'use strict';
+  if (!execlib.dataSuite) {
+    require('./data')(execlib);
+  }
   var sinkmap = new (execlib.lib.Map);
-  sinkmap.add('service',require('./sinks/servicesinkcreator')(execlib));
-  sinkmap.add('user',require('./sinks/usersinkcreator')(execlib));
-  sinkmap.add('writer',require('./sinks/writersinkcreator')(execlib));
+  sinkmap.add('service',require('./sinks/servicesinkcreator')(execlib, ParentSinkMap.get('service')));
+  sinkmap.add('user',require('./sinks/usersinkcreator')(execlib, ParentSinkMap.get('user')));
   
   return sinkmap;
 }
 
 module.exports = sinkMapCreator;
 
-},{"./sinks/servicesinkcreator":46,"./sinks/usersinkcreator":47,"./sinks/writersinkcreator":48}],46:[function(require,module,exports){
-function createServiceSink(execlib){
+},{"./data":24,"./sinks/servicesinkcreator":44,"./sinks/usersinkcreator":45}],44:[function(require,module,exports){
+function createServiceSink(execlib, ParentServiceSink){
   'use strict';
   var lib = execlib.lib,
       execSuite = execlib.execSuite,
-      _ServiceSink = execSuite.registry.get('.').SinkMap.get('service'),
       recordSuite = execlib.dataSuite.recordSuite;
 
   function ServiceSink(prophash,client){
-    _ServiceSink.call(this,prophash,client);
+    ParentServiceSink.call(this,prophash,client);
   }
-  _ServiceSink.inherit(ServiceSink,require('../methoddescriptors/serviceuser'));
+  ParentServiceSink.inherit(ServiceSink,require('../methoddescriptors/serviceuser'));
   ServiceSink.inherit = recordSuite.sinkInheritProc;
   ServiceSink.prototype.visibleFields = [];
   return ServiceSink;
@@ -2478,18 +2529,17 @@ function createServiceSink(execlib){
 
 module.exports = createServiceSink;
 
-},{"../methoddescriptors/serviceuser":42}],47:[function(require,module,exports){
-function createUserSink(execlib){
+},{"../methoddescriptors/serviceuser":41}],45:[function(require,module,exports){
+function createUserSink(execlib, ParentServiceSink){
   'use strict';
   var lib = execlib.lib,
       execSuite = execlib.execSuite,
-      ServiceSink = execSuite.registry.get('.').SinkMap.get('user'),
       recordSuite = execlib.dataSuite.recordSuite;
 
   function UserSink(prophash,client){
-    ServiceSink.call(this,prophash,client);
+    ParentServiceSink.call(this,prophash,client);
   }
-  ServiceSink.inherit(UserSink,require('../methoddescriptors/user'));
+  ParentServiceSink.inherit(UserSink,require('../methoddescriptors/user'));
   UserSink.inherit = recordSuite.sinkInheritProc;
   UserSink.prototype.visibleFields = [];
   return UserSink;
@@ -2497,913 +2547,7 @@ function createUserSink(execlib){
 
 module.exports = createUserSink;
 
-},{"../methoddescriptors/user":43}],48:[function(require,module,exports){
-function createWriterSink(execlib){
-  'use strict';
-  var lib = execlib.lib,
-      execSuite = execlib.execSuite,
-      ServiceSink = execSuite.registry.get('.').SinkMap.get('user'),
-      recordSuite = execlib.dataSuite.recordSuite;
-
-  function WriterSink(prophash,client){
-    ServiceSink.call(this,prophash,client);
-  }
-  ServiceSink.inherit(WriterSink,require('../methoddescriptors/writeruser'));
-  WriterSink.inherit = recordSuite.sinkInheritProc;
-  WriterSink.prototype.visibleFields = [];
-  return WriterSink;
-}
-
-module.exports = createWriterSink;
-
-},{"../methoddescriptors/writeruser":44}],49:[function(require,module,exports){
-function createFollowDataTask(execlib){
-  'use strict';
-  var lib = execlib.lib,
-    q = lib.q,
-    qlib = lib.qlib,
-    execSuite = execlib.execSuite,
-    taskRegistry = execSuite.taskRegistry,
-    MultiDestroyableTask = execSuite.MultiDestroyableTask,
-    dataSuite = execlib.dataSuite,
-    DataDecoder = dataSuite.DataDecoder;
-
-  function ChildSinkStorage(sink){
-    this.sink = sink;
-  }
-  ChildSinkStorage.prototype.beginInit = function () {
-    return this.sink.call('delete', null);
-  };
-  ChildSinkStorage.prototype.endInit = lib.dummyFunc;
-  ChildSinkStorage.prototype.create = function(datahash){
-    return this.sink.call('create',datahash);
-  };
-  ChildSinkStorage.prototype.update = function(filter,datahash,options){
-    return this.sink.call('update',filter.__descriptor,datahash,options);
-  };
-  ChildSinkStorage.prototype.delete = function(filter){
-    return this.sink.call('delete',filter.__descriptor);
-  };
-
-  function FollowDataTask(prophash){
-    MultiDestroyableTask.call(this,prophash,['sink','childsink']);
-    this.sink = prophash.sink;
-    this.storage = new ChildSinkStorage(prophash.childsink);
-    this.decoder = null;
-  }
-  lib.inherit(FollowDataTask,MultiDestroyableTask);
-  FollowDataTask.prototype.__cleanUp = function(){
-    /*
-    if(this.sink.destroyed){ //it's still alive
-      this.sink.consumeChannel('d',lib.dummyFunc);
-    }
-    */
-    if (this.sink && this.decoder && this.decoder.queryID) {
-      this.sink.sessionCall('closeQuery', this.decoder.queryID);
-    }
-    if (this.decoder) {
-      this.decoder.destroy();
-    }
-    this.decoder = null;
-    if (this.storage) {
-      this.storage.destroy();
-    }
-    this.storage = null;
-    this.sink = null;
-    MultiDestroyableTask.prototype.__cleanUp.call(this);
-  };
-  FollowDataTask.prototype.go = function(){
-    if (this.decoder) {
-      return;
-    }
-    this.decoder = new DataDecoder(this.storage); 
-    this.sink.sessionCall('query', {continuous:true}).then(
-      this.destroy.bind(this),
-      this.destroy.bind(this),
-      this.decoder.onStream.bind(this.decoder)
-    );
-    //this.sink.consumeChannel('d',new DataDecoder(this.storage));
-  };
-  FollowDataTask.prototype.compulsoryConstructionProperties = ['sink','childsink'];
-
-  return FollowDataTask;
-}
-
-module.exports = createFollowDataTask;
-
-},{}],50:[function(require,module,exports){
-function createJoinFromDataSinksTask(execlib) {
-  'use strict';
-  var lib = execlib.lib,
-    q = lib.q,
-    execSuite = execlib.execSuite,
-    Task = execSuite.Task,
-    taskRegistry = execSuite.taskRegistry;
-
-  function ArryizedColumn(prophash) {
-
-  }
-  ArryizedColumn.prototype.destroy = function () {
-  };
-  ArryizedColumn.prototype.process = function (item, name, data) {
-    var a = item[name], target = data[name];
-    if (!a) {
-      a = [];
-      item[name] = a;
-    }
-    if (lib.isArray(target)) {
-      a.push.apply(a, target);
-    } else {
-      a.push(target);
-    }
-  };
-  ArryizedColumn.prototype.initValue = function () {
-    return [];
-  };
-
-  function AggregatedData (desc) {
-    this.pkColumns = [];
-    this.processors = new lib.Map();
-    desc.forEach(this.doDescItem.bind(this));
-  }
-  AggregatedData.prototype.destroy = function () {
-  };
-  AggregatedData.prototype.doDescItem = function (descitem) {
-    if (!descitem.name) {
-      throw new lib.Error('NO_DESCITEM_NAME',descitem);
-    }
-    switch(descitem.op) {
-      case 'arrayize':
-        this.processors.add(descitem.name, new ArryizedColumn(descitem.propertyhash));
-        break;
-      default:
-        this.pkColumns.push(descitem.name);
-    }
-  };
-  AggregatedData.prototype.aggregate = function (data) {
-    var ret = [];
-    data.forEach(this.add.bind(this, ret));
-    return ret;
-  };
-  AggregatedData.prototype.add = function (output, datahash) {
-    //console.log('finding out the item for', datahash);
-    try {
-    var item = this.find(datahash, output) || this.newObjTo(datahash, output);
-    } catch (e) {
-      console.error(e.stack);
-      console.error(e);
-    }
-    //console.log('working on aggro item', item, this.processors.count, 'processors');
-    this.processors.traverse(function (processor, name) {
-      processor.process(item, name, datahash);
-    });
-  };
-  AggregatedData.prototype.newObj = function (datahash) {
-    var ret = {};
-    this.pkColumns.forEach(function (pkc) {
-      ret[pkc] = datahash[pkc];
-    });
-    this.processors.traverse(function (proc, name) {
-      ret[name] = proc.initValue();
-    });
-    return ret;
-  };
-  AggregatedData.prototype.newObjTo = function (datahash, output) {
-    var ret = this.newObj(datahash);
-    output.push(ret);
-    return ret;
-  };
-  AggregatedData.prototype.find = function (datahash, output) {
-    var foundobj = {found: null};
-    output.some(this.conformsToPK.bind(this, foundobj, datahash));
-    return foundobj.found;
-  };
-  AggregatedData.prototype.conformsToPK = function (foundobj, datahash, item) {
-    if (this.pkColumns.length < 1) {
-      foundobj.found = item;
-      return true;
-    }
-    return this.pkColumns.every(function(column) {
-      if (datahash[column] === item[column]) {
-        foundobj.found = item;
-        return true;
-      }
-    });
-  };
-
-  function DataJobBase () {
-    this.children = [];
-    this.state = new lib.ListenableMap();
-  }
-  DataJobBase.prototype.destroy = function () {
-    if (this.state) {
-      this.state.destroy();
-    }
-    this.state = null;
-    if (this.children) {
-      lib.arryDestroyAll(this.children);
-    }
-    this.children = null;
-  };
-
-  function RootDataJob () {
-    DataJobBase.call(this);
-    this.state.add('output', []);
-  }
-  lib.inherit(RootDataJob, DataJobBase);
-
-  function DataJob(parnt, prophash) {
-    DataJobBase.call(this);
-    this.aggregator = null;
-    if (prophash.output) {
-      this.aggregator = new AggregatedData(prophash.output);
-    }
-    this.parnt = parnt;
-    parnt.children.push(this);
-  }
-  lib.inherit(DataJob, DataJobBase);
-  DataJob.prototype.destroy = function () {
-    this.parnt = null;
-    if (this.aggregator) {
-      this.aggregator.destroy();
-    }
-    this.aggregator = null;
-    RootDataJob.prototype.destroy.call(this);
-  };
-
-  function DataSinkSubJob (parnt, sink, defer) {
-    this.parnt = parnt;
-    this.sink = sink;
-    this.data = [];
-    this.output = [];
-    this.defer = defer;
-    var handler = this.produceOutput.bind(this);
-    taskRegistry.run('materializeData', {
-      sink: sink,
-      data: this.data,
-      onInitiated: handler,
-      onNewRecord: handler,
-      onUpdate: handler,
-      onDelete: handler
-    });
-  }
-  DataSinkSubJob.prototype.destroy = function () {
-    this.defer = null;
-    this.output = null;
-    this.data = null;
-    if (this.sink.destroyed) {
-      lib.destroyASAP(this.sink);
-    }
-    this.sink = null;
-    this.parnt = null;
-  };
-  DataSinkSubJob.prototype.produceOutput = function () {
-    if (!this.parnt) {
-      return;
-    }
-    var d = this.defer, assembleresult;
-    this.defer = null;
-    if (this.parnt.aggregator) {
-      this.output = this.parnt.aggregator.aggregate(this.data);
-    } else {
-      this.output = this.data;
-    }
-    assembleresult = this.parnt.assembleOutput();
-    if (d) {
-      d.resolve(true);
-    } else {
-      if (assembleresult) {
-        this.parnt.dataProduced();
-      }
-    }
-  };
-
-  function DataSinkDataJob (parnt, prophash) {
-    DataJob.call(this, parnt, prophash);
-    this.filter = prophash.filter;
-    this.subsinks = [];
-    if (!this.filter) {
-      throw new lib.Error('FILTER_NEEDED', 'JobDescriptor misses the "filter" field');
-    }
-  }
-  lib.inherit(DataSinkDataJob, DataJob);
-  DataSinkDataJob.prototype.destroy = function () {
-    if (this.subsinks) {
-      lib.arryDestroyAll(this.subsinks);
-    }
-    this.subsinks = null;
-    this.filter = null;
-    DataJob.prototype.destroy.call(this);
-  };
-  DataSinkDataJob.prototype.dataProduced = function () {
-    if (this.state.get('output')) {
-      this.children.forEach(function(c){
-        c.trigger();
-      });
-    }
-  };
-  DataSinkDataJob.prototype.onSink = function (sink) {
-    //console.log('Job with filter', this.filter, 'onSink', sink ? sink.modulename : 'no sink');
-    if (!this.state) {
-      return;
-    }
-    this.state.replace('sink', sink);
-    if (!sink) {
-      return;
-    }
-    this.trigger();
-  };
-  DataSinkDataJob.prototype.onSubSink = function (defer, inputrow, subsink) {
-    if (!subsink) {
-      return;
-    }
-    this.subsinks.push(new DataSinkSubJob(this, subsink, defer));
-  };
-  DataSinkDataJob.prototype.assembleOutput = function () {
-    if(this.subsinks.some(function(ss) {return ss.defer;})){
-      return false;
-    }
-    var output = [];
-    this.subsinks.forEach(function(ss) {
-      Array.prototype.push.apply(output, ss.output);
-    });
-    this.state.replace('output', output);
-    return true;
-  };
-  DataSinkDataJob.prototype.onNoSink = function (defer, reason) {
-    defer.reject(reason);
-    this.destroy();
-  };
-  DataSinkDataJob.prototype.trigger = function () {
-    lib.arryDestroyAll(this.subsinks);
-    this.subsinks = [];
-    if ('function' === typeof this.filter) {
-      var fr = this.filter();
-      if ('function' === typeof fr.done) {
-        fr.done(this.onFilter.bind(this));
-      } else {
-        this.onFilter(fr);
-      }
-    } else {
-      this.onFilter(this.filter);
-    }
-  };
-  DataSinkDataJob.prototype.onFilter = function (filter) {
-    //console.log('filter', this.filter, 'resulted in filter', filter);
-    if (!filter) {
-      //console.log('but no filter');
-      return;
-    }
-    if (!this.parnt) {
-      //console.log('but no parent');
-      return;
-    }
-    if (!this.parnt.state) {
-      //console.log('but no parent state');
-      return;
-    }
-    var input = this.parnt.state.get('output');
-    if (!input) {
-      //console.log('but no input');
-      return;
-    }
-    //console.log('filter can proceeed');
-    var f = this.isFilterInputDependent(filter);
-    if (f) {
-      q.allSettled(input.map(this.applyDataDependentFilter.bind(this, f))).done(
-        this.dataProduced.bind(this),
-        console.error.bind(console, 'applyDataDependentFilter error')
-      );
-    } else { 
-      this.applyFilter(filter).done(
-        this.dataProduced.bind(this),
-        console.error.bind(console, 'applyFilter error')
-      );
-    }
-  };
-  DataSinkDataJob.prototype.applyFilter = function (filter, inputrow) {
-    try {
-    var d = q.defer();
-    var sink = this.state.get('sink');
-    if (!(sink && sink.destroyed && sink.recordDescriptor)) {
-      d.resolve(null);
-      return d.promise;
-    }
-    //console.log(filter, 'subconnecting to', sink.modulename);
-    sink.subConnect('.', {
-      name: 'user',
-      role: 'user',
-      filter: filter
-    }).done(
-      this.onSubSink.bind(this, d, inputrow),
-      this.onNoSink.bind(this, d)
-    );
-    return d.promise;
-    } catch (e) {
-      console.error(e.stack);
-      console.error(e);
-    }
-  };
-  DataSinkDataJob.prototype.isFilterInputDependent = function (filter) {
-    if (filter.value && 
-      filter.value.substring(0,2) === '{{' && 
-      filter.value.substring(filter.value.length-2) === '}}') {
-      var ret = lib.extend({}, filter);
-      ret.value = filter.value.substring(2,filter.value.length-2);
-      return ret;
-    }
-    return null;
-  };
-  DataSinkDataJob.prototype.applyDataDependentFilter = function (filter, datahash) {
-    var ret = lib.extend({}, filter);
-    ret.value = datahash[ret.value];
-    //console.log(filter, '=>', ret);
-    return this.applyFilter(ret, datahash);
-  };
-
-  function LocalAcquirerDataJob(parnt, prophash) {
-    DataSinkDataJob.call(this, parnt, prophash);
-    this.service = prophash.service;
-    this.serviceDestroyedListener = this.service.destroyed.attach(this.destroy.bind(this));
-    //console.log('LocalAcquirerDataJob listening for', prophash.sinkname);
-    this.sinkListener = this.service.listenForSubService(prophash.sinkname, this.onSink.bind(this), true);
-  }
-  lib.inherit(LocalAcquirerDataJob, DataSinkDataJob);
-  LocalAcquirerDataJob.prototype.destroy = function () {
-    if (this.serviceDestroyedListener) {
-      lib.destroyASAP(this.serviceDestroyedListener);
-      this.serviceDestroyedListener = null;
-    }
-    this.serviceDestroyedListener = null;
-    if (this.sinkListener) {
-      lib.destroyASAP(this.sinkListener);
-      this.sinkListener = null;
-    }
-    this.sinkListener = null;
-    this.service = null;
-    DataSinkDataJob.prototype.destroy.call(this);
-  };
-
-  function GlobalAcquirerDataJob(parnt, prophash) {
-    DataSinkDataJob.call(this, parnt, prophash);
-    //console.log('GlobalAcquirerDataJob listening for', prophash.sinkname);
-    this.sinkListener = taskRegistry.run('findSink', {
-      sinkname: prophash.sinkname, 
-      identity: prophash.identity || {},
-      onSink: this.onSink.bind(this)
-    });
-  }
-  lib.inherit(GlobalAcquirerDataJob, DataSinkDataJob);
-  GlobalAcquirerDataJob.prototype.destroy = function () {
-    if (this.sinkListener) {
-      lib.runNext(this.sinkListener.destroy.bind(this.sinkListener));
-      this.sinkListener = null;
-    }
-    this.sinkListener = null;
-    this.service = null;
-    DataSinkDataJob.prototype.destroy.call(this);
-  };
-
-  function TargetSinkDataJob (parnt, jobdesc) {
-    DataJob.call(this, parnt, jobdesc);
-    this.sink = jobdesc.sink;
-  }
-  lib.inherit(TargetSinkDataJob, DataJob);
-  TargetSinkDataJob.prototype.destroy = function () {
-    this.sink = null;
-    DataJob.prototype.destroy.call(this);
-  };
-  TargetSinkDataJob.prototype.trigger = function () {
-    var input = this.parnt.state.get('output'),
-      sink = this.sink;
-    sink.call('delete', {}).then(
-      input.forEach(sink.call.bind(sink, 'create'))
-    );
-  };
-
-  function FuncDataJob (parnt, func) {
-    DataJob.call(this, parnt, {});
-    this.func = func;
-  }
-  lib.inherit(FuncDataJob, DataJob);
-  FuncDataJob.prototype.destroy = function () {
-    this.func = null;
-    DataJob.prototype.destroy.call(this);
-  };
-  FuncDataJob.prototype.trigger = function () {
-    if (!this.func) {
-      return;
-    }
-    this.func(this.parnt.state.get('output'));
-  };
-
-  function JoinFromDataSinks(prophash) {
-    Task.call(this, prophash);
-    this.jobs = prophash.jobs;
-    this.job = null;
-  }
-  lib.inherit(JoinFromDataSinks, Task);
-  JoinFromDataSinks.prototype.destroy = function () {
-    this.jobs = null;
-    if (this.job) {
-      this.job.destroy();
-    }
-    this.job = null;
-  };
-  function createJob (parentjob, jobdesc) {
-    var job;
-    if (lib.isArray(jobdesc)) {
-      job = this.createJob(parentjob, jobdesc[0]);
-    } else if ('function' === typeof jobdesc) {
-      job = new FuncDataJob(parentjob, jobdesc);
-    } else if (jobdesc.type === 'targetsink') {
-      job = new TargetSinkDataJob(parentjob, jobdesc);
-    } else if (jobdesc.type === 'sub') {
-      job = new LocalAcquirerDataJob(parentjob, jobdesc);
-    } else if (jobdesc.type === 'global') {
-      job = new GlobalAcquirerDataJob(parentjob, jobdesc);
-    }
-    if (lib.isArray(jobdesc.jobs)) {
-      jobdesc.jobs.forEach(createJob.bind(null, job));
-    }
-  };
-  JoinFromDataSinks.prototype.go = function () {
-    if (this.job) {
-      return;
-    }
-    this.job = new RootDataJob();
-    this.jobs.forEach(createJob.bind(null, this.job));
-    this.jobs = null;
-  };
-  JoinFromDataSinks.prototype.compulsoryConstructionProperties = ['jobs'];
-
-  return JoinFromDataSinks;
-}
-
-module.exports = createJoinFromDataSinksTask;
-
-},{}],51:[function(require,module,exports){
-function createMaterializeQueryTask(execlib){
-  'use strict';
-  var lib = execlib.lib,
-    q = lib.q,
-    qlib = lib.qlib,
-    execSuite = execlib.execSuite,
-    SinkTask = execSuite.SinkTask,
-    dataSuite = execlib.dataSuite,
-    DataDecoder = dataSuite.DataDecoder,
-    MemoryStorage = dataSuite.MemoryStorage;
-
-  function MaterializeQueryTask(prophash){
-    SinkTask.call(this,prophash);
-    this.storage = null;
-    this.decoder = null;
-    this.sink = prophash.sink;
-    this.filter = prophash.filter;
-    this.singleshot = prophash.singleshot;
-    this.continuous = prophash.continuous;
-    this.data = prophash.data;
-    this.onInitiated = prophash.onInitiated;
-    this.onRecordCreation = prophash.onRecordCreation;
-    this.onNewRecord = prophash.onNewRecord;
-    this.onUpdate = prophash.onUpdate;
-    this.onRecordUpdate = prophash.onRecordUpdate;
-    this.onDelete = prophash.onDelete;
-    this.onRecordDeletion = prophash.onRecordDeletion;
-    this.initiatedListener = null;
-    this.createdListener = null;
-    this.newRecordListener = null;
-    this.updatedListener = null;
-    this.recordUpdatedListener = null;
-    this.deletedListener = null;
-    this.recordDeletedListener = null;
-  }
-  lib.inherit(MaterializeQueryTask,SinkTask);
-  MaterializeQueryTask.prototype.__cleanUp = function(){
-    if (this.sink && this.decoder && this.decoder.queryID) {
-      this.sink.sessionCall('closeQuery', this.decoder.queryID);
-    }
-    if(this.recordDeletedListener){
-      this.recordDeletedListener.destroy();
-    }
-    this.recordDeletedListener = null;
-    if(this.deletedListener){
-      this.deletedListener.destroy();
-    }
-    this.deletedListener = null;
-    if(this.recordUpdatedListener){
-      this.recordUpdatedListener.destroy();
-    }
-    this.recordUpdatedListener = null;
-    if(this.updatedListener){
-      this.updatedListener.destroy();
-    }
-    this.updatedListener = null;
-    if(this.newRecordListener){
-      this.newRecordListener.destroy();
-    }
-    this.newRecordListener = null;
-    if(this.createdListener){
-      this.createdListener.destroy();
-    }
-    this.createdListener = null;
-    if(this.initiatedListener){
-      this.initiatedListener.destroy();
-    }
-    this.initiatedListener = null;
-    this.onRecordDeletion = null;
-    this.onDelete = null;
-    this.onRecordUpdate = null;
-    this.onUpdate = null;
-    this.onNewRecord = null;
-    this.onRecordCreation = null;
-    this.onInitiated = null;
-    this.data = null;
-    this.continuous = null;
-    this.singleshot = null;
-    this.filter = null;
-    this.sink = null;
-    if(this.storage){
-      this.storage.destroy();
-    }
-    this.decoder = null;
-    this.storage = null;
-    SinkTask.prototype.__cleanUp.call(this);
-  };
-  MaterializeQueryTask.prototype.go = function(){
-    this.storage = new MemoryStorage({
-      events: this.onInitiated || this.onRecordCreation || this.onNewRecord || this.onUpdate || this.onRecordUpdate || this.onDelete || this.onRecordDeletion,
-      record: this.sink.recordDescriptor
-    },this.data);
-    this.decoder = new DataDecoder(this.storage);
-    if(this.onInitiated){
-      this.initiatedListener = this.storage.events.initiated.attach(this.onInitiated);
-    }
-    if(this.onRecordCreation){
-      this.createdListener = this.storage.events.created.attach(this.onRecordCreation);
-    };
-    if(this.onNewRecord){
-      this.newRecordListener = this.storage.events.newRecord.attach(this.onNewRecord);
-    }
-    if(this.onUpdate){
-      this.updatedListener = this.storage.events.updated.attach(this.onUpdate);
-    }
-    if(this.onRecordUpdate){
-      this.recordUpdatedListener = this.storage.events.recordUpdated.attach(this.onRecordUpdate);
-    }
-    if(this.onDelete){
-      this.deletedListener = this.storage.events.deleted.attach(this.onDelete);
-    }
-    if(this.onRecordDeletion){
-      this.recordDeletedListener = this.storage.events.recordDeleted.attach(this.onRecordDeletion);
-    }
-    if (!this.continuous) {
-      console.log('materializeQuery is not continuous!');
-    }
-    this.sink.sessionCall('query', {singleshot: this.singleshot, continuous: this.continuous, filter: this.filter||'*', visiblefields: this.visiblefields}).then(
-      this.destroy.bind(this),
-      this.destroy.bind(this),
-      this.decoder.onStream.bind(this.decoder)
-    );
-  };
-  MaterializeQueryTask.prototype.compulsoryConstructionProperties = ['data','sink'];
-  return MaterializeQueryTask;
-}
-
-module.exports = createMaterializeQueryTask;
-
-},{}],52:[function(require,module,exports){
-function createReadFromSinkProc (execlib, prophash) {
-  'use strict';
-  var data = [],
-    error = null,
-    initialized = false,
-    sinkDestroyedListener = prophash.sink.destroyed.attach(onSinkDestroyed),
-    lib = execlib.lib,
-    execSuite = execlib.execSuite,
-    taskRegistry = execSuite.taskRegistry;
-
-  function finish () {
-    try {
-    if(sinkDestroyedListener) {
-      sinkDestroyedListener.destroy();
-    }
-    sinkDestroyedListener = null;
-    if (error) {
-      if (prophash.errorcb) {
-        prophash.errorcb(error);
-      }
-    } else {
-      if (prophash.cb) {
-        if (prophash.singleshot) {
-          prophash.cb(data[0] || null);
-        } else {
-          prophash.cb(data);
-        }
-      }
-    }
-    initialized = null;
-    error = null;
-    data = null;
-    prophash = null;
-    } catch(e) {
-      console.error(e.stack);
-      console.error(e);
-    }
-  }
-
-  function onSinkDestroyed (allok) {
-    if (!initialized) {
-      error = new lib.Error('DATA_CORRUPTION_ON_CONNECTION_BREAKDOWN', 'Data connection broke during data read');
-    }
-    finish();
-  }
-
-  function onRecord (datahash) {
-    if (prophash.singleshot) {
-      if (data.length) {
-        if ('function' === typeof data.destroy) {
-          data.destroy();
-        }
-      }
-      return;
-    }
-  }
-
-  function onInitiated() {
-    initialized = true;
-    if (!prophash.continuous) {
-      finish();
-    }
-  }
-
-  taskRegistry.run('materializeQuery', {
-    sink: prophash.sink,
-    continuous: true,
-    data: data,
-    filter: prophash.filter,
-    onRecordCreation: onRecord,
-    onInitiated: onInitiated
-  });
-}
-
-module.exports = createReadFromSinkProc;
-
-},{}],53:[function(require,module,exports){
-function createReadFromDataSink(execlib) {
-  'use strict';
-  var lib = execlib.lib,
-    q = lib.q,
-    execSuite = execlib.execSuite,
-    SinkTask = execSuite.SinkTask,
-    readFromSinkProc = require('./proc/readFromSink').bind(null, execlib);
-
-  function ReadFromDataSink(prophash) {
-    SinkTask.call(this,prophash);
-    this.sink = prophash.sink;
-    this.filter = prophash.filter;
-    this.visiblefields = prophash.visiblefields;
-    this.cb = prophash.cb;
-    this.errorcb = prophash.errorcb;
-    this.singleshot = prophash.singleshot;
-  }
-  lib.inherit(ReadFromDataSink, SinkTask);
-  ReadFromDataSink.prototype.__cleanUp = function () {
-    this.cb = null;
-    this.filter = null;
-    this.sink = null;
-    SinkTask.prototype.__cleanUp.call(this);
-  };
-  ReadFromDataSink.prototype.go = function () {
-    readFromSinkProc({
-      sink: this.sink,
-      singleshot: this.singleshot,
-      continuous: this.continuous,
-      filter: this.filter,
-      visiblefields: this.visiblefields,
-      cb: this.cb,
-      errorcb: this.onFail.bind(this)
-    });
-    /*
-    this.sink.subConnect('.', {name:'-', role: 'user', filter: this.filter}).done(
-      this.onSuccess.bind(this),
-      this.onFail.bind(this)
-    );
-    */
-  };
-  ReadFromDataSink.prototype.onSuccess = function (sink) {
-    if(!sink){
-      return;
-    }
-    if(!sink.recordDescriptor){
-      console.error('no recordDescriptor on Sink', sink.modulename, sink.role);
-      return;
-    }
-    readFromSinkProc({
-      sink: sink,
-      cb: this.cb,
-      errorcb: this.errorcb,
-      singleshot: this.singleshot
-    });
-    //lib.destroyASAP(this);
-    this.destroy();
-  };
-  ReadFromDataSink.prototype.onFail = function (reason) {
-    if (this.errorcb) {
-      this.errorcb(reason);
-    }
-    this.destroy();
-  };
-  ReadFromDataSink.prototype.compulsoryConstructionProperties = ['sink','cb'];
-
-  return ReadFromDataSink;
-}
-
-module.exports = createReadFromDataSink;
-
-},{"./proc/readFromSink":52}],54:[function(require,module,exports){
-(function (process){
-function createStreamFromDataSink(execlib) {
-  'use strict';
-  var lib = execlib.lib,
-    q = lib.q,
-    execSuite = execlib.execSuite,
-    SinkTask = execSuite.SinkTask,
-    dataSuite = execlib.dataSuite,
-    DataDecoder = dataSuite.DataDecoder;
-
-  function StreamFromDataSink(prophash) {
-    console.error('StreamFromDataSink is obsolete!');
-    console.error("Use datasink.call('query', {continuous: true/false, singleshot: true/false, filter: <filterdescriptor>}");
-    process.exit(0);
-    return;
-    SinkTask.call(this,prophash);
-    this.sink = prophash.sink;
-    this.filter = prophash.filter;
-    this.defer = prophash.defer;
-    this.subsink = null;
-    this.subSinkDestroyedListener = null;
-  }
-  lib.inherit(StreamFromDataSink, SinkTask);
-  StreamFromDataSink.prototype.__cleanUp = function () {
-    if (this.subSinkDestroyedListener) {
-      this.subSinkDestroyedListener.destroy();
-    }
-    this.subSinkDestroyedListener = null;
-    if (this.subsink) {
-      this.subsink.destroy();
-    }
-    this.subsink = null;
-    this.defer = null;
-    this.filter = null;
-    this.sink = null;
-    SinkTask.prototype.__cleanUp.call(this);
-  };
-  StreamFromDataSink.prototype.go = function () {
-    this.sink.subConnect('.', {name:'-', role: 'user', filter: this.filter}).done(
-      this.onSuccess.bind(this),
-      this.onFail.bind(this)
-    );
-  };
-  StreamFromDataSink.prototype.onSuccess = function (sink) {
-    if(!sink){
-      this.defer.reject(new lib.Error('NO_SINK'));
-      lib.runNext(this.destroy.bind(this));
-      return;
-    }
-    if(!sink.recordDescriptor){
-      console.error('no recordDescriptor on Sink', sink.modulename, sink.role);
-      return;
-    }
-    this.subsink = sink;
-    this.subSinkDestroyedListener = sink.destroyed.attach(this.destroy.bind(this));
-    sink.consumeChannel('d', new DataDecoder(this));
-  };
-  StreamFromDataSink.prototype.onFail = function (reason) {
-    this.defer.reject(reason);
-    lib.runNext(this.destroy.bind(this));
-  };
-  StreamFromDataSink.prototype.beginInit = function () {
-    return q(true);
-  };
-  StreamFromDataSink.prototype.endInit = function () {
-    this.defer.resolve(true);
-    lib.runNext(this.destroy.bind(this));
-    return q(true);
-  };
-  StreamFromDataSink.prototype.create = function (datahash) {
-    this.defer.notify(datahash);
-    return q(true);
-  };
-  StreamFromDataSink.prototype.compulsoryConstructionProperties = ['sink','defer'];
-
-  return StreamFromDataSink;
-}
-
-module.exports = createStreamFromDataSink;
-
-}).call(this,require('_process'))
-},{"_process":55}],55:[function(require,module,exports){
+},{"../methoddescriptors/user":42}],46:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -3413,6 +2557,9 @@ var currentQueue;
 var queueIndex = -1;
 
 function cleanUpNextTick() {
+    if (!draining || !currentQueue) {
+        return;
+    }
     draining = false;
     if (currentQueue.length) {
         queue = currentQueue.concat(queue);
