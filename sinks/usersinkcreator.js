@@ -1,14 +1,13 @@
-function createUserSink(execlib){
+function createUserSink(execlib, ParentServiceSink){
   'use strict';
   var lib = execlib.lib,
       execSuite = execlib.execSuite,
-      ServiceSink = execSuite.registry.get('.').SinkMap.get('user'),
       recordSuite = execlib.dataSuite.recordSuite;
 
   function UserSink(prophash,client){
-    ServiceSink.call(this,prophash,client);
+    ParentServiceSink.call(this,prophash,client);
   }
-  ServiceSink.inherit(UserSink,require('../methoddescriptors/user'));
+  ParentServiceSink.inherit(UserSink,require('../methoddescriptors/user'));
   UserSink.inherit = recordSuite.sinkInheritProc;
   UserSink.prototype.visibleFields = [];
   return UserSink;

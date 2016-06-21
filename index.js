@@ -1,12 +1,24 @@
 function createServicePack(execlib){
   'use strict';
+
+  return {
+    service: {
+      dependencies: ['.']
+    },
+    sinkmap: {
+      dependencies: ['.']
+    },
+    tasks: {
+      dependencies: []
+    }
+  };
+/*
   var ret = require('./clientside')(execlib);
   require('./data/serversideindex')(execlib);
   ret.Service = require('./servicecreator')(execlib);
 
   return ret;
 
-/*
   return {
     Service: require('./servicecreator')(execlib),
     SinkMap: require('./sinkmapcreator')(execlib),

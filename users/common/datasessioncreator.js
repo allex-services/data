@@ -1,8 +1,8 @@
-function createDataSession(execlib){
+function createDataSession(execlib, ParentService){
   'use strict';
   var lib = execlib.lib,
     execSuite = execlib.execSuite,
-    UserSession = execSuite.registry.get('.').Service.prototype.userFactory.get('user').prototype.getSessionCtor('.'),
+    UserSession = ParentService.prototype.userFactory.get('user').prototype.getSessionCtor('.'),
     Channel = UserSession.Channel,
     dataSuite = execlib.dataSuite/*,
     QueryClone = dataSuite.QueryClone*/;

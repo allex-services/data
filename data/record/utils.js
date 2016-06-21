@@ -118,10 +118,10 @@ function createRecordUtils(execlib,suite){
       }
     });
   }
-  var sp = execlib.execSuite.registry.get('.');
+  var sm = execlib.execSuite.registry.getClientSide('.');
   suite.duplicateFieldValueInArrayOfHashes = duplicateFieldValueInArrayOfHashes;
   suite.inherit = inherit;
-  var sinkPreInheritProc = sinkInheritProcCreator('DataSink',sp.SinkMap.get('user').inherit); 
+  var sinkPreInheritProc = sinkInheritProcCreator('DataSink',sm.get('user').inherit); 
   function sinkInheritProc(childCtor,methodDescriptors,visiblefieldsarray,classStorageDescriptor){
     sinkPreInheritProc.call(this,childCtor,methodDescriptors,visiblefieldsarray);
     var recordDescriptor = {};

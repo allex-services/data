@@ -29,8 +29,8 @@ function createDataSuite(execlib){
     dataSuite.MemoryStorage = require('./storage/memorycreator')(execlib, MemoryStorageBase);
     dataSuite.MemoryListStorage = require('./storage/memorylistcreator')(execlib, MemoryStorageBase);
 
-    dataSuite.storageRegistry.add('memory', dataSuite.MemoryListStorage);
-    dataSuite.storageRegistry.add('memorylist', dataSuite.MemoryListStorage);
+    dataSuite.storageRegistry.register('memory', dataSuite.MemoryListStorage);
+    dataSuite.storageRegistry.register('memorylist', dataSuite.MemoryListStorage);
 }
 
 module.exports = createDataSuite;

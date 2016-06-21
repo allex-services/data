@@ -1,17 +1,20 @@
-function createDataService(execlib){
+function createDataService(execlib, ParentService){
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
     execSuite = execlib.execSuite,
-    Service = execSuite.registry.get('.').Service,
     User = execSuite.User,
-    ParentService = Service,
     dataSuite = execlib.dataSuite,
     recordSuite = dataSuite.recordSuite,
     NullStorage = dataSuite.NullStorage,
     SpawningDataManager = dataSuite.SpawningDataManager,
-    DataSession = require('./users/common/datasessioncreator')(execlib),
+    DataSession = require('./users/common/datasessioncreator')(execlib, ParentService),
     userSessionFactory = execSuite.userSessionFactoryCreator(DataSession);
+
+  if (!execlib.dataSuite) {
+    require('./data')(execlib);
+  }
+  require('./data/serversideindex')(execlib, ParentService);
 
   function factoryCreator(parentFactory){
     return {

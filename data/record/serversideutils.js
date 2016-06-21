@@ -1,4 +1,4 @@
-function createServerSideRecordUtils(execlib,suite){
+function createServerSideRecordUtils(execlib,suite,ParentService){
   function userInheritProcCreator(classname,originalUIP){//originalUIP <=> original User inheritance proc
     //classname not used, but may be useful for error reporting...
     return function(childCtor,methodDescriptors,stateFilterCtor,visiblefieldsarray){
@@ -13,8 +13,7 @@ function createServerSideRecordUtils(execlib,suite){
       //console.log('after inherit',childCtor.prototype.visibleFields,'out of parent',this.prototype.visibleFields,'and',visiblefieldsarray);
     };
   }
-  var sp = execlib.execSuite.registry.get('.');
-  suite.userInheritProc = userInheritProcCreator('DataUser',sp.Service.prototype.userFactory.get('user').inherit);
+  suite.userInheritProc = userInheritProcCreator('DataUser',ParentService.prototype.userFactory.get('user').inherit);
 }
 
 module.exports = createServerSideRecordUtils;
