@@ -5,10 +5,8 @@ function createUser(execlib,ParentUser,userSessionFactory){
       dataSuite = execlib.dataSuite,
       recordSuite = dataSuite.recordSuite,
       execSuite = execlib.execSuite,
-      StreamDistributor = execSuite.StreamDistributor,
-      _User = execSuite.User;
+      StreamDistributor = execSuite.StreamDistributor;
 
-  ParentUser = ParentUser||_User;
   function User(prophash){
     ParentUser.call(this,prophash);
   }

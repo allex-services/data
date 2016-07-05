@@ -3,17 +3,27 @@ function createRecord(execlib){
   var lib = execlib.lib;
 
   function DefaultHandler(desc){
+    var evaldesc;
     this.proc = null;
+    this._value = desc;
     if(lib.isString(desc) && desc.length>4 && desc.indexOf('{{')===0 && desc.lastIndexOf('}}')===desc.length-2){
-      this.proc = function(){
+      evaldesc = desc.substring(2, desc.length-2);
+      this.proc = function(destructionhash){
+        if (destructionhash && destructionhash.__dodestroy===true) {
+          evaldesc = null;
+          return;
+        }
+        return eval(evaldesc);
       };
     }
-    this._value = desc;
     if('undefined' === typeof this._value){
       this._value = null;
     }
   }
   DefaultHandler.prototype.destroy = function(){
+    if (this.proc) {
+      this.proc({__dodestroy: true});
+    }
     this.proc = null;
     this._value = null;
   };
@@ -47,10 +57,24 @@ function createRecord(execlib){
     return val;
   };
 
+  function filterOut(sourcefields, visiblefields) {
+    var ret = sourcefields.reduce(function (result, field) {
+      if (visiblefields.indexOf(field.name) >= 0) {
+        result.push(field);
+      }
+      return result;
+    }, []);
+    visiblefields = null;
+    return ret;
+  }
+
   function Record(prophash,visiblefields){
     if(!(prophash && prophash.fields)){
       console.trace();
       throw "Record needs the fields array in its property hash";
+    }
+    if (lib.isArray(visiblefields)) {
+      prophash.fields = filterOut(prophash.fields, visiblefields);
     }
     this.primaryKey = prophash.primaryKey;
     this.templateObj = execlib.dataSuite.ObjectHive.give(prophash.fields);

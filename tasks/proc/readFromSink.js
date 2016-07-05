@@ -67,6 +67,7 @@ function createReadFromSinkProc (execlib, prophash) {
     continuous: true,
     data: data,
     filter: prophash.filter,
+    visiblefields: prophash.visiblefields,
     onRecordCreation: onRecord,
     onInitiated: onInitiated
   });

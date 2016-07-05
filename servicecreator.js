@@ -3,7 +3,6 @@ function createDataService(execlib, ParentService){
   var lib = execlib.lib,
     q = lib.q,
     execSuite = execlib.execSuite,
-    User = execSuite.User,
     dataSuite = execlib.dataSuite,
     recordSuite = dataSuite.recordSuite,
     NullStorage = dataSuite.NullStorage,

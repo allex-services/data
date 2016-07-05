@@ -3,8 +3,8 @@ function createMemoryStorage(execlib, MemoryStorageBase){
   var lib = execlib.lib,
     q = lib.q;
 
-  function MemoryStorage (storagedescriptor, data) {
-    MemoryStorageBase.call(this, storagedescriptor, data);
+  function MemoryStorage (storagedescriptor, visiblefields, data) {
+    MemoryStorageBase.call(this, storagedescriptor, visiblefields, data);
   }
   lib.inherit(MemoryStorage, MemoryStorageBase);
   MemoryStorage.prototype._createData = function () {

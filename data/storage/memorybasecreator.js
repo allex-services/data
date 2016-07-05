@@ -4,8 +4,8 @@ function createMemoryStorageBase (execlib) {
     dataSuite = execlib.dataSuite,
     StorageBase = dataSuite.StorageBase;
 
-  function MemoryStorageBase(storagedescriptor,data){
-    StorageBase.call(this,storagedescriptor);
+  function MemoryStorageBase(storagedescriptor,visiblefields,data){
+    StorageBase.call(this,storagedescriptor,visiblefields);
     this.mydata = !data;
     this.data = data || this._createData();
   }

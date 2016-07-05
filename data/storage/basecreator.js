@@ -77,13 +77,13 @@ function createStorageBase(execlib){
   };
 
   var __id = 0;
-  function StorageBase(storagedescriptor){
+  function StorageBase(storagedescriptor, visiblefields){
     //this.__id = process.pid+':'+(++__id);
     if(!(storagedescriptor && storagedescriptor.record)){
       console.trace();
       console.log("No storagedescriptor.record!");
     }
-    this.__record = new Record(storagedescriptor.record);
+    this.__record = new Record(storagedescriptor.record, visiblefields);
     this.events = storagedescriptor.events ? new StorageBaseEventing : null;
   };
   StorageBase.prototype.destroy = function(){

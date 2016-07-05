@@ -63,9 +63,14 @@ function createQueryBase(execlib){
     console.log('Query onStream',item);
     */
     switch(item[0]){
+      case 'r1':
+        if(this.isOK(item[2])){
+          return [item[0], item[1], this.record.filterHash(item[2])];
+        }
+        break;
       case 'c':
         if(this.isOK(item[1])){
-          return ['c', this.record.filterHash(item[1])];
+          return [item[0], this.record.filterHash(item[1])];
         }
         break;
       case 'ue':

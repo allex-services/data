@@ -17,6 +17,7 @@ function createMaterializeQueryTask(execlib){
     this.filter = prophash.filter;
     this.singleshot = prophash.singleshot;
     this.continuous = prophash.continuous;
+    this.visiblefields = prophash.visiblefields;
     this.data = prophash.data;
     this.onInitiated = prophash.onInitiated;
     this.onRecordCreation = prophash.onRecordCreation;
@@ -74,6 +75,7 @@ function createMaterializeQueryTask(execlib){
     this.onRecordCreation = null;
     this.onInitiated = null;
     this.data = null;
+    this.visiblefields = null;
     this.continuous = null;
     this.singleshot = null;
     this.filter = null;
@@ -89,7 +91,7 @@ function createMaterializeQueryTask(execlib){
     this.storage = new MemoryStorage({
       events: this.onInitiated || this.onRecordCreation || this.onNewRecord || this.onUpdate || this.onRecordUpdate || this.onDelete || this.onRecordDeletion,
       record: this.sink.recordDescriptor
-    },this.data);
+    },this.visiblefields,this.data);
     this.decoder = new DataDecoder(this.storage);
     if(this.onInitiated){
       this.initiatedListener = this.storage.events.initiated.attach(this.onInitiated);

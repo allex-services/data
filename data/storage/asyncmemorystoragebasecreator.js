@@ -5,11 +5,11 @@ function createAsyncMemoryStorageBase (execlib) {
     dataSuite = execlib.dataSuite,
     MemoryStorageBase = dataSuite.MemoryStorageBase;
 
-  function AsyncMemoryStorageBase(storagedescriptor, data) {
+  function AsyncMemoryStorageBase(storagedescriptor, visiblefields, data) {
     this.q = new lib.Fifo();
     this.readyDefer = q.defer();
     this.readyDefer.promise.then(this.setReady.bind(this));
-    MemoryStorageBase.call(this, storagedescriptor, data);
+    MemoryStorageBase.call(this, storagedescriptor, visiblefields, data);
   }
   lib.inherit(AsyncMemoryStorageBase, MemoryStorageBase);
   AsyncMemoryStorageBase.prototype.destroy = function () {
