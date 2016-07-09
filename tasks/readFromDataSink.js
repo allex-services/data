@@ -14,9 +14,13 @@ function createReadFromDataSink(execlib) {
     this.cb = prophash.cb;
     this.errorcb = prophash.errorcb;
     this.singleshot = prophash.singleshot;
+    this.continuous = prophash.continuous;
   }
   lib.inherit(ReadFromDataSink, SinkTask);
   ReadFromDataSink.prototype.__cleanUp = function () {
+    this.continuous = null;
+    this.singleshot = null;
+    this.errorcb = null;
     this.cb = null;
     this.filter = null;
     this.sink = null;

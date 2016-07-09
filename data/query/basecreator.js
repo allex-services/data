@@ -66,7 +66,9 @@ function createQueryBase(execlib){
       case 'r1':
         if(this.isOK(item[2])){
           return [item[0], item[1], this.record.filterHash(item[2])];
-        }
+        }/* else {
+          console.log(this.filter(), 'says', item[2], 'is NOT OK');
+        }*/
         break;
       case 'c':
         if(this.isOK(item[1])){
