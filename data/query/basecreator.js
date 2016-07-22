@@ -36,7 +36,7 @@ function createQueryBase(execlib){
     return flt ? flt.isOK(datahash) : true;
   };
   QueryBase.prototype.processUpdateExact = function(original,_new){
-    var ook = this.isOK(original),
+    var ook = original && this.isOK(original),
         _nok = this.isOK(_new),
         uf;
     if(ook){
