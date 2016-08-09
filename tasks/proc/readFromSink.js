@@ -46,7 +46,7 @@ function createReadFromSinkProc (execlib, prophash) {
 
   function onRecord (datahash) {
     //console.log('onRecord', datahash);
-    if (prophash.singleshot) {
+    if (prophash && prophash.singleshot) {
       if (data.length) {
         if ('function' === typeof data.destroy) {
           data.destroy();
