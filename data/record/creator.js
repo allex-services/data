@@ -131,6 +131,18 @@ function createRecord(execlib){
   Record.prototype.filterObject = function(obj){
     return new(this.templateObj.ctor)(this.filterHash(obj));
   };
+  function putter(fbn, ret, val, name) {
+    var f = fbn.get(name);
+    if(f) {
+      ret[name] = f.valueFor(val);
+    }
+  }
+  Record.prototype.filterOut = function(obj){
+    var ret = {}, _r = ret;
+    lib.traverseShallow(obj, putter.bind(null, this.fieldsByName, _r));
+    _r = null;
+    return ret;
+  };
   Record.prototype.filterStateStream = function(item){
     if(item.p && item.p.length===1){
       if(item.o==='u'){

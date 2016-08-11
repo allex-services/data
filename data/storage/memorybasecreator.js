@@ -65,11 +65,6 @@ function createMemoryStorageBase (execlib) {
     }else{
       var start = query.offset, end=Math.min(start+query.limit,this.data.length);
       this._traverseDataRange(processRead.bind(null, this.__id,query, defer), start, end).then(defer.resolve.bind(defer, null));
-      /*
-      for(var i=start; i<end; i++){
-        processRead(query,defer,this.__record.filterHash(this.data[i]));
-      }
-      */
     }
   };
   MemoryStorageBase.prototype.updateFrom = function(countobj,record,updateitem,updateitemname){
