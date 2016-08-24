@@ -21,8 +21,10 @@ function createSpawningDataManager(execlib) {
   }
   lib.inherit(EventQ,lib.Destroyable);
   EventQ.prototype.__cleanUp = function(){
+    this.dump();
     this.q.destroy();
     this.q = null;
+    this.target = null;
     lib.Destroyable.prototype.__cleanUp.call(this);
   };
   EventQ.prototype.isOK = function(item){
@@ -152,11 +154,14 @@ function createSpawningDataManager(execlib) {
       runner.onStream.bind(runner)
     );
     manager.read(this, d);
+    d = null;
+    eventq = null;
   };
   RunningQuery.prototype.onRunnerInitiated = function (eventq) {
     var runner = eventq.target;
     eventq.dump();
     eventq.destroy();
+    eventq = null;
     if (!runner) {
       return;
     }
@@ -225,6 +230,7 @@ function createSpawningDataManager(execlib) {
       return;
     }
     this.runningQueries.remove(filterstring);
+    filterstring = null;
   };
 
   return SpawningDataManager;
