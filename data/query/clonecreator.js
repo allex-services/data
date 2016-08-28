@@ -24,13 +24,13 @@ function createQueryClone(execlib,QueryBase){
     //QueryBase.prototype.destroy.call(this); //not this, it would destroy the original record
   };
   QueryClone.prototype.filter = function(){
-    return this.original.filter();
+    return this.original ? this.original.filter() : null;
   };
   QueryClone.prototype.limit = function(){
-    return this.original.limit();
+    return this.original ? this.original.limit() : 0;
   }
   QueryClone.prototype.offset = function(){
-    return this.original.offset();
+    return this.original ? this.original.offset() : 0;
   };
   return QueryClone;
 }

@@ -5,7 +5,8 @@ module.exports = {
   }],
   update: [{
     title: 'Filter descriptor',
-    type: 'object'
+    type: 'object',
+    required: false
   },{
     title: 'Operation descriptor',
     type: 'object'
@@ -15,6 +16,7 @@ module.exports = {
   }],
   delete: [{
     title: 'Filter descriptor',
-    type: 'object'
+    type: 'object',
+    required: false
   }]
 };
