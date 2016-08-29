@@ -1,4 +1,4 @@
-function createDataSuite(execlib){
+function createDataSuite(execlib, datafilterslib){
   'use strict';
   var execSuite = execlib.execSuite,
     dataSuite = {
@@ -8,7 +8,7 @@ function createDataSuite(execlib){
     execlib.dataSuite = dataSuite;
     dataSuite.ObjectHive = require('./objectcreator')(execlib);
     require('./utils')(execlib);
-    dataSuite.filterFactory = require('./filters/factorycreator')(execlib);
+    dataSuite.filterFactory = datafilterslib;//require('./filters/factorycreator')(execlib);
     dataSuite.QueryBase = require('./query/basecreator')(execlib);
     dataSuite.QueryClone = require('./query/clonecreator')(execlib);
     var DataCoder = require('./codercreator')(execlib),

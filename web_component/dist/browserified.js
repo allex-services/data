@@ -2,6 +2,31 @@
 // shim for using process in browser
 
 var process = module.exports = {};
+
+// cached from whatever global is present so that test runners that stub it
+// don't break things.  But we need to wrap it in a try catch in case it is
+// wrapped in strict mode code which doesn't define any globals.  It's inside a
+// function because try/catches deoptimize in certain engines.
+
+var cachedSetTimeout;
+var cachedClearTimeout;
+
+(function () {
+  try {
+    cachedSetTimeout = setTimeout;
+  } catch (e) {
+    cachedSetTimeout = function () {
+      throw new Error('setTimeout is not defined');
+    }
+  }
+  try {
+    cachedClearTimeout = clearTimeout;
+  } catch (e) {
+    cachedClearTimeout = function () {
+      throw new Error('clearTimeout is not defined');
+    }
+  }
+} ())
 var queue = [];
 var draining = false;
 var currentQueue;
@@ -26,7 +51,7 @@ function drainQueue() {
     if (draining) {
         return;
     }
-    var timeout = setTimeout(cleanUpNextTick);
+    var timeout = cachedSetTimeout(cleanUpNextTick);
     draining = true;
 
     var len = queue.length;
@@ -43,7 +68,7 @@ function drainQueue() {
     }
     currentQueue = null;
     draining = false;
-    clearTimeout(timeout);
+    cachedClearTimeout(timeout);
 }
 
 process.nextTick = function (fun) {
@@ -55,7 +80,7 @@ process.nextTick = function (fun) {
     }
     queue.push(new Item(fun, args));
     if (queue.length === 1 && !draining) {
-        setTimeout(drainQueue, 0);
+        cachedSetTimeout(drainQueue, 0);
     }
 };
 
@@ -95,10 +120,10 @@ process.chdir = function (dir) {
 process.umask = function() { return 0; };
 
 },{}],2:[function(require,module,exports){
-ALLEX.execSuite.registry.registerClientSide('allex_dataservice',require('./sinkmapcreator')(ALLEX, ALLEX.execSuite.registry.getClientSide('.')));
-ALLEX.execSuite.taskRegistry.register("allex_dataservice",require('./taskcreator')(ALLEX));
+ALLEX.execSuite.registry.registerClientSide('allex_dataservice',require('./sinkmapcreator')(ALLEX, ALLEX.execSuite.registry.getClientSide('.'), ALLEX.execSuite.libRegistry.get('allex_datafilterslib')));
+ALLEX.execSuite.taskRegistry.register("allex_dataservice",require('./taskcreator')(ALLEX, ALLEX.execSuite.libRegistry.get('allex_datafilterslib')));
 
-},{"./sinkmapcreator":44,"./taskcreator":47}],3:[function(require,module,exports){
+},{"./sinkmapcreator":26,"./taskcreator":29}],3:[function(require,module,exports){
 function createDataCoder(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -459,437 +484,7 @@ function createDataDistributor(execlib){
 module.exports = createDataDistributor;
 
 },{}],7:[function(require,module,exports){
-function createAllPassFilter(execlib,Filter){
-  'use strict';
-  var lib = execlib.lib;
-  function AllPass(filterdescriptor){
-    Filter.call(this,filterdescriptor);
-  }
-  lib.inherit(AllPass,Filter);
-  AllPass.prototype.isOK = function(datahash){
-    return true;
-  }
-  return AllPass;
-}
-
-module.exports = createAllPassFilter;
-
-},{}],8:[function(require,module,exports){
-function createAndFilters(execlib,BooleanFilters){
-  'use strict';
-  var lib = execlib.lib;
-
-  function AndFilters(filterdescriptor){
-    BooleanFilters.call(this,filterdescriptor);
-  }
-  lib.inherit(AndFilters,BooleanFilters);
-  AndFilters.prototype.arrayOperation = 'every';
-  return AndFilters;
-}
-
-module.exports = createAndFilters;
-
-},{}],9:[function(require,module,exports){
-function createBooleanFilters(execlib,Filter,filterFactory){
-  'use strict';
-  var lib = execlib.lib;
-
-  function BooleanFilters(filterdescriptor){
-    Filter.call(this,filterdescriptor);
-    this.filters = [];
-    if(!(filterdescriptor && lib.isArray(filterdescriptor.filters))){
-      throw "No filters array in filterdescriptor";
-    }
-    filterdescriptor.filters.forEach(this.addFilter.bind(this));
-  }
-  lib.inherit(BooleanFilters,Filter);
-  BooleanFilters.prototype.destroy = function(){
-    lib.arryDestroyAll(this.filters);
-    this.filters = null;
-    Filter.prototype.destroy.call(this);
-  };
-  BooleanFilters.prototype.addFilter = function(filterdescriptor){
-    this.filters.push(filterFactory.createFromDescriptor(filterdescriptor));
-  };
-  function isFilterOk(datahash,filter){
-    var ret = filter.isOK(datahash);
-    filter = null;
-    datahash = null;
-    return ret;
-  }
-  BooleanFilters.prototype.isOK = function(datahash){
-    var ifok = isFilterOk.bind(null,datahash);
-    var ret = this.filters[this.arrayOperation](ifok);
-    datahash = null;
-    ifok = null;
-    return ret;
-  };
-  return BooleanFilters;
-}
-
-module.exports = createBooleanFilters;
-
-},{}],10:[function(require,module,exports){
-function createContainsFilter(execlib,StringFieldFilter){
-  'use strict';
-  var lib = execlib.lib;
-
-  function ContainsFilter(filterdescriptor){
-    StringFieldFilter.call(this,filterdescriptor);
-  }
-  lib.inherit(ContainsFilter,StringFieldFilter);
-  ContainsFilter.prototype.isFieldOK = function(fieldvalue){
-    return StringFieldFilter.prototype.isFieldOK(fieldvalue) && 
-      (fieldvalue.firstIndexOf(this.fieldvalue)>=0);
-  };
-  return ContainsFilter;
-}
-
-module.exports = createContainsFilter;
-
-},{}],11:[function(require,module,exports){
-function createFilter(execlib){
-  'use strict';
-  function Filter(filterdescriptor){
-    this.__descriptor = filterdescriptor;
-  }
-  Filter.prototype.destroy = function(){
-    this.__descriptor = null;
-  };
-  Filter.prototype.isOK = function(datahash){
-    throw "Generic filter does not implement isOK";
-  };
-  Filter.prototype.descriptor = function(){
-    return this.__descriptor;
-  };
-  return Filter;
-}
-
-module.exports = createFilter;
-
-},{}],12:[function(require,module,exports){
-function createEndsWithFilter(execlib,StringFieldFilter){
-  'use strict';
-  var lib = execlib.lib;
-
-  function EndsWithFilter(filterdescriptor){
-    StringFieldFilter.call(this,filterdescriptor);
-  }
-  lib.inherit(EndsWithFilter,StringFieldFilter);
-  EndsWithFilter.prototype.isFieldOK = function(fieldvalue){
-    return StringFieldFilter.prototype.isFieldOK(fieldvalue) && 
-      (fieldvalue.firstIndexOf(this.fieldvalue)===fieldvalue.length-this.fieldvalue.length);
-  };
-  return EndsWithFilter;
-}
-
-module.exports = createEndsWithFilter;
-
-},{}],13:[function(require,module,exports){
-function createEQFilter(execlib,FieldFilter){
-  'use strict';
-  var lib = execlib.lib;
-
-  function EQFilter(filterdescriptor){
-    FieldFilter.call(this,filterdescriptor);
-  }
-  lib.inherit(EQFilter,FieldFilter);
-  EQFilter.prototype.isFieldOK = function(fieldvalue){
-    return fieldvalue===this.fieldvalue;
-  };
-  return EQFilter;
-}
-
-module.exports = createEQFilter;
-
-},{}],14:[function(require,module,exports){
-function createExistsFilter(execlib,FieldFilter){
-  'use strict';
-  var lib = execlib.lib;
-
-  function ExistsFilter(filterdescriptor){
-    FieldFilter.call(this,filterdescriptor);
-  }
-  lib.inherit(ExistsFilter,FieldFilter);
-  ExistsFilter.prototype.isFieldOK = function(fieldvalue){
-    return (!(fieldvalue===null || typeof fieldvalue === 'undefined'));
-  };
-  return ExistsFilter;
-}
-
-module.exports = createExistsFilter;
-
-},{}],15:[function(require,module,exports){
-function createFilterFactory(execlib){
-  'use strict';
-  var lib = execlib.lib,
-    Filter = require('./creator')(execlib),
-    AllPass = require('./allpasscreator')(execlib,Filter);
-
-  function Factory(){
-    lib.Map.call(this);
-  }
-  lib.inherit(Factory,lib.Map);
-  Factory.prototype.createFromDescriptor = function(filterdescriptor){
-    if(!filterdescriptor){
-      return new AllPass;
-    }
-    var op = filterdescriptor.op;
-    if(!op){
-      return new AllPass;
-    }
-    var ctor = this.get(op);
-    if(!ctor){
-      console.log('No Filter factory for operator "'+op+'"');
-      return null;
-    }
-    return new ctor(filterdescriptor);
-  };
-
-  var factory = new Factory,
-    HashFilter = require('./hashfiltercreator')(execlib,Filter),
-    NotFilter = require('./notfiltercreator')(execlib,Filter,factory),
-    BooleanFilters = require('./booleanfilterscreator')(execlib,Filter,factory),
-    AndFilters = require('./andfilterscreator')(execlib,BooleanFilters),
-    OrFilters = require('./orfilterscreator')(execlib,BooleanFilters),
-    FieldFilter = require('./fieldfiltercreator')(execlib,Filter),
-    ExistsFilter = require('./existsfiltercreator')(execlib,FieldFilter),
-    NotExistsFilter = require('./notexistsfiltercreator')(execlib,FieldFilter),
-    EQFilter = require('./eqfiltercreator')(execlib,FieldFilter),
-    GTFilter = require('./gtfiltercreator')(execlib,FieldFilter),
-    GTEFilter = require('./gtfiltercreator')(execlib,FieldFilter),
-    LTFilter = require('./gtfiltercreator')(execlib,FieldFilter),
-    LTEFilter = require('./gtfiltercreator')(execlib,FieldFilter),
-    InFilter = require('./infiltercreator')(execlib,FieldFilter),
-    StringFieldFilter = require('./stringfieldfiltercreator')(execlib,FieldFilter),
-    StartsWithFilter = require('./startswithfiltercreator')(execlib,StringFieldFilter),
-    EndsWithFilter = require('./endswithfiltercreator')(execlib,StringFieldFilter),
-    ContainsFilter = require('./containsfiltercreator')(execlib,StringFieldFilter);
-
-  factory.add('hash',HashFilter);
-  factory.add('not',NotFilter);
-  factory.add('and',AndFilters);
-  factory.add('or',OrFilters);
-  factory.add('exists',ExistsFilter);
-  factory.add('notexists',NotExistsFilter);
-  factory.add('eq',EQFilter);
-  factory.add('gt',GTFilter);
-  factory.add('gte',GTEFilter);
-  factory.add('lt',LTFilter);
-  factory.add('lte',LTEFilter);
-  factory.add('in',InFilter);
-  factory.add('startswith',StartsWithFilter);
-  factory.add('endswith',EndsWithFilter);
-  factory.add('contains',ContainsFilter);
-
-  Factory.prototype.extend = function (filtername, creatorfunc) {
-    var filter = creatorfunc(execlib,{
-      Filter: Filter,
-      AllPassFilter: AllPass,
-      BooleanFilters: BooleanFilters,
-      FieldFilter: FieldFilter,
-      StringFieldFilter: StringFieldFilter
-    });
-    if (filter) {
-      this.replace(filtername, filter);
-    } else {
-      console.log('No filter produced for',filtername,'from',creatorfunc.toString());
-    }
-  };
-  
-  return factory;
-}
-
-module.exports = createFilterFactory;
-
-},{"./allpasscreator":7,"./andfilterscreator":8,"./booleanfilterscreator":9,"./containsfiltercreator":10,"./creator":11,"./endswithfiltercreator":12,"./eqfiltercreator":13,"./existsfiltercreator":14,"./fieldfiltercreator":16,"./gtfiltercreator":17,"./hashfiltercreator":18,"./infiltercreator":19,"./notexistsfiltercreator":20,"./notfiltercreator":21,"./orfilterscreator":22,"./startswithfiltercreator":23,"./stringfieldfiltercreator":24}],16:[function(require,module,exports){
-function createFieldFilter(execlib,Filter){
-  'use strict';
-  var lib = execlib.lib;
-  function FieldFilter(filterdescriptor){
-    Filter.call(this,filterdescriptor);
-    this.fieldname = filterdescriptor.field;
-    if(!this.fieldname){
-      throw "No fieldname in filterdescriptor";
-    }
-    this.fieldvalue = filterdescriptor.value;
-  }
-  lib.inherit(FieldFilter,Filter);
-  FieldFilter.prototype.destroy = function(){
-    this.fieldname = null;
-    Filter.prototype.destroy.call(this);
-  };
-  FieldFilter.prototype.isOK = function(datahash){
-    //makes no sense to test for presence of this.fieldname in datahash
-    if('function' === typeof datahash.get){
-      return this.isFieldOK(datahash.get(this.fieldname));
-    }else{
-      return this.isFieldOK(datahash[this.fieldname]);
-    }
-  };
-  FieldFilter.prototype.isFieldOK = function(fieldvalue){
-    throw "Generic FieldFilter does not implement isFieldOK";
-  };
-  return FieldFilter;
-};
-
-module.exports = createFieldFilter;
-
-},{}],17:[function(require,module,exports){
-function createGTFilter(execlib,FieldFilter){
-  'use strict';
-  var lib = execlib.lib;
-
-  function GTFilter(filterdescriptor){
-    FieldFilter.call(this,filterdescriptor);
-  }
-  lib.inherit(GTFilter,FieldFilter);
-  GTFilter.prototype.isFieldOK = function(fieldvalue){
-    return fieldvalue>this.fieldvalue;
-  };
-  return GTFilter;
-}
-
-module.exports = createGTFilter;
-
-},{}],18:[function(require,module,exports){
-function createHashFilter(execlib,Filter){
-  'use strict';
-  var lib = execlib.lib;
-
-  function HashFilter(filterdescriptor){
-    Filter.call(this,filterdescriptor);
-    this.hash = filterdescriptor.d;
-  }
-  lib.inherit(HashFilter,Filter);
-  HashFilter.prototype.destroy = function(){
-    this.hash = null;
-  };
-  HashFilter.prototype.isOK = function(record){
-    return record.matches(this.hash);
-  };
-  return HashFilter;
-}
-
-module.exports = createHashFilter;
-
-
-},{}],19:[function(require,module,exports){
-function createInFilter(execlib,FieldFilter){
-  'use strict';
-  var lib = execlib.lib;
-
-  function InFilter(filterdescriptor){
-    FieldFilter.call(this,filterdescriptor);
-  }
-  lib.inherit(InFilter,FieldFilter);
-  InFilter.prototype.isFieldOK = function(fieldvalue){
-    if (!lib.isArray(this.fieldvalue)) {
-      throw new lib.Error('value for "in" filter needs to be an array');
-    }
-    return this.fieldvalue.indexOf(fieldvalue) >= 0;
-  };
-  return InFilter;
-}
-
-module.exports = createInFilter;
-
-},{}],20:[function(require,module,exports){
-function createNotExistsFilter(execlib,FieldFilter){
-  'use strict';
-  var lib = execlib.lib;
-
-  function NotExistsFilter(filterdescriptor){
-    FieldFilter.call(this,filterdescriptor);
-  }
-  lib.inherit(NotExistsFilter,FieldFilter);
-  NotExistsFilter.prototype.isFieldOK = function(fieldvalue){
-    console.log(this.fieldname,'not exists ok?',fieldvalue);
-    return fieldvalue===null || typeof fieldvalue === 'undefined';
-  };
-  return NotExistsFilter;
-}
-
-module.exports = createNotExistsFilter;
-
-
-},{}],21:[function(require,module,exports){
-function createNotFilter(execlib,Filter,factory){
-  'use strict';
-  var lib = execlib.lib;
-  function NotFilter(filterdescriptor ){
-    Filter.call(this,filterdescriptor );
-    if(!(filterdescriptor && 'filter' in filterdescriptor)){
-      throw "No filter field in filterdescriptor";
-    }
-    this.filter = factory.createFromDescriptor(filterdescriptor.filter);
-  }
-  lib.inherit(NotFilter,Filter);
-  NotFilter.prototype.destroy = function(){
-    this.filter.destroy();
-    this.filter = null;
-    Filter.prototype.destroy.call(this);
-  };
-  NotFilter.prototype.isOK = function(datahash){
-    return !(this.filter.isOK(datahash));
-  };
-  return NotFilter;
-}
-
-module.exports = createNotFilter;
-
-},{}],22:[function(require,module,exports){
-function createOrFilters(execlib,BooleanFilters){
-  'use strict';
-  var lib = execlib.lib;
-
-  function OrFilters(filterdescriptor){
-    BooleanFilters.call(this,filterdescriptor);
-  }
-  lib.inherit(OrFilters,BooleanFilters);
-  OrFilters.prototype.arrayOperation = 'some';
-  return OrFilters;
-}
-
-module.exports = createOrFilters;
-
-},{}],23:[function(require,module,exports){
-function createStartsWithFilter(execlib,StringFieldFilter){
-  'use strict';
-  var lib = execlib.lib;
-
-  function StartsWithFilter(filterdescriptor){
-    StringFieldFilter.call(this,filterdescriptor);
-  }
-  lib.inherit(StartsWithFilter,StringFieldFilter);
-  StartsWithFilter.prototype.isFieldOK = function(fieldvalue){
-    return StringFieldFilter.prototype.isFieldOK(fieldvalue) && 
-      (fieldvalue.firstIndexOf(this.fieldvalue)===0);
-  };
-  return StartsWithFilter;
-}
-
-module.exports = createStartsWithFilter;
-
-},{}],24:[function(require,module,exports){
-function createStringFieldFilter(execlib,FieldFilter){
-  'use strict';
-  var lib = execlib.lib;
-
-  function StringFieldFilter(filterdescriptor){
-    FieldFilter.call(this,filterdescriptor);
-  }
-  lib.inherit(StringFieldFilter,FieldFilter);
-  StringFieldFilter.prototype.isFieldOK = function(fieldvalue){
-    return lib.isString(fieldvalue);
-  };
-  return StringFieldFilter;
-}
-
-module.exports = createStringFieldFilter;
-
-},{}],25:[function(require,module,exports){
-function createDataSuite(execlib){
+function createDataSuite(execlib, datafilterslib){
   'use strict';
   var execSuite = execlib.execSuite,
     dataSuite = {
@@ -899,7 +494,7 @@ function createDataSuite(execlib){
     execlib.dataSuite = dataSuite;
     dataSuite.ObjectHive = require('./objectcreator')(execlib);
     require('./utils')(execlib);
-    dataSuite.filterFactory = require('./filters/factorycreator')(execlib);
+    dataSuite.filterFactory = datafilterslib;//require('./filters/factorycreator')(execlib);
     dataSuite.QueryBase = require('./query/basecreator')(execlib);
     dataSuite.QueryClone = require('./query/clonecreator')(execlib);
     var DataCoder = require('./codercreator')(execlib),
@@ -926,7 +521,7 @@ function createDataSuite(execlib){
 
 module.exports = createDataSuite;
 
-},{"./codercreator":3,"./decodercreator":4,"./distributedmanagercreator":5,"./distributorcreator":6,"./filters/factorycreator":15,"./managercreator":26,"./objectcreator":27,"./query/basecreator":28,"./query/clonecreator":29,"./record":31,"./spawningmanagercreator":33,"./storage/asyncmemorystoragebasecreator":34,"./storage/basecreator":35,"./storage/clonecreator":36,"./storage/memorybasecreator":37,"./storage/memorycreator":38,"./storage/memorylistcreator":39,"./storage/nullcreator":40,"./utils":41}],26:[function(require,module,exports){
+},{"./codercreator":3,"./decodercreator":4,"./distributedmanagercreator":5,"./distributorcreator":6,"./managercreator":8,"./objectcreator":9,"./query/basecreator":10,"./query/clonecreator":11,"./record":13,"./spawningmanagercreator":15,"./storage/asyncmemorystoragebasecreator":16,"./storage/basecreator":17,"./storage/clonecreator":18,"./storage/memorybasecreator":19,"./storage/memorycreator":20,"./storage/memorylistcreator":21,"./storage/nullcreator":22,"./utils":23}],8:[function(require,module,exports){
 (function (process){
 function createDataManager(execlib){
   'use strict';
@@ -1081,7 +676,7 @@ function createDataManager(execlib){
 module.exports = createDataManager;
 
 }).call(this,require('_process'))
-},{"_process":1}],27:[function(require,module,exports){
+},{"_process":1}],9:[function(require,module,exports){
 function createDataObject(execlib){
   'use strict';
   var lib = execlib.lib;
@@ -1258,7 +853,7 @@ function createDataObject(execlib){
 
 module.exports = createDataObject;
 
-},{}],28:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 function createQueryBase(execlib){
   'use strict';
   function QueryBase(recorddescriptor,visiblefields){
@@ -1297,7 +892,7 @@ function createQueryBase(execlib){
     return flt ? flt.isOK(datahash) : true;
   };
   QueryBase.prototype.processUpdateExact = function(original,_new){
-    var ook = this.isOK(original),
+    var ook = original && this.isOK(original),
         _nok = this.isOK(_new),
         uf;
     if(ook){
@@ -1347,7 +942,7 @@ function createQueryBase(execlib){
 
 module.exports = createQueryBase;
 
-},{}],29:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 function createQueryClone(execlib,QueryBase){
   'use strict';
   var lib = execlib.lib;
@@ -1374,20 +969,20 @@ function createQueryClone(execlib,QueryBase){
     //QueryBase.prototype.destroy.call(this); //not this, it would destroy the original record
   };
   QueryClone.prototype.filter = function(){
-    return this.original.filter();
+    return this.original ? this.original.filter() : null;
   };
   QueryClone.prototype.limit = function(){
-    return this.original.limit();
+    return this.original ? this.original.limit() : 0;
   }
   QueryClone.prototype.offset = function(){
-    return this.original.offset();
+    return this.original ? this.original.offset() : 0;
   };
   return QueryClone;
 }
 
 module.exports = createQueryClone;
 
-},{}],30:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 function createRecord(execlib){
   'use strict';
   var lib = execlib.lib;
@@ -1521,6 +1116,18 @@ function createRecord(execlib){
   Record.prototype.filterObject = function(obj){
     return new(this.templateObj.ctor)(this.filterHash(obj));
   };
+  function putter(fbn, ret, val, name) {
+    var f = fbn.get(name);
+    if(f) {
+      ret[name] = f.valueFor(val);
+    }
+  }
+  Record.prototype.filterOut = function(obj){
+    var ret = {}, _r = ret;
+    lib.traverseShallow(obj, putter.bind(null, this.fieldsByName, _r));
+    _r = null;
+    return ret;
+  };
   Record.prototype.filterStateStream = function(item){
     if(item.p && item.p.length===1){
       if(item.o==='u'){
@@ -1589,7 +1196,7 @@ function createRecord(execlib){
 
 module.exports = createRecord;
 
-},{}],31:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 function createSuite(execlib){
   'use strict';
 
@@ -1603,7 +1210,7 @@ function createSuite(execlib){
 
 module.exports = createSuite;
 
-},{"./creator":30,"./utils":32}],32:[function(require,module,exports){
+},{"./creator":12,"./utils":14}],14:[function(require,module,exports){
 function createRecordUtils(execlib,suite){
   'use strict';
   var lib = execlib.lib;
@@ -1746,7 +1353,7 @@ function createRecordUtils(execlib,suite){
 
 module.exports = createRecordUtils;
 
-},{}],33:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 function createSpawningDataManager(execlib) {
   'use strict';
   'use strict';
@@ -1770,8 +1377,10 @@ function createSpawningDataManager(execlib) {
   }
   lib.inherit(EventQ,lib.Destroyable);
   EventQ.prototype.__cleanUp = function(){
+    this.dump();
     this.q.destroy();
     this.q = null;
+    this.target = null;
     lib.Destroyable.prototype.__cleanUp.call(this);
   };
   EventQ.prototype.isOK = function(item){
@@ -1901,11 +1510,14 @@ function createSpawningDataManager(execlib) {
       runner.onStream.bind(runner)
     );
     manager.read(this, d);
+    d = null;
+    eventq = null;
   };
   RunningQuery.prototype.onRunnerInitiated = function (eventq) {
     var runner = eventq.target;
     eventq.dump();
     eventq.destroy();
+    eventq = null;
     if (!runner) {
       return;
     }
@@ -1974,6 +1586,7 @@ function createSpawningDataManager(execlib) {
       return;
     }
     this.runningQueries.remove(filterstring);
+    filterstring = null;
   };
 
   return SpawningDataManager;
@@ -1981,7 +1594,7 @@ function createSpawningDataManager(execlib) {
 
 module.exports = createSpawningDataManager;
 
-},{}],34:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 function createAsyncMemoryStorageBase (execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -2058,7 +1671,7 @@ function createAsyncMemoryStorageBase (execlib) {
 
 module.exports = createAsyncMemoryStorageBase;
 
-},{}],35:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 function createStorageBase(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -2230,7 +1843,7 @@ function createStorageBase(execlib){
 
 module.exports = createStorageBase;
 
-},{}],36:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 function createCloneStorage(execlib){
   'use strict';
   var dataSuite = execlib.dataSuite,
@@ -2261,7 +1874,7 @@ function createCloneStorage(execlib){
 
 module.exports = createCloneStorage;
 
-},{}],37:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 function createMemoryStorageBase (execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -2329,11 +1942,6 @@ function createMemoryStorageBase (execlib) {
     }else{
       var start = query.offset, end=Math.min(start+query.limit,this.data.length);
       this._traverseDataRange(processRead.bind(null, this.__id,query, defer), start, end).then(defer.resolve.bind(defer, null));
-      /*
-      for(var i=start; i<end; i++){
-        processRead(query,defer,this.__record.filterHash(this.data[i]));
-      }
-      */
     }
   };
   MemoryStorageBase.prototype.updateFrom = function(countobj,record,updateitem,updateitemname){
@@ -2461,7 +2069,7 @@ function createMemoryStorageBase (execlib) {
 
 module.exports = createMemoryStorageBase;
 
-},{}],38:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 function createMemoryStorage(execlib, MemoryStorageBase){
   'use strict';
   var lib = execlib.lib,
@@ -2505,7 +2113,7 @@ function createMemoryStorage(execlib, MemoryStorageBase){
 
 module.exports = createMemoryStorage;
 
-},{}],39:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 function createMemoryStorage(execlib, MemoryStorageBase){
   'use strict';
   var lib = execlib.lib,
@@ -2549,7 +2157,7 @@ function createMemoryStorage(execlib, MemoryStorageBase){
 module.exports = createMemoryStorage;
 
 
-},{}],40:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 function createNullStorage(execlib){
   'use strict';
   var dataSuite = execlib.dataSuite,
@@ -2575,7 +2183,7 @@ function createNullStorage(execlib){
 
 module.exports = createNullStorage;
 
-},{}],41:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 function createDataUtils(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -2600,7 +2208,7 @@ function createDataUtils(execlib){
 
 module.exports = createDataUtils;
 
-},{}],42:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 module.exports = {
   create: [{
     title: 'Data hash',
@@ -2608,7 +2216,8 @@ module.exports = {
   }],
   update: [{
     title: 'Filter descriptor',
-    type: 'object'
+    type: 'object',
+    required: false
   },{
     title: 'Operation descriptor',
     type: 'object'
@@ -2618,17 +2227,18 @@ module.exports = {
   }],
   delete: [{
     title: 'Filter descriptor',
-    type: 'object'
+    type: 'object',
+    required: false
   }]
 };
 
-},{}],43:[function(require,module,exports){
-arguments[4][42][0].apply(exports,arguments)
-},{"dup":42}],44:[function(require,module,exports){
-function sinkMapCreator(execlib, ParentSinkMap){
+},{}],25:[function(require,module,exports){
+arguments[4][24][0].apply(exports,arguments)
+},{"dup":24}],26:[function(require,module,exports){
+function sinkMapCreator(execlib, ParentSinkMap, datafilterslib){
   'use strict';
   if (!execlib.dataSuite) {
-    require('./data')(execlib);
+    require('./data')(execlib, datafilterslib);
   }
   var sinkmap = new (execlib.lib.Map);
   sinkmap.add('service',require('./sinks/servicesinkcreator')(execlib, ParentSinkMap.get('service')));
@@ -2639,7 +2249,7 @@ function sinkMapCreator(execlib, ParentSinkMap){
 
 module.exports = sinkMapCreator;
 
-},{"./data":25,"./sinks/servicesinkcreator":45,"./sinks/usersinkcreator":46}],45:[function(require,module,exports){
+},{"./data":7,"./sinks/servicesinkcreator":27,"./sinks/usersinkcreator":28}],27:[function(require,module,exports){
 function createServiceSink(execlib, ParentServiceSink){
   'use strict';
   var lib = execlib.lib,
@@ -2657,7 +2267,7 @@ function createServiceSink(execlib, ParentServiceSink){
 
 module.exports = createServiceSink;
 
-},{"../methoddescriptors/serviceuser":42}],46:[function(require,module,exports){
+},{"../methoddescriptors/serviceuser":24}],28:[function(require,module,exports){
 function createUserSink(execlib, ParentServiceSink){
   'use strict';
   var lib = execlib.lib,
@@ -2675,11 +2285,11 @@ function createUserSink(execlib, ParentServiceSink){
 
 module.exports = createUserSink;
 
-},{"../methoddescriptors/user":43}],47:[function(require,module,exports){
-function createClientSide(execlib) {
+},{"../methoddescriptors/user":25}],29:[function(require,module,exports){
+function createClientSide(execlib, datafilterslib) {
   'use strict';
   if (!execlib.dataSuite) {
-    require('./data')(execlib);
+    require('./data')(execlib, datafilterslib);
   }
   return [{
     name: 'materializeQuery',
@@ -2701,7 +2311,7 @@ function createClientSide(execlib) {
 
 module.exports = createClientSide;
 
-},{"./data":25,"./tasks/forwardData":48,"./tasks/joinFromDataSinks":49,"./tasks/materializeQuery":50,"./tasks/readFromDataSink":52,"./tasks/streamFromDataSink":53}],48:[function(require,module,exports){
+},{"./data":7,"./tasks/forwardData":30,"./tasks/joinFromDataSinks":31,"./tasks/materializeQuery":32,"./tasks/readFromDataSink":34,"./tasks/streamFromDataSink":35}],30:[function(require,module,exports){
 function createFollowDataTask(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -2776,7 +2386,7 @@ function createFollowDataTask(execlib){
 
 module.exports = createFollowDataTask;
 
-},{}],49:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 function createJoinFromDataSinksTask(execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -3227,7 +2837,7 @@ function createJoinFromDataSinksTask(execlib) {
 
 module.exports = createJoinFromDataSinksTask;
 
-},{}],50:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 function createMaterializeQueryTask(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -3359,7 +2969,7 @@ function createMaterializeQueryTask(execlib){
 
 module.exports = createMaterializeQueryTask;
 
-},{}],51:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 function createReadFromSinkProc (execlib, prophash) {
   'use strict';
   var data = [],
@@ -3408,7 +3018,7 @@ function createReadFromSinkProc (execlib, prophash) {
 
   function onRecord (datahash) {
     //console.log('onRecord', datahash);
-    if (prophash.singleshot) {
+    if (prophash && prophash.singleshot) {
       if (data.length) {
         if ('function' === typeof data.destroy) {
           data.destroy();
@@ -3439,7 +3049,7 @@ function createReadFromSinkProc (execlib, prophash) {
 
 module.exports = createReadFromSinkProc;
 
-},{}],52:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 function createReadFromDataSink(execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -3464,6 +3074,7 @@ function createReadFromDataSink(execlib) {
     this.singleshot = null;
     this.errorcb = null;
     this.cb = null;
+    this.visiblefields = null;
     this.filter = null;
     this.sink = null;
     SinkTask.prototype.__cleanUp.call(this);
@@ -3476,36 +3087,8 @@ function createReadFromDataSink(execlib) {
       filter: this.filter,
       visiblefields: this.visiblefields,
       cb: this.cb,
-      errorcb: this.onFail.bind(this)
+      errorcb: this.errorcb
     });
-    /*
-    this.sink.subConnect('.', {name:'-', role: 'user', filter: this.filter}).done(
-      this.onSuccess.bind(this),
-      this.onFail.bind(this)
-    );
-    */
-  };
-  ReadFromDataSink.prototype.onSuccess = function (sink) {
-    if(!sink){
-      return;
-    }
-    if(!sink.recordDescriptor){
-      console.error('no recordDescriptor on Sink', sink.modulename, sink.role);
-      return;
-    }
-    readFromSinkProc({
-      sink: sink,
-      cb: this.cb,
-      errorcb: this.errorcb,
-      singleshot: this.singleshot
-    });
-    //lib.destroyASAP(this);
-    this.destroy();
-  };
-  ReadFromDataSink.prototype.onFail = function (reason) {
-    if (this.errorcb) {
-      this.errorcb(reason);
-    }
     this.destroy();
   };
   ReadFromDataSink.prototype.compulsoryConstructionProperties = ['sink','cb'];
@@ -3515,7 +3098,7 @@ function createReadFromDataSink(execlib) {
 
 module.exports = createReadFromDataSink;
 
-},{"./proc/readFromSink":51}],53:[function(require,module,exports){
+},{"./proc/readFromSink":33}],35:[function(require,module,exports){
 (function (process){
 function createStreamFromDataSink(execlib) {
   'use strict';

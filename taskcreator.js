@@ -1,7 +1,7 @@
-function createClientSide(execlib) {
+function createClientSide(execlib, datafilterslib) {
   'use strict';
   if (!execlib.dataSuite) {
-    require('./data')(execlib);
+    require('./data')(execlib, datafilterslib);
   }
   return [{
     name: 'materializeQuery',

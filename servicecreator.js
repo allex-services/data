@@ -1,4 +1,4 @@
-function createDataService(execlib, ParentService){
+function createDataService(execlib, ParentService, datafilterslib){
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
@@ -11,7 +11,7 @@ function createDataService(execlib, ParentService){
     userSessionFactory = execSuite.userSessionFactoryCreator(DataSession);
 
   if (!execlib.dataSuite) {
-    require('./data')(execlib);
+    require('./data')(execlib, datafilterslib);
   }
   require('./data/serversideindex')(execlib, ParentService);
 
