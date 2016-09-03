@@ -148,6 +148,7 @@ function createSpawningDataManager(execlib) {
     var d = lib.q.defer(),
       eventq = new EventQ(runner);
     this.distributor.attach(eventq);
+    eventq.destroyed.attachForSingleShot(this.checkForDying.bind(this));
     d.promise.done(
       this.onRunnerInitiated.bind(this,eventq),
       runner.reject.bind(runner),
@@ -160,20 +161,24 @@ function createSpawningDataManager(execlib) {
   RunningQuery.prototype.onRunnerInitiated = function (eventq) {
     var runner = eventq.target;
     eventq.dump();
-    eventq.destroy();
-    eventq = null;
     if (!runner) {
+      eventq.destroy();
+      eventq = null;
       return;
     }
     if (runner.singleshot || !runner.continuous) {
       runner.resolve(true);
+      eventq.destroy();
+      eventq = null;
       return;
     }
     if (!this.distributor) {
       return;
     }
-    runner.destroyed.attachForSingleShot(this.maybeDie.bind(this)); //make a this.maybedier = this.maybeDie.bind(this); in the ctor
     this.distributor.attach(runner);
+    runner.destroyed.attachForSingleShot(this.checkForDying.bind(this)); //make a this.maybedier = this.maybeDie.bind(this); in the ctor
+    eventq.destroy();
+    eventq = null;
   };
   RunningQuery.prototype.onStream = function (item) {
     var i;
@@ -184,11 +189,16 @@ function createSpawningDataManager(execlib) {
       }
     }
   };
+  RunningQuery.prototype.checkForDying = function () {
+    if (this.dyingCondition()) {
+      this.destroy();
+    }
+  };
 
   function SpawningDataManager(storageinstance, filterdescriptor, recorddescriptor) {
     DistributedDataManager.call(this, storageinstance, filterdescriptor);
     this.recorddescriptor = recorddescriptor;
-    this.runningQueries = new lib.Map();
+    this.runningQueries = new lib.DIContainer();
     //console.trace();
     //console.log('new SpawningDataManager', this.id);
   }
@@ -196,7 +206,7 @@ function createSpawningDataManager(execlib) {
   SpawningDataManager.prototype.destroy = function () {
     this.recorddescriptor = null;
     if (this.runningQueries) {
-      lib.containerDestroyAll(this.runningQueries);
+      this.runningQueries.destroyDestroyables();
       this.runningQueries.destroy();
     }
     this.runningQueries = null;
@@ -216,21 +226,13 @@ function createSpawningDataManager(execlib) {
     //console.log(this.id, 'reading', this.storage.data, 'on', queryprophash.filter);
     if (!rq) {
       rq = new RunningQuery(this.recorddescriptor, queryprophash.filter, queryprophash.visiblefields);
-      this.runningQueries.add(filterstring, rq);
+      this.runningQueries.registerDestroyable(filterstring, rq);
       this.distributor.attach(rq);
-      rq.destroyed.attachForSingleShot(this.onRunningQueryDown.bind(this, filterstring));
     }
     defer.notify(['i', id]);
     qr = new QueryRunner(rq, queryprophash, defer);
     rq.addRunner(this, qr);
     return qr;
-  };
-  SpawningDataManager.prototype.onRunningQueryDown = function (filterstring) {
-    if (!this.runningQueries) {
-      return;
-    }
-    this.runningQueries.remove(filterstring);
-    filterstring = null;
   };
 
   return SpawningDataManager;

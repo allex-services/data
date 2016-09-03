@@ -6,7 +6,8 @@ function createReadFromSinkProc (execlib, prophash) {
     sinkDestroyedListener = prophash.sink.destroyed.attach(onSinkDestroyed),
     lib = execlib.lib,
     execSuite = execlib.execSuite,
-    taskRegistry = execSuite.taskRegistry;
+    taskRegistry = execSuite.taskRegistry,
+    task;
 
   function finish () {
     try {
@@ -27,6 +28,10 @@ function createReadFromSinkProc (execlib, prophash) {
         }
       }
     }
+    if (task) {
+      task.destroy();
+    }
+    task = null;
     initialized = null;
     error = null;
     data = null;
@@ -64,7 +69,7 @@ function createReadFromSinkProc (execlib, prophash) {
     }
   }
 
-  taskRegistry.run('materializeQuery', {
+  task = taskRegistry.run('materializeQuery', {
     sink: prophash.sink,
     continuous: true,
     data: data,
