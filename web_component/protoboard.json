@@ -1,18 +1,4 @@
 {
-  "js" : {
-    "all":[
-      "src/index.js",
-      "src/helpers.js",
-      "src/AllexDataViewController.js",
-      "src/CreateNewItemController.js",
-      "src/EditItemController.js",
-      "src/dbreader.js",
-      "src/directives.js",
-      "src/view_types/grid.js",
-      "src/view_types/list.js",
-      "src/crudview.js"
-    ]
-  },
   "browserify": {
     "dist/browserified.js":"../browserify.js"
   },
@@ -22,10 +8,6 @@
   },
   "bower": {
     "requires": {
-      "angular-ui-grid": "~3.0.1"
     }
-  },
-  "partials" : {
-    "partials": ["crudview.html","dataview.html"]
   }
 }

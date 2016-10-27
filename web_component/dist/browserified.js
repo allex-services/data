@@ -2,6 +2,31 @@
 // shim for using process in browser
 
 var process = module.exports = {};
+
+// cached from whatever global is present so that test runners that stub it
+// don't break things.  But we need to wrap it in a try catch in case it is
+// wrapped in strict mode code which doesn't define any globals.  It's inside a
+// function because try/catches deoptimize in certain engines.
+
+var cachedSetTimeout;
+var cachedClearTimeout;
+
+(function () {
+  try {
+    cachedSetTimeout = setTimeout;
+  } catch (e) {
+    cachedSetTimeout = function () {
+      throw new Error('setTimeout is not defined');
+    }
+  }
+  try {
+    cachedClearTimeout = clearTimeout;
+  } catch (e) {
+    cachedClearTimeout = function () {
+      throw new Error('clearTimeout is not defined');
+    }
+  }
+} ())
 var queue = [];
 var draining = false;
 var currentQueue;
@@ -26,7 +51,7 @@ function drainQueue() {
     if (draining) {
         return;
     }
-    var timeout = setTimeout(cleanUpNextTick);
+    var timeout = cachedSetTimeout(cleanUpNextTick);
     draining = true;
 
     var len = queue.length;
@@ -43,7 +68,7 @@ function drainQueue() {
     }
     currentQueue = null;
     draining = false;
-    clearTimeout(timeout);
+    cachedClearTimeout(timeout);
 }
 
 process.nextTick = function (fun) {
@@ -55,7 +80,7 @@ process.nextTick = function (fun) {
     }
     queue.push(new Item(fun, args));
     if (queue.length === 1 && !draining) {
-        setTimeout(drainQueue, 0);
+        cachedSetTimeout(drainQueue, 0);
     }
 };
 
@@ -1479,6 +1504,7 @@ function createSpawningDataManager(execlib) {
     var d = lib.q.defer(),
       eventq = new EventQ(runner);
     this.distributor.attach(eventq);
+    eventq.destroyed.attachForSingleShot(this.checkForDying.bind(this));
     d.promise.done(
       this.onRunnerInitiated.bind(this,eventq),
       runner.reject.bind(runner),
@@ -1491,20 +1517,24 @@ function createSpawningDataManager(execlib) {
   RunningQuery.prototype.onRunnerInitiated = function (eventq) {
     var runner = eventq.target;
     eventq.dump();
-    eventq.destroy();
-    eventq = null;
     if (!runner) {
+      eventq.destroy();
+      eventq = null;
       return;
     }
     if (runner.singleshot || !runner.continuous) {
       runner.resolve(true);
+      eventq.destroy();
+      eventq = null;
       return;
     }
     if (!this.distributor) {
       return;
     }
-    runner.destroyed.attachForSingleShot(this.maybeDie.bind(this)); //make a this.maybedier = this.maybeDie.bind(this); in the ctor
     this.distributor.attach(runner);
+    runner.destroyed.attachForSingleShot(this.checkForDying.bind(this)); //make a this.maybedier = this.maybeDie.bind(this); in the ctor
+    eventq.destroy();
+    eventq = null;
   };
   RunningQuery.prototype.onStream = function (item) {
     var i;
@@ -1515,11 +1545,16 @@ function createSpawningDataManager(execlib) {
       }
     }
   };
+  RunningQuery.prototype.checkForDying = function () {
+    if (this.dyingCondition()) {
+      this.destroy();
+    }
+  };
 
   function SpawningDataManager(storageinstance, filterdescriptor, recorddescriptor) {
     DistributedDataManager.call(this, storageinstance, filterdescriptor);
     this.recorddescriptor = recorddescriptor;
-    this.runningQueries = new lib.Map();
+    this.runningQueries = new lib.DIContainer();
     //console.trace();
     //console.log('new SpawningDataManager', this.id);
   }
@@ -1527,7 +1562,7 @@ function createSpawningDataManager(execlib) {
   SpawningDataManager.prototype.destroy = function () {
     this.recorddescriptor = null;
     if (this.runningQueries) {
-      lib.containerDestroyAll(this.runningQueries);
+      this.runningQueries.destroyDestroyables();
       this.runningQueries.destroy();
     }
     this.runningQueries = null;
@@ -1547,21 +1582,13 @@ function createSpawningDataManager(execlib) {
     //console.log(this.id, 'reading', this.storage.data, 'on', queryprophash.filter);
     if (!rq) {
       rq = new RunningQuery(this.recorddescriptor, queryprophash.filter, queryprophash.visiblefields);
-      this.runningQueries.add(filterstring, rq);
+      this.runningQueries.registerDestroyable(filterstring, rq);
       this.distributor.attach(rq);
-      rq.destroyed.attachForSingleShot(this.onRunningQueryDown.bind(this, filterstring));
     }
     defer.notify(['i', id]);
     qr = new QueryRunner(rq, queryprophash, defer);
     rq.addRunner(this, qr);
     return qr;
-  };
-  SpawningDataManager.prototype.onRunningQueryDown = function (filterstring) {
-    if (!this.runningQueries) {
-      return;
-    }
-    this.runningQueries.remove(filterstring);
-    filterstring = null;
   };
 
   return SpawningDataManager;
@@ -2953,7 +2980,8 @@ function createReadFromSinkProc (execlib, prophash) {
     sinkDestroyedListener = prophash.sink.destroyed.attach(onSinkDestroyed),
     lib = execlib.lib,
     execSuite = execlib.execSuite,
-    taskRegistry = execSuite.taskRegistry;
+    taskRegistry = execSuite.taskRegistry,
+    task;
 
   function finish () {
     try {
@@ -2974,6 +3002,10 @@ function createReadFromSinkProc (execlib, prophash) {
         }
       }
     }
+    if (task) {
+      task.destroy();
+    }
+    task = null;
     initialized = null;
     error = null;
     data = null;
@@ -3011,7 +3043,7 @@ function createReadFromSinkProc (execlib, prophash) {
     }
   }
 
-  taskRegistry.run('materializeQuery', {
+  task = taskRegistry.run('materializeQuery', {
     sink: prophash.sink,
     continuous: true,
     data: data,
