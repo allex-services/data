@@ -1053,7 +1053,8 @@ function createRecord(execlib){
     return ret;
   }
 
-  function Record(prophash,visiblefields){
+  function Record(p_prophash,visiblefields){
+    var prophash = lib.extend({}, p_prophash);
     if(!(prophash && prophash.fields)){
       console.trace();
       throw "Record needs the fields array in its property hash";
