@@ -62,6 +62,9 @@ function createQueryBase(execlib){
     console.trace();
     console.log('Query onStream',item);
     */
+    if (!this.record) {
+      return null;
+    }
     switch(item[0]){
       case 'r1':
         if(this.isOK(item[2])){

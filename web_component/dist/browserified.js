@@ -1,129 +1,8 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-// shim for using process in browser
-
-var process = module.exports = {};
-
-// cached from whatever global is present so that test runners that stub it
-// don't break things.  But we need to wrap it in a try catch in case it is
-// wrapped in strict mode code which doesn't define any globals.  It's inside a
-// function because try/catches deoptimize in certain engines.
-
-var cachedSetTimeout;
-var cachedClearTimeout;
-
-(function () {
-  try {
-    cachedSetTimeout = setTimeout;
-  } catch (e) {
-    cachedSetTimeout = function () {
-      throw new Error('setTimeout is not defined');
-    }
-  }
-  try {
-    cachedClearTimeout = clearTimeout;
-  } catch (e) {
-    cachedClearTimeout = function () {
-      throw new Error('clearTimeout is not defined');
-    }
-  }
-} ())
-var queue = [];
-var draining = false;
-var currentQueue;
-var queueIndex = -1;
-
-function cleanUpNextTick() {
-    if (!draining || !currentQueue) {
-        return;
-    }
-    draining = false;
-    if (currentQueue.length) {
-        queue = currentQueue.concat(queue);
-    } else {
-        queueIndex = -1;
-    }
-    if (queue.length) {
-        drainQueue();
-    }
-}
-
-function drainQueue() {
-    if (draining) {
-        return;
-    }
-    var timeout = cachedSetTimeout(cleanUpNextTick);
-    draining = true;
-
-    var len = queue.length;
-    while(len) {
-        currentQueue = queue;
-        queue = [];
-        while (++queueIndex < len) {
-            if (currentQueue) {
-                currentQueue[queueIndex].run();
-            }
-        }
-        queueIndex = -1;
-        len = queue.length;
-    }
-    currentQueue = null;
-    draining = false;
-    cachedClearTimeout(timeout);
-}
-
-process.nextTick = function (fun) {
-    var args = new Array(arguments.length - 1);
-    if (arguments.length > 1) {
-        for (var i = 1; i < arguments.length; i++) {
-            args[i - 1] = arguments[i];
-        }
-    }
-    queue.push(new Item(fun, args));
-    if (queue.length === 1 && !draining) {
-        cachedSetTimeout(drainQueue, 0);
-    }
-};
-
-// v8 likes predictible objects
-function Item(fun, array) {
-    this.fun = fun;
-    this.array = array;
-}
-Item.prototype.run = function () {
-    this.fun.apply(null, this.array);
-};
-process.title = 'browser';
-process.browser = true;
-process.env = {};
-process.argv = [];
-process.version = ''; // empty string to avoid regexp issues
-process.versions = {};
-
-function noop() {}
-
-process.on = noop;
-process.addListener = noop;
-process.once = noop;
-process.off = noop;
-process.removeListener = noop;
-process.removeAllListeners = noop;
-process.emit = noop;
-
-process.binding = function (name) {
-    throw new Error('process.binding is not supported');
-};
-
-process.cwd = function () { return '/' };
-process.chdir = function (dir) {
-    throw new Error('process.chdir is not supported');
-};
-process.umask = function() { return 0; };
-
-},{}],2:[function(require,module,exports){
 ALLEX.execSuite.registry.registerClientSide('allex_dataservice',require('./sinkmapcreator')(ALLEX, ALLEX.execSuite.registry.getClientSide('.'), ALLEX.execSuite.libRegistry.get('allex_datafilterslib')));
 ALLEX.execSuite.taskRegistry.register("allex_dataservice",require('./taskcreator')(ALLEX, ALLEX.execSuite.libRegistry.get('allex_datafilterslib')));
 
-},{"./sinkmapcreator":26,"./taskcreator":29}],3:[function(require,module,exports){
+},{"./sinkmapcreator":25,"./taskcreator":28}],2:[function(require,module,exports){
 function createDataCoder(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -214,7 +93,7 @@ function createDataCoder(execlib){
 
 module.exports = createDataCoder;
 
-},{}],4:[function(require,module,exports){
+},{}],3:[function(require,module,exports){
 (function (process){
 function createDataDecoder(execlib){
   'use strict';
@@ -413,7 +292,7 @@ function createDataDecoder(execlib){
 module.exports = createDataDecoder;
 
 }).call(this,require('_process'))
-},{"_process":1}],5:[function(require,module,exports){
+},{"_process":35}],4:[function(require,module,exports){
 function createDistributedDataManager(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -447,7 +326,7 @@ function createDistributedDataManager(execlib){
 
 module.exports = createDistributedDataManager;
 
-},{}],6:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 function createDataDistributor(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -483,7 +362,7 @@ function createDataDistributor(execlib){
 
 module.exports = createDataDistributor;
 
-},{}],7:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 function createDataSuite(execlib, datafilterslib){
   'use strict';
   var execSuite = execlib.execSuite,
@@ -521,7 +400,7 @@ function createDataSuite(execlib, datafilterslib){
 
 module.exports = createDataSuite;
 
-},{"./codercreator":3,"./decodercreator":4,"./distributedmanagercreator":5,"./distributorcreator":6,"./managercreator":8,"./objectcreator":9,"./query/basecreator":10,"./query/clonecreator":11,"./record":13,"./spawningmanagercreator":15,"./storage/asyncmemorystoragebasecreator":16,"./storage/basecreator":17,"./storage/clonecreator":18,"./storage/memorybasecreator":19,"./storage/memorycreator":20,"./storage/memorylistcreator":21,"./storage/nullcreator":22,"./utils":23}],8:[function(require,module,exports){
+},{"./codercreator":2,"./decodercreator":3,"./distributedmanagercreator":4,"./distributorcreator":5,"./managercreator":7,"./objectcreator":8,"./query/basecreator":9,"./query/clonecreator":10,"./record":12,"./spawningmanagercreator":14,"./storage/asyncmemorystoragebasecreator":15,"./storage/basecreator":16,"./storage/clonecreator":17,"./storage/memorybasecreator":18,"./storage/memorycreator":19,"./storage/memorylistcreator":20,"./storage/nullcreator":21,"./utils":22}],7:[function(require,module,exports){
 (function (process){
 function createDataManager(execlib){
   'use strict';
@@ -676,7 +555,7 @@ function createDataManager(execlib){
 module.exports = createDataManager;
 
 }).call(this,require('_process'))
-},{"_process":1}],9:[function(require,module,exports){
+},{"_process":35}],8:[function(require,module,exports){
 function createDataObject(execlib){
   'use strict';
   var lib = execlib.lib;
@@ -853,7 +732,7 @@ function createDataObject(execlib){
 
 module.exports = createDataObject;
 
-},{}],10:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 function createQueryBase(execlib){
   'use strict';
   function QueryBase(recorddescriptor,visiblefields){
@@ -918,6 +797,9 @@ function createQueryBase(execlib){
     console.trace();
     console.log('Query onStream',item);
     */
+    if (!this.record) {
+      return null;
+    }
     switch(item[0]){
       case 'r1':
         if(this.isOK(item[2])){
@@ -942,7 +824,7 @@ function createQueryBase(execlib){
 
 module.exports = createQueryBase;
 
-},{}],11:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 function createQueryClone(execlib,QueryBase){
   'use strict';
   var lib = execlib.lib;
@@ -982,7 +864,7 @@ function createQueryClone(execlib,QueryBase){
 
 module.exports = createQueryClone;
 
-},{}],12:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 function createRecord(execlib){
   'use strict';
   var lib = execlib.lib;
@@ -1197,7 +1079,7 @@ function createRecord(execlib){
 
 module.exports = createRecord;
 
-},{}],13:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 function createSuite(execlib){
   'use strict';
 
@@ -1211,7 +1093,7 @@ function createSuite(execlib){
 
 module.exports = createSuite;
 
-},{"./creator":12,"./utils":14}],14:[function(require,module,exports){
+},{"./creator":11,"./utils":13}],13:[function(require,module,exports){
 function createRecordUtils(execlib,suite){
   'use strict';
   var lib = execlib.lib;
@@ -1354,7 +1236,7 @@ function createRecordUtils(execlib,suite){
 
 module.exports = createRecordUtils;
 
-},{}],15:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 function createSpawningDataManager(execlib) {
   'use strict';
   'use strict';
@@ -1597,7 +1479,7 @@ function createSpawningDataManager(execlib) {
 
 module.exports = createSpawningDataManager;
 
-},{}],16:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 function createAsyncMemoryStorageBase (execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -1674,7 +1556,7 @@ function createAsyncMemoryStorageBase (execlib) {
 
 module.exports = createAsyncMemoryStorageBase;
 
-},{}],17:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 function createStorageBase(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1846,7 +1728,7 @@ function createStorageBase(execlib){
 
 module.exports = createStorageBase;
 
-},{}],18:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 function createCloneStorage(execlib){
   'use strict';
   var dataSuite = execlib.dataSuite,
@@ -1877,7 +1759,7 @@ function createCloneStorage(execlib){
 
 module.exports = createCloneStorage;
 
-},{}],19:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 function createMemoryStorageBase (execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -2072,7 +1954,7 @@ function createMemoryStorageBase (execlib) {
 
 module.exports = createMemoryStorageBase;
 
-},{}],20:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 function createMemoryStorage(execlib, MemoryStorageBase){
   'use strict';
   var lib = execlib.lib,
@@ -2116,7 +1998,7 @@ function createMemoryStorage(execlib, MemoryStorageBase){
 
 module.exports = createMemoryStorage;
 
-},{}],21:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 function createMemoryStorage(execlib, MemoryStorageBase){
   'use strict';
   var lib = execlib.lib,
@@ -2160,7 +2042,7 @@ function createMemoryStorage(execlib, MemoryStorageBase){
 module.exports = createMemoryStorage;
 
 
-},{}],22:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 function createNullStorage(execlib){
   'use strict';
   var dataSuite = execlib.dataSuite,
@@ -2186,7 +2068,7 @@ function createNullStorage(execlib){
 
 module.exports = createNullStorage;
 
-},{}],23:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 function createDataUtils(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -2211,7 +2093,7 @@ function createDataUtils(execlib){
 
 module.exports = createDataUtils;
 
-},{}],24:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 module.exports = {
   create: [{
     title: 'Data hash',
@@ -2235,9 +2117,9 @@ module.exports = {
   }]
 };
 
-},{}],25:[function(require,module,exports){
-arguments[4][24][0].apply(exports,arguments)
-},{"dup":24}],26:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
+arguments[4][23][0].apply(exports,arguments)
+},{"dup":23}],25:[function(require,module,exports){
 function sinkMapCreator(execlib, ParentSinkMap, datafilterslib){
   'use strict';
   if (!execlib.dataSuite) {
@@ -2252,7 +2134,7 @@ function sinkMapCreator(execlib, ParentSinkMap, datafilterslib){
 
 module.exports = sinkMapCreator;
 
-},{"./data":7,"./sinks/servicesinkcreator":27,"./sinks/usersinkcreator":28}],27:[function(require,module,exports){
+},{"./data":6,"./sinks/servicesinkcreator":26,"./sinks/usersinkcreator":27}],26:[function(require,module,exports){
 function createServiceSink(execlib, ParentServiceSink){
   'use strict';
   var lib = execlib.lib,
@@ -2270,7 +2152,7 @@ function createServiceSink(execlib, ParentServiceSink){
 
 module.exports = createServiceSink;
 
-},{"../methoddescriptors/serviceuser":24}],28:[function(require,module,exports){
+},{"../methoddescriptors/serviceuser":23}],27:[function(require,module,exports){
 function createUserSink(execlib, ParentServiceSink){
   'use strict';
   var lib = execlib.lib,
@@ -2288,7 +2170,7 @@ function createUserSink(execlib, ParentServiceSink){
 
 module.exports = createUserSink;
 
-},{"../methoddescriptors/user":25}],29:[function(require,module,exports){
+},{"../methoddescriptors/user":24}],28:[function(require,module,exports){
 function createClientSide(execlib, datafilterslib) {
   'use strict';
   if (!execlib.dataSuite) {
@@ -2314,7 +2196,7 @@ function createClientSide(execlib, datafilterslib) {
 
 module.exports = createClientSide;
 
-},{"./data":7,"./tasks/forwardData":30,"./tasks/joinFromDataSinks":31,"./tasks/materializeQuery":32,"./tasks/readFromDataSink":34,"./tasks/streamFromDataSink":35}],30:[function(require,module,exports){
+},{"./data":6,"./tasks/forwardData":29,"./tasks/joinFromDataSinks":30,"./tasks/materializeQuery":31,"./tasks/readFromDataSink":33,"./tasks/streamFromDataSink":34}],29:[function(require,module,exports){
 function createFollowDataTask(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -2389,7 +2271,7 @@ function createFollowDataTask(execlib){
 
 module.exports = createFollowDataTask;
 
-},{}],31:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 function createJoinFromDataSinksTask(execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -2840,7 +2722,7 @@ function createJoinFromDataSinksTask(execlib) {
 
 module.exports = createJoinFromDataSinksTask;
 
-},{}],32:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 function createMaterializeQueryTask(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -2972,7 +2854,7 @@ function createMaterializeQueryTask(execlib){
 
 module.exports = createMaterializeQueryTask;
 
-},{}],33:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 function createReadFromSinkProc (execlib, prophash) {
   'use strict';
   var data = [],
@@ -3057,7 +2939,7 @@ function createReadFromSinkProc (execlib, prophash) {
 
 module.exports = createReadFromSinkProc;
 
-},{}],34:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 function createReadFromDataSink(execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -3106,7 +2988,7 @@ function createReadFromDataSink(execlib) {
 
 module.exports = createReadFromDataSink;
 
-},{"./proc/readFromSink":33}],35:[function(require,module,exports){
+},{"./proc/readFromSink":32}],34:[function(require,module,exports){
 (function (process){
 function createStreamFromDataSink(execlib) {
   'use strict';
@@ -3188,4 +3070,186 @@ function createStreamFromDataSink(execlib) {
 module.exports = createStreamFromDataSink;
 
 }).call(this,require('_process'))
-},{"_process":1}]},{},[2]);
+},{"_process":35}],35:[function(require,module,exports){
+// shim for using process in browser
+var process = module.exports = {};
+
+// cached from whatever global is present so that test runners that stub it
+// don't break things.  But we need to wrap it in a try catch in case it is
+// wrapped in strict mode code which doesn't define any globals.  It's inside a
+// function because try/catches deoptimize in certain engines.
+
+var cachedSetTimeout;
+var cachedClearTimeout;
+
+function defaultSetTimout() {
+    throw new Error('setTimeout has not been defined');
+}
+function defaultClearTimeout () {
+    throw new Error('clearTimeout has not been defined');
+}
+(function () {
+    try {
+        if (typeof setTimeout === 'function') {
+            cachedSetTimeout = setTimeout;
+        } else {
+            cachedSetTimeout = defaultSetTimout;
+        }
+    } catch (e) {
+        cachedSetTimeout = defaultSetTimout;
+    }
+    try {
+        if (typeof clearTimeout === 'function') {
+            cachedClearTimeout = clearTimeout;
+        } else {
+            cachedClearTimeout = defaultClearTimeout;
+        }
+    } catch (e) {
+        cachedClearTimeout = defaultClearTimeout;
+    }
+} ())
+function runTimeout(fun) {
+    if (cachedSetTimeout === setTimeout) {
+        //normal enviroments in sane situations
+        return setTimeout(fun, 0);
+    }
+    // if setTimeout wasn't available but was latter defined
+    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
+        cachedSetTimeout = setTimeout;
+        return setTimeout(fun, 0);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedSetTimeout(fun, 0);
+    } catch(e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
+            return cachedSetTimeout.call(null, fun, 0);
+        } catch(e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
+            return cachedSetTimeout.call(this, fun, 0);
+        }
+    }
+
+
+}
+function runClearTimeout(marker) {
+    if (cachedClearTimeout === clearTimeout) {
+        //normal enviroments in sane situations
+        return clearTimeout(marker);
+    }
+    // if clearTimeout wasn't available but was latter defined
+    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
+        cachedClearTimeout = clearTimeout;
+        return clearTimeout(marker);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedClearTimeout(marker);
+    } catch (e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
+            return cachedClearTimeout.call(null, marker);
+        } catch (e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
+            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
+            return cachedClearTimeout.call(this, marker);
+        }
+    }
+
+
+
+}
+var queue = [];
+var draining = false;
+var currentQueue;
+var queueIndex = -1;
+
+function cleanUpNextTick() {
+    if (!draining || !currentQueue) {
+        return;
+    }
+    draining = false;
+    if (currentQueue.length) {
+        queue = currentQueue.concat(queue);
+    } else {
+        queueIndex = -1;
+    }
+    if (queue.length) {
+        drainQueue();
+    }
+}
+
+function drainQueue() {
+    if (draining) {
+        return;
+    }
+    var timeout = runTimeout(cleanUpNextTick);
+    draining = true;
+
+    var len = queue.length;
+    while(len) {
+        currentQueue = queue;
+        queue = [];
+        while (++queueIndex < len) {
+            if (currentQueue) {
+                currentQueue[queueIndex].run();
+            }
+        }
+        queueIndex = -1;
+        len = queue.length;
+    }
+    currentQueue = null;
+    draining = false;
+    runClearTimeout(timeout);
+}
+
+process.nextTick = function (fun) {
+    var args = new Array(arguments.length - 1);
+    if (arguments.length > 1) {
+        for (var i = 1; i < arguments.length; i++) {
+            args[i - 1] = arguments[i];
+        }
+    }
+    queue.push(new Item(fun, args));
+    if (queue.length === 1 && !draining) {
+        runTimeout(drainQueue);
+    }
+};
+
+// v8 likes predictible objects
+function Item(fun, array) {
+    this.fun = fun;
+    this.array = array;
+}
+Item.prototype.run = function () {
+    this.fun.apply(null, this.array);
+};
+process.title = 'browser';
+process.browser = true;
+process.env = {};
+process.argv = [];
+process.version = ''; // empty string to avoid regexp issues
+process.versions = {};
+
+function noop() {}
+
+process.on = noop;
+process.addListener = noop;
+process.once = noop;
+process.off = noop;
+process.removeListener = noop;
+process.removeAllListeners = noop;
+process.emit = noop;
+
+process.binding = function (name) {
+    throw new Error('process.binding is not supported');
+};
+
+process.cwd = function () { return '/' };
+process.chdir = function (dir) {
+    throw new Error('process.chdir is not supported');
+};
+process.umask = function() { return 0; };
+
+},{}]},{},[1]);
