@@ -144,7 +144,7 @@ function createJoinFromDataSinksTask(execlib) {
     this.output = [];
     this.defer = defer;
     var handler = this.produceOutput.bind(this);
-    taskRegistry.run('materializeData', {
+    taskRegistry.run('materializeQuery', {
       sink: sink,
       data: this.data,
       onInitiated: handler,
@@ -332,7 +332,8 @@ function createJoinFromDataSinksTask(execlib) {
     this.service = prophash.service;
     this.serviceDestroyedListener = this.service.destroyed.attach(this.destroy.bind(this));
     //console.log('LocalAcquirerDataJob listening for', prophash.sinkname);
-    this.sinkListener = this.service.listenForSubService(prophash.sinkname, this.onSink.bind(this), true);
+    //this.sinkListener = this.service.listenForSubService(prophash.sinkname, this.onSink.bind(this), true);
+    this.sinkListener = this.service.subservices.listenFor(prophash.sinkname, this.onSink.bind(this), true);
   }
   lib.inherit(LocalAcquirerDataJob, DataSinkDataJob);
   LocalAcquirerDataJob.prototype.destroy = function () {
