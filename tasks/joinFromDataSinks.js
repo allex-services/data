@@ -137,7 +137,7 @@ function createJoinFromDataSinksTask(execlib) {
     RootDataJob.prototype.destroy.call(this);
   };
 
-  function DataSinkSubJob (parnt, sink, defer) {
+  function DataSinkSubJob (parnt, filter, sink, defer) {
     this.parnt = parnt;
     this.sink = sink;
     this.data = [];
@@ -146,6 +146,8 @@ function createJoinFromDataSinksTask(execlib) {
     var handler = this.produceOutput.bind(this);
     taskRegistry.run('materializeQuery', {
       sink: sink,
+      filter: filter,
+      continuous: true,
       data: this.data,
       onInitiated: handler,
       onNewRecord: handler,
@@ -164,10 +166,11 @@ function createJoinFromDataSinksTask(execlib) {
     this.parnt = null;
   };
   DataSinkSubJob.prototype.produceOutput = function () {
+    var d, assembleresult;
     if (!this.parnt) {
       return;
     }
-    var d = this.defer, assembleresult;
+    d = this.defer;
     this.defer = null;
     if (this.parnt.aggregator) {
       this.output = this.parnt.aggregator.aggregate(this.data);
@@ -219,11 +222,11 @@ function createJoinFromDataSinksTask(execlib) {
     }
     this.trigger();
   };
-  DataSinkDataJob.prototype.onSubSink = function (defer, inputrow, subsink) {
+  DataSinkDataJob.prototype.onSubSink = function (filter, defer, inputrow, subsink) {
     if (!subsink) {
       return;
     }
-    this.subsinks.push(new DataSinkSubJob(this, subsink, defer));
+    this.subsinks.push(new DataSinkSubJob(this, filter, subsink, defer));
   };
   DataSinkDataJob.prototype.assembleOutput = function () {
     if(this.subsinks.some(function(ss) {return ss.defer;})){
@@ -243,9 +246,9 @@ function createJoinFromDataSinksTask(execlib) {
   DataSinkDataJob.prototype.trigger = function () {
     lib.arryDestroyAll(this.subsinks);
     this.subsinks = [];
-    if ('function' === typeof this.filter) {
+    if (lib.isFunction(this.filter)) {
       var fr = this.filter();
-      if ('function' === typeof fr.done) {
+      if (lib.isFunction(fr.done)) {
         fr.done(this.onFilter.bind(this));
       } else {
         this.onFilter(fr);
@@ -288,7 +291,6 @@ function createJoinFromDataSinksTask(execlib) {
     }
   };
   DataSinkDataJob.prototype.applyFilter = function (filter, inputrow) {
-    try {
     var d = q.defer();
     var sink = this.state.get('sink');
     if (!(sink && sink.destroyed && sink.recordDescriptor)) {
@@ -298,17 +300,12 @@ function createJoinFromDataSinksTask(execlib) {
     //console.log(filter, 'subconnecting to', sink.modulename);
     sink.subConnect('.', {
       name: 'user',
-      role: 'user',
-      filter: filter
+      role: 'user'
     }).done(
-      this.onSubSink.bind(this, d, inputrow),
+      this.onSubSink.bind(this, filter, d, inputrow),
       this.onNoSink.bind(this, d)
     );
     return d.promise;
-    } catch (e) {
-      console.error(e.stack);
-      console.error(e);
-    }
   };
   DataSinkDataJob.prototype.isFilterInputDependent = function (filter) {
     if (filter.value && 
