@@ -220,13 +220,13 @@ function createSpawningDataManager(execlib) {
       defer.reject(new lib.Error('NO_QUERY_PROPERTY_HASH'));
       return;
     }
-    var filterstring = JSON.stringify(queryprophash.filter ? queryprophash.filter : '*'),
-      rq = this.runningQueries.get(filterstring),
+    var rqidentifier = JSON.stringify(queryprophash),//JSON.stringify(queryprophash.filter ? queryprophash.filter : '*'),
+      rq = this.runningQueries.get(rqidentifier),
       qr;
     //console.log(this.id, 'reading', this.storage.data, 'on', queryprophash.filter);
     if (!rq) {
       rq = new RunningQuery(this.recorddescriptor, queryprophash.filter, queryprophash.visiblefields);
-      this.runningQueries.registerDestroyable(filterstring, rq);
+      this.runningQueries.registerDestroyable(rqidentifier, rq);
       this.distributor.attach(rq);
     }
     defer.notify(['i', id]);
