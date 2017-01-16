@@ -18,5 +18,11 @@ module.exports = {
     title: 'Filter descriptor',
     type: 'object',
     required: false
-  }]
+  }],
+  aggregate : [
+    {
+      title : 'Aggregate descriptor',
+      type : ['array', 'string']
+    }
+  ]
 };

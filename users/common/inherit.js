@@ -22,6 +22,10 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
   ChildClass.prototype.delete = function(filterdescriptor,defer){
     this.__service.data.delete(filterdescriptor, defer);
   };
+
+  ChildClass.prototype.aggregate = function (aggregation_descriptor, defer){
+    this.__service.data.aggregate (aggregation_descriptor, defer);
+  };
   ChildClass.prototype.getSessionCtor = userSessionFactory;
 
 }

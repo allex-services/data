@@ -3,7 +3,8 @@ function createDataManager(execlib){
   var lib = execlib.lib,
     dataSuite = execlib.dataSuite,
     DataSource = dataSuite.DataSource,
-    filterFactory = dataSuite.filterFactory;
+    filterFactory = dataSuite.filterFactory,
+    qlib = lib.qlib;
 
   var __id = 0;
   function DataManager(storageinstance,filterdescriptor){
@@ -144,6 +145,16 @@ function createDataManager(execlib){
   };
   DataManager.prototype.stateStreamFilterForRecord = function(record){
     return this.storage.__record.stateStreamFilterForRecord(this,record);
+  };
+
+  DataManager.prototype.aggregate = function (aggregation_descriptor, defer) {
+    defer = defer || lib.q.defer();
+    if (!this.storage) {
+      defer.reject(new lib.Error('MANAGER_ALREADY_DESTROYED', 'DataManager is destroyed already'));
+      return defer.promise;
+    }
+    qlib.promise2defer (this.storage.aggregate (aggregation_descriptor), defer);
+    return defer.promise;
   };
   return DataManager;
 }

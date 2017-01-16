@@ -3,7 +3,8 @@ function createStorageBase(execlib){
   var lib = execlib.lib,
     q = lib.q,
     dataSuite = execlib.dataSuite,
-    Record = dataSuite.recordSuite.Record;
+    Record = dataSuite.recordSuite.Record,
+    qlib = lib.qlib;
 
   function StorageBaseEventing(){
     this.initTxnId = null;
@@ -162,6 +163,13 @@ function createStorageBase(execlib){
     if(this.events){
       d.promise.then(this.events.fireDeleted.bind(this.events,filter));
     }
+    return d.promise;
+  };
+
+  StorageBase.prototype.aggregate = function (aggregation_descriptor) {
+    var d = q.defer();
+    //console.log('stigao sam do aggregate-a na storage-u ... aj sad uradi nesto sa tim ...', aggregation_descriptor);
+    qlib.promise2defer (this.doAggregate(aggregation_descriptor), d);
     return d.promise;
   };
   return StorageBase;
