@@ -31,7 +31,7 @@ function createMaterializeAggregationTask (execlib) {
   lib.inherit (MaterializeAggregationTask, SinkTask);
   MaterializeAggregationTask.prototype.__cleanUp = function () {
     if (this._to) {
-      lib.clearTimeOut (this._to);
+      lib.clearTimeout (this._to);
     }
 
     this.cb = null;
