@@ -18,6 +18,10 @@ function createClientSide(execlib, datafilterslib) {
   },{
     name: 'joinFromDataSinks',
     klass: require('./tasks/joinFromDataSinks')(execlib)
+  },
+  {
+    name : 'aggregate',
+    klass: require('./tasks/materializeAggregation')(execlib)
   }];
 }
 
