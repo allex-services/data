@@ -50,11 +50,19 @@ function createSpawningDataManager(execlib) {
     this.q.drain(this.drainer.bind(this));
   };
   EventQ.prototype.drainer = function (item) {
+    if (item && item[1] && item[1].parser) {
+      console.log('EventQ', item, '=>', this.target._id);
+    }
     switch (item[0]) {
       case 'c':
+        /*
+         * this event will be received by the target
+         * in the form of r1
         if(this.target.isOK(item[1])){
           this.target.onStream(item);
         }
+        */
+        break;
       default:
         this.target.onStream(item);
     }
