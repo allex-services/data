@@ -27,6 +27,7 @@ function createDataDecoder(execlib){
         as[aind] = m.call(decoder, a);
       }
     });
+    m = null;
     as = this.arg_s_group;
     this.arg_s_group = [];
     ret = lib.q.allSettled(as);
@@ -68,7 +69,7 @@ function createDataDecoder(execlib){
     if (this.working) {
       //console.log('saving',Array.prototype.slice.call(arguments));
       var done = false,
-        last = this.q.last(),
+        last = this.q.tail,
         lastc;
       if (last) {
         lastc = last.content;
@@ -76,8 +77,7 @@ function createDataDecoder(execlib){
       if (lastc) { 
         if (lib.isArray(lastc)) {
           if (lastc[0] === command) {
-            last.content = new CommandGroup(lastc[0], lastc[1]);
-            last.content.add(arg_s);
+            last.content = new CommandGroup(command, arg_s);
             done = true;
           }
         } else {

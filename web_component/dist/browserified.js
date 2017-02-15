@@ -124,6 +124,7 @@ function createDataDecoder(execlib){
         as[aind] = m.call(decoder, a);
       }
     });
+    m = null;
     as = this.arg_s_group;
     this.arg_s_group = [];
     ret = lib.q.allSettled(as);
@@ -165,7 +166,7 @@ function createDataDecoder(execlib){
     if (this.working) {
       //console.log('saving',Array.prototype.slice.call(arguments));
       var done = false,
-        last = this.q.last(),
+        last = this.q.tail,
         lastc;
       if (last) {
         lastc = last.content;
@@ -173,8 +174,7 @@ function createDataDecoder(execlib){
       if (lastc) { 
         if (lib.isArray(lastc)) {
           if (lastc[0] === command) {
-            last.content = new CommandGroup(lastc[0], lastc[1]);
-            last.content.add(arg_s);
+            last.content = new CommandGroup(command, arg_s);
             done = true;
           }
         } else {
@@ -1302,9 +1302,14 @@ function createSpawningDataManager(execlib) {
   EventQ.prototype.drainer = function (item) {
     switch (item[0]) {
       case 'c':
+        /*
+         * this event will be received by the target
+         * in the form of r1
         if(this.target.isOK(item[1])){
           this.target.onStream(item);
         }
+        */
+        break;
       default:
         this.target.onStream(item);
     }
