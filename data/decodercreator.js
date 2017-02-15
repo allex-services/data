@@ -77,7 +77,8 @@ function createDataDecoder(execlib){
       if (lastc) { 
         if (lib.isArray(lastc)) {
           if (lastc[0] === command) {
-            last.content = new CommandGroup(command, arg_s);
+            last.content = new CommandGroup(command, lastc[1]);
+            last.content.add(arg_s);
             done = true;
           }
         } else {
