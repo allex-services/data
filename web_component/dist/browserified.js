@@ -94,51 +94,16 @@ function createDataCoder(execlib){
 module.exports = createDataCoder;
 
 },{}],3:[function(require,module,exports){
-(function (process){
 function createDataDecoder(execlib){
   'use strict';
   var lib = execlib.lib,
+      q = lib.q,
       dataSuite = execlib.dataSuite,
       filterFactory = dataSuite.filterFactory;
-
-  function CommandGroup(name, arg_s) {
-    this.name = name;
-    this.arg_s_group = [arg_s];
-  }
-  CommandGroup.prototype.destroy = function () {
-    this.arg_s_group = null;
-    this.name = null;
-  };
-  CommandGroup.prototype.add = function (arg_s) {
-    this.arg_s_group.push(arg_s);
-  };
-  CommandGroup.prototype.apply = function (decoder) {
-    var m = decoder[this.name], as, ret;
-    if (!lib.isFunction(m)) {
-      return lib.q(false);
-    }
-    this.arg_s_group.forEach(function(a, aind, as) {
-      if (lib.isArray(a)) {
-        as[aind] = m.apply(decoder, a);
-      } else {
-        as[aind] = m.call(decoder, a);
-      }
-    });
-    m = null;
-    as = this.arg_s_group;
-    this.arg_s_group = [];
-    ret = lib.q.allSettled(as);
-    ret.then(this.destroy.bind(this));
-    return ret;
-  };
 
   function Decoder(storable){
     this.storable = storable;
     this.queryID = null;
-    this.working = false;
-    this.deqer = this.deq.bind(this);
-    this.errdeqer = this.deqFromError.bind(this);
-    this.q = new lib.Fifo();
   }
   function destroyer (qi) {
     if (qi.destroy) {
@@ -147,108 +112,36 @@ function createDataDecoder(execlib){
   }
   Decoder.prototype.destroy = function(){
     var qi;
-    if (this.q) {
-      this.q.drain(destroyer);
-      this.q.destroy();
-    }
-    this.q = null;
-    this.errdeqer = null;
-    this.deqer = null;
-    this.working = null;
     this.queryID = null;
     this.storable = null;
-  };
-  Decoder.prototype.enq = function(command, arg_s) {
-    var ce;
-    if (!this.q) {
-      return;
-    }
-    if (this.working) {
-      //console.log('saving',Array.prototype.slice.call(arguments));
-      var done = false,
-        last = this.q.tail,
-        lastc;
-      if (last) {
-        lastc = last.content;
-      }
-      if (lastc) { 
-        if (lib.isArray(lastc)) {
-          if (lastc[0] === command) {
-            last.content = new CommandGroup(command, lastc[1]);
-            last.content.add(arg_s);
-            done = true;
-          }
-        } else {
-          if (lastc.name === command) {
-            lastc.add(arg_s);
-            done = true;
-          }
-        }
-      }
-      if (!done) {
-        this.q.push([command, arg_s]);
-      }
-    }else{
-      this.working = true;
-      //console.log('Decoder doing',command,'on',this.storable.__id,this.storable.data);
-      //console.log('doing',command, args);
-      if (lib.isString(command)) {
-        if (lib.isArray(arg_s)) {
-          this[command].apply(this, arg_s).then(this.deqer, this.errdeqer);
-        } else {
-          this[command].call(this, arg_s).then(this.deqer, this.errdeqer);
-        }
-      } else {
-        command.apply(this).then(this.deqer, this.errdeqer);
-        //console.log('group apply done');
-      }
-    }
-  };
-  Decoder.prototype.enqFromQ = function (p) {
-    if (lib.isArray(p)) {
-      this.enq(p[0], p[1]);
-    } else {
-      this.enq(p);
-    }
-  };
-  Decoder.prototype.deq = function(){
-    if (!this.q) {
-      return;
-    }
-    this.working = false;
-    this.q.pop(this.enqFromQ.bind(this));
-  };
-  Decoder.prototype.deqFromError = function (err) {
-    console.error(process.pid, 'Data Decoeder error', err);
-    this.deq();
   };
   Decoder.prototype.onStream = function(item){
     //console.log('Decoder', this.storable.__id,'got',item);
     //console.log('Decoder got',require('util').inspect(item,{depth:null}));
     switch(item[0]){
       case 'i':
-        this.enq('setID', item[1]);
+        this.setID(item[1]);
         break;
       case 'rb':
-        this.enq('beginRead', item[1]);
+        this.beginRead(item[1]);
         break;
       case 're':
-        this.enq('endRead', item[1]);
+        this.endRead(item[1]);
         break;
       case 'r1':
-        this.enq('readOne', item[2]);
+        this.readOne(item[2]);
         break;
       case 'c':
-        this.enq('create', item[1]);
+        this.create(item[1]);
         break;
       case 'ue':
-        this.enq('updateExact', [item[1], item[2]]);
+        this.updateExact(item[1], item[2]);
         break;
       case 'u':
-        this.enq('update', [item[1], item[2]]);
+        this.update(item[1], item[2]);
         break;
       case 'd':
-        this.enq('delete', item[1]);
+        this.delete(item[1]);
         break;
     }
   };
@@ -292,8 +185,7 @@ function createDataDecoder(execlib){
 
 module.exports = createDataDecoder;
 
-}).call(this,require('_process'))
-},{"_process":36}],4:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 function createDistributedDataManager(execlib){
   'use strict';
   var lib = execlib.lib,
@@ -1580,7 +1472,8 @@ function createStorageBase(execlib){
     q = lib.q,
     dataSuite = execlib.dataSuite,
     Record = dataSuite.recordSuite.Record,
-    qlib = lib.qlib;
+    qlib = lib.qlib,
+    JobBase = qlib.JobBase;
 
   function StorageBaseEventing(){
     this.initTxnId = null;
@@ -1653,6 +1546,183 @@ function createStorageBase(execlib){
     }
   };
 
+
+  //JOBS
+  function StorageJob (storage, defer) {
+    JobBase.call(this, defer);
+    this.storage = storage;
+  }
+  lib.inherit(StorageJob, JobBase);
+  StorageJob.prototype.destroy = function () {
+    this.storage = null;
+    JobBase.prototype.destroy.call(this);
+  };
+
+  function Creator (storage, datahash, defer) {
+    StorageJob.call(this, storage, defer);
+    this.chunks = [];
+    this.hashes = [datahash];
+  }
+  lib.inherit(Creator, StorageJob);
+  Creator.prototype.destroy = function () {
+    this.datahash = null;
+    StorageJob.prototype.destroy.call(this);
+  };
+  Creator.prototype.go = function () {
+    this.subgo();
+  };
+  Creator.prototype.subgo = function () {
+    var chunk;
+    if (this.chunks && this.chunks.length) {
+      chunk = this.chunks.shift();
+    } else {
+      chunk = this.hashes;
+      this.hashes = [];
+    }
+    if (chunk && chunk.length) {
+      return q.all(chunk.map(this.createOne.bind(this))).then(this.subgo.bind(this));
+    }
+    this.resolve(true);
+  };
+  Creator.prototype.createOne = function (datahash) {
+    var d, ret;
+    if (!this.storage) {
+      return q(null);
+    }
+    if (!this.storage.__record) {
+      return q(null);
+    }
+    if (!datahash) {
+      return q(null);
+    }
+    d = q.defer();
+    ret = d.promise;
+    if(this.storage.events){
+      d.promise.then(this.storage.events.fireNewRecord.bind(this.storage.events));
+    }
+    this.storage.doCreate(this.storage.__record.filterObject(datahash),d);
+    return ret;
+  };
+  Creator.prototype.add = function (datahash) {
+    this.hashes.push(datahash);
+    if (this.hashes.length>999) {
+      this.chunks.push(this.hashes);
+      this.hashes = [];
+    }
+  };
+
+  function Updater (storage, filter, datahash, options, defer) {
+    StorageJob.call(this, storage, defer);
+    this.filter = filter;
+    this.datahash = datahash;
+    this.options = options;
+  }
+  lib.inherit(Updater, StorageJob);
+  Updater.prototype.destroy = function () {
+    this.options = null;
+    this.datahash = null;
+    this.filter = null;
+    StorageJob.prototype.destroy.call(this);
+  };
+  Updater.prototype.go = function () {
+    var filter, datahash, options;
+    if (!this.storage) {
+      return q(null);
+    }
+    if (!this.storage.__record) {
+      return q(null);
+    }
+    filter = this.filter;
+    datahash = this.datahash;
+    options = this.options;
+    if (!(filter && datahash && options)) {
+      return q(null);
+    }
+    this.filter = null;
+    this.datahash = null;
+    this.options = null;
+    if(this.storage.events){
+      this.defer.promise.then(this.storage.events.fireUpdated.bind(this.storage.events,filter,datahash));
+    }
+    this.storage.doUpdate(filter,datahash,options,this);
+  };
+
+  function InitBeginner (storage, txnid, defer) {
+    StorageJob.call(this, storage, defer);
+    this.txnid = txnid;
+  }
+  lib.inherit(InitBeginner, StorageJob);
+  InitBeginner.prototype.destroy = function () {
+    this.txnid = null;
+    StorageJob.prototype.destroy.call(this);
+  };
+  InitBeginner.prototype.go = function () {
+    var txnid;
+    if (!this.storage) {
+      return q(null);
+    }
+    if (!this.storage.__record) {
+      return q(null);
+    }
+    txnid = this.txnid;
+    if (!txnid) {
+      return q(null);
+    }
+    this.txnid = null;
+    this.storage.deleteOnChannel(dataSuite.filterFactory.createFromDescriptor(null), 'ib').then(
+      this.storage.onAllDeletedForBegin.bind(this.storage, txnid, this),
+      this.reject.bind(this)
+    );
+  };
+
+  function InitEnder (storage, txnid, defer) {
+    StorageJob.call(this, storage, defer);
+    this.txnid = txnid;
+  }
+  lib.inherit(InitEnder, StorageJob);
+  InitEnder.prototype.destroy = function () {
+    this.txnid = null;
+    StorageJob.prototype.destroy.call(this);
+  };
+  InitEnder.prototype.go = function () {
+    var txnid;
+    if (!this.storage) {
+      return q(null);
+    }
+    if (!this.storage.__record) {
+      return q(null);
+    }
+    txnid = this.txnid;
+    if (!txnid) {
+      return q(null);
+    }
+    this.txnid = null;
+    if(this.storage.events){
+      this.storage.events.endInit(txnid,this);
+    }
+    this.resolve(true);
+  };
+
+  function Deleter (storage, filter, defer) {
+    StorageJob.call(this, storage, defer);
+    this.filter = filter;
+  }
+  lib.inherit(Deleter, StorageJob);
+  Deleter.prototype.destroy = function () {
+    this.filter = null;
+    StorageJob.prototype.destroy.call(this);
+  };
+  Deleter.prototype.go = function () {
+    if (!this.storage) {
+      return q(null);
+    }
+    if (!this.storage.__record) {
+      return q(null);
+    }
+    this.storage.doDelete(this.filter, this);
+  };
+
+
   var __id = 0;
   function StorageBase(storagedescriptor, visiblefields){
     //this.__id = process.pid+':'+(++__id);
@@ -1661,6 +1731,7 @@ function createStorageBase(execlib){
       console.log("No storagedescriptor.record!");
     }
     this.__record = new Record(storagedescriptor.record, visiblefields);
+    this.jobs = new qlib.JobCollection();
     this.events = storagedescriptor.events ? new StorageBaseEventing : null;
   };
   StorageBase.prototype.destroy = function(){
@@ -1668,20 +1739,24 @@ function createStorageBase(execlib){
       this.events.destroy();
     }
     this.events = null;
+    if(this.jobs) {
+      this.jobs.destroy();
+    }
+    this.jobs = null;
     this.__record.destroy();
     this.__record = null;
   };
   StorageBase.prototype.create = function(datahash){
-    var d = q.defer();
-    if (!this.__record) {
-      d.resolve(null);
-      return d.promise;
+    var lastpendingjob;
+    if (!this.jobs) {
+      return q(null);
     }
-    if(this.events){
-      d.promise.then(this.events.fireNewRecord.bind(this.events));
+    lastpendingjob = this.jobs.lastPendingJobFor('op');
+    if (lastpendingjob && lastpendingjob instanceof Creator) {
+      lastpendingjob.add(datahash);
+      return lastpendingjob.defer.promise;
     }
-    this.doCreate(this.__record.filterObject(datahash),d);
-    return d.promise;
+    return this.jobs.run('op', new Creator(this, datahash));
   };
   StorageBase.prototype.read = function(query){
     var d = q.defer();
@@ -1693,24 +1768,16 @@ function createStorageBase(execlib){
     return d.promise;
   };
   StorageBase.prototype.update = function(filter,datahash,options){
-    var d = q.defer();
-    if (!this.__record) {
-      d.resolve(null);
-      return d.promise;
+    if (!this.jobs) {
+      return q(null);
     }
-    lib.runNext(this.doUpdate.bind(this,filter,datahash,options,d));
-    if(this.events){
-      d.promise.then(this.events.fireUpdated.bind(this.events,filter,datahash));
-    }
-    return d.promise;
+    return this.jobs.run('op', new Updater(this, filter, datahash, options));
   };
   StorageBase.prototype.beginInit = function(txnid){
-    var d = q.defer();
-    this.delete(dataSuite.filterFactory.createFromDescriptor(null)).then(
-      this.onAllDeletedForBegin.bind(this, txnid, d),
-      d.reject.bind(d)
-    );
-    return d.promise;
+    if (!this.jobs) {
+      return q(null);
+    }
+    return this.jobs.run('op', new InitBeginner(this, txnid));
   };
   StorageBase.prototype.onAllDeletedForBegin = function (txnid, defer) {
     if (this.data) {
@@ -1724,22 +1791,19 @@ function createStorageBase(execlib){
     defer.resolve(true);
   };
   StorageBase.prototype.endInit = function(txnid){
-    if(this.events){
-      this.events.endInit(txnid,this);
+    if (!this.jobs) {
+      return q(null);
     }
+    return this.jobs.run('op', new InitEnder(this, txnid));
   };
   StorageBase.prototype.delete = function(filter){
-    //console.log('StorageBase delete',filter);
-    var d = q.defer();
-    if (!this.__record) {
-      d.resolve(null);
-      return d.promise;
+    return this.deleteOnChannel(filter, 'op');
+  };
+  StorageBase.prototype.deleteOnChannel = function (filter, channelname){
+    if (!this.jobs) {
+      return q(null);
     }
-    lib.runNext(this.doDelete.bind(this,filter,d));
-    if(this.events){
-      d.promise.then(this.events.fireDeleted.bind(this.events,filter));
-    }
-    return d.promise;
+    return this.jobs.run(channelname, new Deleter(this, filter));
   };
 
   StorageBase.prototype.aggregate = function (aggregation_descriptor) {
