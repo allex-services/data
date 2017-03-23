@@ -1558,10 +1558,72 @@ function createStorageBase(execlib){
     JobBase.prototype.destroy.call(this);
   };
 
-  function Creator (storage, datahash, defer) {
+  function InitBeginner (storage, txnid, defer) {
+    StorageJob.call(this, storage, defer);
+    this.txnid = txnid;
+  }
+  lib.inherit(InitBeginner, StorageJob);
+  InitBeginner.prototype.destroy = function () {
+    this.txnid = null;
+    StorageJob.prototype.destroy.call(this);
+  };
+  InitBeginner.prototype.go = function () {
+    var txnid;
+    if (!this.storage) {
+      this.resolve(null);
+      return;
+    }
+    if (!this.storage.__record) {
+      this.resolve(null);
+      return;
+    }
+    txnid = this.txnid;
+    if (!txnid) {
+      this.resolve(null);
+      return;
+    }
+    this.txnid = null;
+    this.storage.deleteOnChannel(dataSuite.filterFactory.createFromDescriptor(null), 'ib').then(
+      this.storage.onAllDeletedForBegin.bind(this.storage, txnid, this),
+      this.reject.bind(this)
+    );
+  };
+
+  function InitEnder (storage, txnid, defer) {
+    StorageJob.call(this, storage, defer);
+    this.txnid = txnid;
+  }
+  lib.inherit(InitEnder, StorageJob);
+  InitEnder.prototype.destroy = function () {
+    this.txnid = null;
+    StorageJob.prototype.destroy.call(this);
+  };
+  InitEnder.prototype.go = function () {
+    var txnid;
+    if (!this.storage) {
+      this.resolve(null);
+      return;
+    }
+    if (!this.storage.__record) {
+      this.resolve(null);
+      return;
+    }
+    txnid = this.txnid;
+    if (!txnid) {
+      this.resolve(null);
+      return;
+    }
+    this.txnid = null;
+    if(this.storage.events){
+      this.storage.events.endInit(txnid,this.storage);
+    }
+    this.resolve(true);
+  };
+
+  function Creator (storage, defer) {
     StorageJob.call(this, storage, defer);
     this.chunks = [];
-    this.hashes = [datahash];
+    this.hashes = [];
   }
   lib.inherit(Creator, StorageJob);
   Creator.prototype.destroy = function () {
@@ -1584,18 +1646,22 @@ function createStorageBase(execlib){
     }
     this.resolve(true);
   };
-  Creator.prototype.createOne = function (datahash) {
-    var d, ret;
+  Creator.prototype.createOne = function (dndatahash) {
+    var d, datahash, ret;
+    d = dndatahash[0];
+    datahash = dndatahash[1];
     if (!this.storage) {
-      return q(null);
+      this.resolve(null);
+      return;
     }
     if (!this.storage.__record) {
-      return q(null);
+      this.resolve(null);
+      return;
     }
     if (!datahash) {
-      return q(null);
+      this.resolve(null);
+      return;
     }
-    d = q.defer();
     ret = d.promise;
     if(this.storage.events){
       d.promise.then(this.storage.events.fireNewRecord.bind(this.storage.events));
@@ -1604,11 +1670,13 @@ function createStorageBase(execlib){
     return ret;
   };
   Creator.prototype.add = function (datahash) {
-    this.hashes.push(datahash);
+    var d = q.defer(), ret = d.promise;
+    this.hashes.push([d, datahash]);
     if (this.hashes.length>999) {
       this.chunks.push(this.hashes);
       this.hashes = [];
     }
+    return ret;
   };
 
   function Updater (storage, filter, datahash, options, defer) {
@@ -1627,16 +1695,19 @@ function createStorageBase(execlib){
   Updater.prototype.go = function () {
     var filter, datahash, options;
     if (!this.storage) {
-      return q(null);
+      this.resolve(null);
+      return;
     }
     if (!this.storage.__record) {
-      return q(null);
+      this.resolve(null);
+      return;
     }
     filter = this.filter;
     datahash = this.datahash;
     options = this.options;
-    if (!(filter && datahash && options)) {
-      return q(null);
+    if (!(filter || datahash || options)) {
+      this.resolve(null);
+      return;
     }
     this.filter = null;
     this.datahash = null;
@@ -1645,62 +1716,6 @@ function createStorageBase(execlib){
       this.defer.promise.then(this.storage.events.fireUpdated.bind(this.storage.events,filter,datahash));
     }
     this.storage.doUpdate(filter,datahash,options,this);
-  };
-
-  function InitBeginner (storage, txnid, defer) {
-    StorageJob.call(this, storage, defer);
-    this.txnid = txnid;
-  }
-  lib.inherit(InitBeginner, StorageJob);
-  InitBeginner.prototype.destroy = function () {
-    this.txnid = null;
-    StorageJob.prototype.destroy.call(this);
-  };
-  InitBeginner.prototype.go = function () {
-    var txnid;
-    if (!this.storage) {
-      return q(null);
-    }
-    if (!this.storage.__record) {
-      return q(null);
-    }
-    txnid = this.txnid;
-    if (!txnid) {
-      return q(null);
-    }
-    this.txnid = null;
-    this.storage.deleteOnChannel(dataSuite.filterFactory.createFromDescriptor(null), 'ib').then(
-      this.storage.onAllDeletedForBegin.bind(this.storage, txnid, this),
-      this.reject.bind(this)
-    );
-  };
-
-  function InitEnder (storage, txnid, defer) {
-    StorageJob.call(this, storage, defer);
-    this.txnid = txnid;
-  }
-  lib.inherit(InitEnder, StorageJob);
-  InitEnder.prototype.destroy = function () {
-    this.txnid = null;
-    StorageJob.prototype.destroy.call(this);
-  };
-  InitEnder.prototype.go = function () {
-    var txnid;
-    if (!this.storage) {
-      return q(null);
-    }
-    if (!this.storage.__record) {
-      return q(null);
-    }
-    txnid = this.txnid;
-    if (!txnid) {
-      return q(null);
-    }
-    this.txnid = null;
-    if(this.storage.events){
-      this.storage.events.endInit(txnid,this);
-    }
-    this.resolve(true);
   };
 
   function Deleter (storage, filter, defer) {
@@ -1714,10 +1729,15 @@ function createStorageBase(execlib){
   };
   Deleter.prototype.go = function () {
     if (!this.storage) {
-      return q(null);
+      this.resolve(null);
+      return;
     }
     if (!this.storage.__record) {
-      return q(null);
+      this.resolve(null);
+      return;
+    }
+    if(this.storage.events){
+      this.defer.promise.then(this.storage.events.fireDeleted.bind(this.storage.events,this.filter));
     }
     this.storage.doDelete(this.filter, this);
   };
@@ -1747,16 +1767,18 @@ function createStorageBase(execlib){
     this.__record = null;
   };
   StorageBase.prototype.create = function(datahash){
-    var lastpendingjob;
+    var lastpendingjob, job, ret;
     if (!this.jobs) {
       return q(null);
     }
     lastpendingjob = this.jobs.lastPendingJobFor('op');
     if (lastpendingjob && lastpendingjob instanceof Creator) {
-      lastpendingjob.add(datahash);
-      return lastpendingjob.defer.promise;
+      return lastpendingjob.add(datahash);
     }
-    return this.jobs.run('op', new Creator(this, datahash));
+    job = new Creator(this);
+    ret = job.add(datahash);
+    this.jobs.run('op', job);
+    return ret;
   };
   StorageBase.prototype.read = function(query){
     var d = q.defer();
