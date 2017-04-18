@@ -11,8 +11,8 @@ function createMaterializeAggregationTask (execlib) {
 
 
   function MaterializeAggregationTask (prophash) {
-    if (!lib.isFunction (prophash.onData)) {
-      throw new lib.Error('NOT_A_FUNCTION' ,'onData is not a function in MaterializeAggregationTask');
+    if (!lib.isFunction (prophash.onRecord)) {
+      throw new lib.Error('NOT_A_FUNCTION' ,'onRecord is not a function in MaterializeAggregationTask');
     }
 
     if (prophash.interval && (!lib.isNumber(prophash.interval) || prophash.interval < 0)) {
@@ -21,10 +21,10 @@ function createMaterializeAggregationTask (execlib) {
 
     SinkTask.call(this, prophash);
     this.sink = prophash.sink;
-    this._buffer = null;
     this._to = null;
     this.query = prophash.query;
-    this.onData = prophash.onData;
+    this.onRecord = prophash.onRecord;
+    this.onDone = prophash.onDone;
     this.onError = prophash.onError;
     this.interval = prophash.interval;
   }
@@ -37,10 +37,13 @@ function createMaterializeAggregationTask (execlib) {
     this.cb = null;
     this.error_cb = null;
     this._to = null;
-    this._buffer = null;
     this.continuous = null;
     this.sink = null;
     this.query = null;
+    this.onRecord = null;
+    this.onError = null;
+    this.onDone = null;
+    this.interval = null;
     SinkTask.prototype.__cleanUp.call(this);
   };
 
@@ -54,8 +57,9 @@ function createMaterializeAggregationTask (execlib) {
 
   MaterializeAggregationTask.prototype._onFetchDone = function () {
     this._to = null;
-    this.onData (this._buffer);
-    this._buffer = null;
+    if (lib.isFunction (this.onDone)) {
+      this.onDone(true);
+    }
 
     if (!this.interval) {
       lib.runNext (this.destroy.bind(this));
@@ -72,19 +76,10 @@ function createMaterializeAggregationTask (execlib) {
   };
 
   MaterializeAggregationTask.prototype._onRecord = function (record) {
-    switch (record.op) {
-      case 'start' : {
-        this._buffer = [];
-        break;
-      }
-      case 'next': {
-        this._buffer.push (record.data);
-        break;
-      }
-    }
+    this.onRecord(record);
   };
 
-  MaterializeAggregationTask.prototype.compulsoryConstructionProperties = ['query', 'onData', 'sink'];
+  MaterializeAggregationTask.prototype.compulsoryConstructionProperties = ['query', 'onRecord', 'onError' ,'sink'];
   return MaterializeAggregationTask;
 }
 
