@@ -174,7 +174,7 @@ function createStorageBase(execlib){
       this.hashes = [];
     }
     if (chunk && chunk.length) {
-      return q.all(chunk.map(this.createOne.bind(this))).then(this.subgo.bind(this));
+      return q.allSettled(chunk.map(this.createOne.bind(this))).then(this.subgo.bind(this));
     }
     this.resolve(true);
   };
