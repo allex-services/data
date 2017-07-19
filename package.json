@@ -1,6 +1,6 @@
 {
   "name": "allex_dataservice",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "DataService",
   "main": "index.js",
   "scripts": {
@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@gitlab.hers.rs:allex_services/data.git"
+    "url": "git@github.com:allex-services/data.git"
   },
   "keywords": [
     "ecosystem:allex",
