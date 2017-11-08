@@ -119,6 +119,10 @@ function createRecordUtils(execlib,suite){
     });
   }
   var sm = execlib.execSuite.registry.getClientSide('.');
+  if (!sm) {
+    lib.runNext(createRecordUtils.bind(null, execlib, suite));
+    return;
+  }
   suite.duplicateFieldValueInArrayOfHashes = duplicateFieldValueInArrayOfHashes;
   suite.inherit = inherit;
   var sinkPreInheritProc = sinkInheritProcCreator('DataSink',sm.get('user').inherit); 
