@@ -1,6 +1,7 @@
 function createMemoryStorageBase (execlib) {
   'use strict';
   var lib = execlib.lib,
+    q = lib.q,
     dataSuite = execlib.dataSuite,
     StorageBase = dataSuite.StorageBase;
 
@@ -79,10 +80,10 @@ function createMemoryStorageBase (execlib) {
   MemoryStorageBase.prototype.onUpsertSucceeded = function(defer,createdrecord){
     defer.resolve({upserted:1});
   };
-  MemoryStorageBase.prototype.processUpsert = function(defer,countobj,filter,datahash,options,record){
+  MemoryStorageBase.prototype.processUpsert = function(defer,countobj,filter,datahash,options){
     var d = q.defer();
-    this.doCreate(record,d);
-    d.done(
+    this.doCreate(datahash,d);
+    d.promise.done(
       this.onUpsertSucceeded.bind(this,defer),
       defer.reject.bind(defer)
     );
@@ -111,7 +112,7 @@ function createMemoryStorageBase (execlib) {
     var countobj = {count:0};
     this._traverseData(this.processUpdate.bind(this,defer,countobj,filter,datahash,options));
     if(countobj.count<1 && options && options.upsert){
-      this.processUpsert(filter,datahash,options,defer);
+      this.processUpsert(defer,countobj,filter,datahash,options);
     }else{
       defer.resolve({updated:countobj.count});
     }
