@@ -1,6 +1,6 @@
 {
   "name": "allex_dataservice",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "DataService",
   "main": "index.js",
   "scripts": {

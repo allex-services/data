@@ -127,13 +127,17 @@ function createDataService(execlib, ParentService, datafilterslib){
     }
     this.intermediateStorage = null;
     this.data = new SpawningDataManager(storageinstance,{},this.storageDescriptor.record);
-    if (this.readyToAcceptUsersDefer) {
-      this.readyToAcceptUsersDefer.resolve(true);
-    }
+    this.resolveReadyToAcceptUsersDeferOnStorageCreated(true);
     if (!prophash.storage || !prophash.storage.aggregations) return; //nothing to be done ...
     
     this._aggregations = new lib.Map();
     lib.traverseShallow (prophash.storage.aggregations, this._createAggregation.bind(this, storageinstance));
+  };
+
+  DataService.prototype.resolveReadyToAcceptUsersDeferOnStorageCreated = function (result) {
+    if (this.readyToAcceptUsersDefer) {
+      this.readyToAcceptUsersDefer.resolve(result);
+    }
   };
 
   DataService.prototype._createAggregation = function (storageinstance, item, alias) {
