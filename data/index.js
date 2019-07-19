@@ -1,5 +1,7 @@
-function createDataSuite(execlib, datafilterslib){
+function createDataSuite(execlib, datalib){
   'use strict';
+  execlib.dataSuite = datalib;
+  /*
   var execSuite = execlib.execSuite,
     dataSuite = {
       storageRegistry: new execSuite.RegistryBase(),
@@ -31,6 +33,7 @@ function createDataSuite(execlib, datafilterslib){
 
     dataSuite.storageRegistry.register('memory', dataSuite.MemoryListStorage);
     dataSuite.storageRegistry.register('memorylist', dataSuite.MemoryListStorage);
+    */
 }
 
 module.exports = createDataSuite;

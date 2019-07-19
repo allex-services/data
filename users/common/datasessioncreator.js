@@ -56,6 +56,16 @@ function createDataSession(execlib, ParentService){
     this.queries = null;
     UserSession.prototype.__cleanUp.call(this);
   };
+  function container (masterarry, item) {
+    return masterarry.indexOf(item)>=0;
+  }
+  function fixvisiblefields (queryprophash, uservisiblefields) {
+    if (!lib.isArray(queryprophash.visiblefields)) {
+      queryprophash.visiblefields = uservisiblefields;
+      return;
+    }
+    queryprophash.visiblefields = queryprophash.filter(container.bind(null, uservisiblefields));
+  }
   DataSession.prototype.query = function(queryprophash, defer){
     if (!this.user) {
       defer.reject(new lib.Error('USER_DESTROYED'));
@@ -69,6 +79,7 @@ function createDataSession(execlib, ParentService){
       defer.reject(new lib.Error('DATA_SERVICE_STORAGE_DESTROYED'));
       return;
     }
+    fixvisiblefields(queryprophash, this.user.visibleFields);
     if (lib.isFunction(this.user.preprocessQueryPropertyHash)) {
       queryprophash = this.user.preprocessQueryPropertyHash(queryprophash);
     } else {

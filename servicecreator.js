@@ -1,17 +1,16 @@
-function createDataService(execlib, ParentService, datafilterslib){
+function createDataService(execlib, ParentService, datalib){
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
     execSuite = execlib.execSuite,
-    dataSuite = execlib.dataSuite,
-    recordSuite = dataSuite.recordSuite,
-    NullStorage = dataSuite.NullStorage,
-    SpawningDataManager = dataSuite.SpawningDataManager,
+    recordSuite = datalib.recordSuite,
+    NullStorage = datalib.NullStorage,
+    SpawningDataManager = datalib.SpawningDataManager,
     DataSession = require('./users/common/datasessioncreator')(execlib, ParentService),
     userSessionFactory = execSuite.userSessionFactoryCreator(DataSession);
 
   if (!execlib.dataSuite) {
-    require('./data')(execlib, datafilterslib);
+    require('./data')(execlib, datalib);
   }
   require('./data/serversideindex')(execlib, ParentService);
 
@@ -92,7 +91,7 @@ function createDataService(execlib, ParentService, datafilterslib){
   var dsio = DataService.inherit;
   DataService.inherit = function(childCtor,factoryProducer,childStorageDescriptor){
     dsio.call(this,childCtor,factoryProducer);
-    childCtor.prototype.storageDescriptor = dataSuite.inherit(this.prototype.storageDescriptor,childStorageDescriptor);
+    childCtor.prototype.storageDescriptor = datalib.inherit(this.prototype.storageDescriptor,childStorageDescriptor);
   };
   DataService.prototype.__cleanUp = function () {
     if (this._aggregations) {
@@ -157,7 +156,7 @@ function createDataService(execlib, ParentService, datafilterslib){
     if(prophash && prophash.storage && prophash.storage.modulename){
       prophash.storage.propertyhash = prophash.storage.propertyhash || {};
       prophash.storage.propertyhash.record = this.storageDescriptor.record;
-      return dataSuite.storageRegistry.spawn(prophash.storage.modulename,prophash.storage.propertyhash);
+      return datalib.storageRegistry.spawn(prophash.storage.modulename,prophash.storage.propertyhash);
     }
     d = q.defer();
     d.resolve(this.createStorage(this.storageDescriptor));

@@ -1,7 +1,7 @@
-function sinkMapCreator(execlib, ParentSinkMap, datafilterslib){
+function sinkMapCreator(execlib, ParentSinkMap, datalib){
   'use strict';
   if (!execlib.dataSuite) {
-    require('./data')(execlib, datafilterslib);
+    require('./data')(execlib, datalib);
   }
   var sinkmap = new (execlib.lib.Map);
   sinkmap.add('service',require('./sinks/servicesinkcreator')(execlib, ParentSinkMap.get('service')));

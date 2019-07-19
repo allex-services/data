@@ -3,14 +3,14 @@ function createServicePack(execlib){
 
   return {
     service: {
-      dependencies: ['.', 'allex_datafilterslib']
+      dependencies: ['.', 'allex_datalib']
     },
     sinkmap: {
-      dependencies: ['.', 'allex_datafilterslib']
-    },
+      dependencies: ['.', 'allex_datalib']
+    }/*,
     tasks: {
-      dependencies: ['allex_datafilterslib']
-    }
+      dependencies: ['allex_datalib']
+    }*/
   };
 }
 

@@ -6,7 +6,7 @@
     "role":"web_component"
   },
   "dependencies": {
-    "js": ["allex:datafilters:lib"]
+    "js": ["allex:datafilters:lib", "allex:data:lib"]
   },
   "bower": {
     "requires": {
