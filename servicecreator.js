@@ -154,7 +154,8 @@ function createDataService(execlib, ParentService, datalib){
   DataService.prototype.createStorageAsync = function (prophash){
     var d;
     if(prophash && prophash.storage && prophash.storage.modulename){
-      prophash.storage.propertyhash = prophash.storage.propertyhash || {};
+      //prophash.storage.propertyhash = prophash.storage.propertyhash || {};
+      prophash.storage.propertyhash = lib.extend({}, this.storageDescriptor, prophash.storage.propertyhash);
       prophash.storage.propertyhash.record = this.storageDescriptor.record;
       return datalib.storageRegistry.spawn(prophash.storage.modulename,prophash.storage.propertyhash);
     }
