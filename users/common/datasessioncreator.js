@@ -64,7 +64,7 @@ function createDataSession(execlib, ParentService){
       queryprophash.visiblefields = uservisiblefields;
       return;
     }
-    queryprophash.visiblefields = queryprophash.filter(container.bind(null, uservisiblefields));
+    queryprophash.visiblefields = queryprophash.visiblefields.filter(container.bind(null, uservisiblefields));
   }
   DataSession.prototype.query = function(queryprophash, defer){
     if (!this.user) {
