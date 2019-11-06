@@ -16,6 +16,14 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
   ChildClass.prototype.create = function(datahash,defer){
     this.__service.data.create(datahash, defer);
   };
+  ChildClass.prototype.read = function (querydescriptor, defer) {
+    var query = new dataSuite.StaticQuery(this.__service.storageDescriptor.record, querydescriptor);
+    defer.promise.then(
+      query.destroy.bind(query),
+      query.destroy.bind(query)
+    );
+    this.__service.data.read(query, defer);
+  };
   ChildClass.prototype.update = function(filterdescriptor,datahash,options,defer){
     this.__service.data.update(filterdescriptor,datahash,options,defer);
   };
