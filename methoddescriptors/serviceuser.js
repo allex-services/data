@@ -3,6 +3,11 @@ module.exports = {
     title: 'Data hash',
     type: 'object'
   }],
+  read: [{
+    title: 'Query descriptor',
+    type: 'object',
+    required: false
+  }],
   update: [{
     title: 'Filter descriptor',
     type: 'object',
