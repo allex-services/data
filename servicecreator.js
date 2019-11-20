@@ -6,13 +6,16 @@ function createDataService(execlib, ParentService, datalib){
     recordSuite = datalib.recordSuite,
     NullStorage = datalib.NullStorage,
     SpawningDataManager = datalib.SpawningDataManager,
-    DataSession = require('./users/common/datasessioncreator')(execlib, ParentService),
-    userSessionFactory = execSuite.userSessionFactoryCreator(DataSession);
+    DataSession,
+    userSessionFactory;
 
   if (!execlib.dataSuite) {
     require('./data')(execlib, datalib);
   }
   require('./data/serversideindex')(execlib, ParentService);
+
+  DataSession = require('./users/common/datasessioncreator')(execlib, ParentService);
+  userSessionFactory = execSuite.userSessionFactoryCreator(DataSession);
 
   function factoryCreator(parentFactory){
     return {

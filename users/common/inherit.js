@@ -17,7 +17,9 @@ function commonInherit(execlib,ChildClass,ParentClass,methoddescriptors,userSess
     this.__service.data.create(datahash, defer);
   };
   ChildClass.prototype.read = function (querydescriptor, defer) {
-    var query = new dataSuite.StaticQuery(this.__service.storageDescriptor.record, querydescriptor);
+    var query;
+    dataSuite.fixvisiblefields(querydescriptor, this.visibleFields);
+    query = new dataSuite.StaticQuery(this.__service.storageDescriptor.record, querydescriptor);
     defer.promise.then(
       query.destroy.bind(query),
       query.destroy.bind(query)
