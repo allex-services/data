@@ -1,6 +1,6 @@
 function createDataSuite(execlib, datalib){
   'use strict';
-  execlib.dataSuite = datalib;
+  var lib = execlib.lib;
   /*
   var execSuite = execlib.execSuite,
     dataSuite = {
@@ -34,6 +34,74 @@ function createDataSuite(execlib, datalib){
     dataSuite.storageRegistry.register('memory', dataSuite.MemoryListStorage);
     dataSuite.storageRegistry.register('memorylist', dataSuite.MemoryListStorage);
     */
+
+  function copierWOFields(dest,item,itemname){
+    if(itemname==='fields'){
+      return;
+    }
+    dest[itemname] = item;
+  }
+  function nameFinder(findobj,name,item){
+    if(item && item.name===name){
+      findobj.result = item;
+      return true;
+    }
+  }
+  function getNamedItem(arry,name){
+    var findobj={result:null};
+    arry.some(nameFinder.bind(null,findobj,name));
+    return findobj.result;
+  };
+  function namedSetter(setitem,item,itemindex,arry){
+    if(item && item.name===setitem.name){
+      arry[itemindex] = setitem;
+      return true;
+    }
+  }
+  function setNamedItem(arry,item){
+    if(!item){
+      return;
+    }
+    if(!arry.some(namedSetter.bind(null,item))){
+      arry.push(item);
+    };
+  };
+  function copyNamedItems(src,dest,fieldnamesarry){
+    if(!(lib.isArray(src) && lib.isArray(dest))){
+      return;
+    }
+    fieldnamesarry.forEach(function(fn){
+      var item = getNamedItem(src,fn);
+      if(item){
+        setNamedItem(dest,item);
+      }
+    });
+  }
+  function sinkInheritProcCreator(classname,originalUIP){//originalUIP <=> original User inheritance proc
+    //classname not used, but may be useful for error reporting...
+    return function(childCtor,methodDescriptors,visiblefieldsarray){
+      originalUIP.call(this,childCtor,methodDescriptors);
+      childCtor.prototype.visibleFields = datalib.recordSuite.copyAndAppendNewElements(this.prototype.visibleFields,visiblefieldsarray);
+      childCtor.inherit = this.inherit;
+      //console.log('after inherit',childCtor.prototype.visibleFields,'out of parent',this.prototype.visibleFields,'and',visiblefieldsarray);
+    };
+  }
+  var sinkPreInheritProc = sinkInheritProcCreator('DataSink',execlib.execSuite.registry.clientSides.get('.').get('user').inherit); 
+  function sinkInheritProc(childCtor,methodDescriptors,visiblefieldsarray,classStorageDescriptor){
+    sinkPreInheritProc.call(this,childCtor,methodDescriptors,visiblefieldsarray);
+    var recordDescriptor = {};
+    lib.traverseShallow(this.prototype.recordDescriptor,copierWOFields.bind(null,recordDescriptor));
+    var fields = [];
+    if(this.prototype.recordDescriptor){
+      copyNamedItems(this.prototype.recordDescriptor.fields,fields,childCtor.prototype.visibleFields);
+    }
+    lib.traverseShallow(classStorageDescriptor.record, copierWOFields.bind(null,recordDescriptor));
+    copyNamedItems(classStorageDescriptor.record.fields,fields,childCtor.prototype.visibleFields);
+    recordDescriptor.fields = fields;
+    childCtor.prototype.recordDescriptor = recordDescriptor;
+  }
+  datalib.recordSuite.sinkInheritProc = sinkInheritProc;
+  execlib.dataSuite = datalib;
 }
 
 module.exports = createDataSuite;
